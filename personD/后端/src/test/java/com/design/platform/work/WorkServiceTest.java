@@ -162,6 +162,47 @@ class WorkServiceTest {
     }
 
     @Test
+    void createWithTemplateIdAppliesOverridesInOneInsert() {
+        Template template = publicTemplate();
+        template.setDownloadCount(2L);
+        when(templateMapper.selectById(1L)).thenReturn(template);
+        when(templateMapper.updateById(any(Template.class))).thenReturn(1);
+        when(workMapper.insert(any(Work.class))).thenAnswer(invocation -> {
+            Work work = invocation.getArgument(0);
+            work.setId(9L);
+            return 1;
+        });
+
+        WorkVO vo = workService.create(
+                new WorkCreateRequest(1L, "自定义标题", "{\"x\":1}", 99L), owner);
+        assertEquals(9L, vo.id());
+        assertEquals(1L, vo.templateId());
+        assertEquals("自定义标题", vo.title());
+        assertEquals("{\"x\":1}", vo.canvasJson());
+        assertEquals(99L, vo.teamId());
+        assertEquals(3L, template.getDownloadCount());
+        verify(workMapper).insert(any(Work.class));
+        verify(workMapper, never()).selectById(any());
+        verify(workMapper, never()).updateById(any(Work.class));
+    }
+
+    @Test
+    void createWithTemplateIdAndInvalidTitleDoesNotInsertOrIncrementDownloads() {
+        Template template = publicTemplate();
+        template.setDownloadCount(5L);
+        when(templateMapper.selectById(1L)).thenReturn(template);
+
+        String tooLong = "a".repeat(129);
+        BizException ex = assertThrows(
+                BizException.class,
+                () -> workService.create(new WorkCreateRequest(1L, tooLong, "{\"x\":1}", 99L), owner));
+        assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
+        assertEquals(5L, template.getDownloadCount());
+        verify(workMapper, never()).insert(any(Work.class));
+        verify(templateMapper, never()).updateById(any(Template.class));
+    }
+
+    @Test
     void updateAndDeleteOnlyOwner() {
         Work work = sampleWork();
         when(workMapper.selectById(10L)).thenReturn(work);

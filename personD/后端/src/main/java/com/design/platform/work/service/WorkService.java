@@ -85,22 +85,21 @@ public class WorkService {
         return toVo(work);
     }
 
+    @Transactional
     public WorkVO create(WorkCreateRequest request, AuthUser user) {
         requireLogin(user);
         if (request != null && request.templateId() != null) {
-            WorkVO created = createFromTemplate(request.templateId(), user);
-            boolean override = hasText(request.title()) || request.canvasJson() != null || request.teamId() != null;
-            if (!override) {
-                return created;
+            String titleOverride = null;
+            if (hasText(request.title())) {
+                titleOverride = resolveTitle(request.title());
             }
-            return update(
-                    created.id(),
-                    new WorkUpdateRequest(
-                            hasText(request.title()) ? request.title() : null,
-                            request.canvasJson(),
-                            null,
-                            request.teamId()),
-                    user);
+            Template template = requireReadableTemplate(request.templateId(), user);
+            return insertWorkFromTemplate(
+                    template,
+                    user,
+                    titleOverride,
+                    request.canvasJson(),
+                    request.teamId());
         }
 
         Work work = new Work();
@@ -116,6 +115,11 @@ public class WorkService {
     @Transactional
     public WorkVO createFromTemplate(Long templateId, AuthUser user) {
         requireLogin(user);
+        Template template = requireReadableTemplate(templateId, user);
+        return insertWorkFromTemplate(template, user, null, null, null);
+    }
+
+    private Template requireReadableTemplate(Long templateId, AuthUser user) {
         Template template = templateMapper.selectById(templateId);
         if (template == null) {
             throw new BizException(ErrorCode.NOT_FOUND);
@@ -123,6 +127,15 @@ public class WorkService {
         if (!TemplateAccess.canRead(template, user)) {
             throw new BizException(ErrorCode.FORBIDDEN);
         }
+        return template;
+    }
+
+    private WorkVO insertWorkFromTemplate(
+            Template template,
+            AuthUser user,
+            String titleOverride,
+            String canvasJsonOverride,
+            Long teamIdOverride) {
         long downloads = template.getDownloadCount() == null ? 0L : template.getDownloadCount();
         template.setDownloadCount(downloads + 1);
         templateMapper.updateById(template);
@@ -131,8 +144,9 @@ public class WorkService {
         Work work = new Work();
         work.setUserId(user.id());
         work.setTemplateId(template.getId());
-        work.setTitle(template.getTitle());
-        work.setCanvasJson(template.getJsonData());
+        work.setTitle(titleOverride != null ? titleOverride : template.getTitle());
+        work.setCanvasJson(canvasJsonOverride != null ? canvasJsonOverride : template.getJsonData());
+        work.setTeamId(teamIdOverride);
         work.setStatus(STATUS_DRAFT);
         workMapper.insert(work);
         return toVo(work);
