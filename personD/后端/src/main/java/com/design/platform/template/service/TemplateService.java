@@ -16,9 +16,6 @@ import com.design.platform.template.entity.Template;
 import com.design.platform.template.mapper.TemplateMapper;
 import com.design.platform.user.entity.User;
 import com.design.platform.user.mapper.UserMapper;
-import com.design.platform.work.dto.WorkVO;
-import com.design.platform.work.entity.Work;
-import com.design.platform.work.mapper.WorkMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +23,6 @@ import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
@@ -42,7 +38,6 @@ public class TemplateService {
     private static final TypeReference<PageData<TemplateVO>> PAGE_TYPE = new TypeReference<>() {};
 
     private final TemplateMapper templateMapper;
-    private final WorkMapper workMapper;
     private final UserMapper userMapper;
     private final StorageService storageService;
     private final StringRedisTemplate stringRedisTemplate;
@@ -51,14 +46,12 @@ public class TemplateService {
 
     public TemplateService(
             TemplateMapper templateMapper,
-            WorkMapper workMapper,
             UserMapper userMapper,
             StorageService storageService,
             StringRedisTemplate stringRedisTemplate,
             ObjectMapper objectMapper,
             @Value("${app.minio.buckets.templates}") String templatesBucket) {
         this.templateMapper = templateMapper;
-        this.workMapper = workMapper;
         this.userMapper = userMapper;
         this.storageService = storageService;
         this.stringRedisTemplate = stringRedisTemplate;
@@ -210,28 +203,6 @@ public class TemplateService {
         templateMapper.updateById(template);
         evictListCache();
         return toVo(template);
-    }
-
-    @Transactional
-    public WorkVO use(Long id, AuthUser user) {
-        requireLogin(user);
-        Template template = requireTemplate(id);
-        if (!TemplateAccess.canRead(template, user)) {
-            throw new BizException(ErrorCode.FORBIDDEN);
-        }
-        long downloads = template.getDownloadCount() == null ? 0L : template.getDownloadCount();
-        template.setDownloadCount(downloads + 1);
-        templateMapper.updateById(template);
-
-        Work work = new Work();
-        work.setUserId(user.id());
-        work.setTemplateId(template.getId());
-        work.setTitle(template.getTitle());
-        work.setCanvasJson(template.getJsonData());
-        work.setStatus("DRAFT");
-        workMapper.insert(work);
-        evictListCache();
-        return new WorkVO(work.getId(), work.getUserId(), work.getTemplateId(), work.getTitle(), work.getStatus());
     }
 
     static boolean allowedImage(String filename, String contentType) {

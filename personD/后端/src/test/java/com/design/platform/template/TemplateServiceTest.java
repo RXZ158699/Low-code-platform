@@ -15,9 +15,6 @@ import com.design.platform.template.mapper.TemplateMapper;
 import com.design.platform.template.service.TemplateService;
 import com.design.platform.user.entity.User;
 import com.design.platform.user.mapper.UserMapper;
-import com.design.platform.work.dto.WorkVO;
-import com.design.platform.work.entity.Work;
-import com.design.platform.work.mapper.WorkMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +45,6 @@ import static org.mockito.Mockito.when;
 class TemplateServiceTest {
 
     private TemplateMapper templateMapper;
-    private WorkMapper workMapper;
     private UserMapper userMapper;
     private StubStorageService storageService;
     private FakeStringRedisTemplate redis;
@@ -60,14 +56,12 @@ class TemplateServiceTest {
     @BeforeEach
     void setUp() {
         templateMapper = mock(TemplateMapper.class);
-        workMapper = mock(WorkMapper.class);
         userMapper = mock(UserMapper.class);
         storageService = new StubStorageService();
         redis = new FakeStringRedisTemplate();
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         templateService = new TemplateService(
                 templateMapper,
-                workMapper,
                 userMapper,
                 storageService,
                 redis,
@@ -149,37 +143,6 @@ class TemplateServiceTest {
 
         TemplateVO vo = templateService.uploadCover(1L, file, author);
         assertEquals("http://localhost:9000/templates/2026/08/abc.png", vo.coverImageUrl());
-    }
-
-    @Test
-    void useInsertsDraftWorkAndIncrementsDownload() {
-        Template template = publicTemplate();
-        template.setDownloadCount(2L);
-        when(templateMapper.selectById(1L)).thenReturn(template);
-        when(templateMapper.updateById(any(Template.class))).thenReturn(1);
-        when(workMapper.insert(any(Work.class))).thenAnswer(invocation -> {
-            Work work = invocation.getArgument(0);
-            work.setId(77L);
-            return 1;
-        });
-
-        WorkVO vo = templateService.use(1L, author);
-        assertEquals(77L, vo.id());
-        assertEquals(author.id(), vo.userId());
-        assertEquals(1L, vo.templateId());
-        assertEquals("夏日海报", vo.title());
-        assertEquals("DRAFT", vo.status());
-        assertEquals(3L, template.getDownloadCount());
-    }
-
-    @Test
-    void useForbiddenWhenCannotRead() {
-        Template template = publicTemplate();
-        template.setIsPublic(false);
-        when(templateMapper.selectById(1L)).thenReturn(template);
-        BizException ex = assertThrows(BizException.class, () -> templateService.use(1L, other));
-        assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
-        verify(workMapper, never()).insert(any(Work.class));
     }
 
     @Test

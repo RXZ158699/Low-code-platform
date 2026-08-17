@@ -9,6 +9,7 @@ import com.design.platform.template.dto.TemplateUpdateRequest;
 import com.design.platform.template.dto.TemplateVO;
 import com.design.platform.template.service.TemplateService;
 import com.design.platform.work.dto.WorkVO;
+import com.design.platform.work.service.WorkService;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,9 +26,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class TemplateController {
 
     private final TemplateService templateService;
+    private final WorkService workService;
 
-    public TemplateController(TemplateService templateService) {
+    public TemplateController(TemplateService templateService, WorkService workService) {
         this.templateService = templateService;
+        this.workService = workService;
     }
 
     @GetMapping
@@ -63,6 +66,6 @@ public class TemplateController {
 
     @PostMapping("/{id}/use")
     public Result<WorkVO> use(@PathVariable Long id) {
-        return Result.ok(templateService.use(id, SecurityUtils.requireUser()));
+        return Result.ok(workService.createFromTemplate(id, SecurityUtils.requireUser()));
     }
 }
