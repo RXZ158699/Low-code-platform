@@ -11,9 +11,17 @@ public final class SecurityUtils {
     }
 
     public static AuthUser requireUser() {
+        AuthUser user = currentUserOrNull();
+        if (user == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED);
+        }
+        return user;
+    }
+
+    public static AuthUser currentUserOrNull() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthUser authUser)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED);
+            return null;
         }
         return authUser;
     }

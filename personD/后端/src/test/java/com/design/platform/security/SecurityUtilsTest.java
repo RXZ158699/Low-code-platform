@@ -42,6 +42,19 @@ class SecurityUtilsTest {
     }
 
     @Test
+    void currentUserOrNullReturnsNullWhenAnonymous() {
+        assertNull(SecurityUtils.currentUserOrNull());
+    }
+
+    @Test
+    void currentUserOrNullReturnsAuthUserWhenLoggedIn() {
+        AuthUser user = new AuthUser(1L, "alice", "USER");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        assertEquals(user, SecurityUtils.currentUserOrNull());
+    }
+
+    @Test
     void extractBearerToken() {
         assertNull(SecurityUtils.extractBearerToken(null));
         assertNull(SecurityUtils.extractBearerToken(""));
