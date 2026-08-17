@@ -1,1 +1,2 @@
--- seed in task 10
+-- Seed data is applied by DataSeedRunner (ApplicationRunner), not this file.
+-- Keep empty to avoid duplicating BCrypt hashes and conflicting with the runner.
