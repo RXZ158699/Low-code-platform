@@ -8,6 +8,7 @@ import com.design.platform.common.error.ErrorCode;
 import com.design.platform.security.AuthUser;
 import com.design.platform.storage.StorageService;
 import com.design.platform.storage.StoredObject;
+import com.design.platform.team.service.TeamService;
 import com.design.platform.template.entity.Template;
 import com.design.platform.template.mapper.TemplateMapper;
 import com.design.platform.template.service.TemplateAccess;
@@ -43,6 +44,7 @@ public class WorkService {
     private final TemplateMapper templateMapper;
     private final StorageService storageService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final TeamService teamService;
     private final String worksBucket;
 
     public WorkService(
@@ -50,11 +52,13 @@ public class WorkService {
             TemplateMapper templateMapper,
             StorageService storageService,
             StringRedisTemplate stringRedisTemplate,
+            TeamService teamService,
             @Value("${app.minio.buckets.works}") String worksBucket) {
         this.workMapper = workMapper;
         this.templateMapper = templateMapper;
         this.storageService = storageService;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.teamService = teamService;
         this.worksBucket = worksBucket;
     }
 
@@ -76,9 +80,11 @@ public class WorkService {
         return PageData.of(result.getTotal(), result.getCurrent(), result.getSize(), records);
     }
 
-    public WorkVO get(Long id, AuthUser user, boolean isTeamMember) {
+    public WorkVO get(Long id, AuthUser user) {
         requireLogin(user);
         Work work = requireWork(id);
+        boolean isTeamMember = work.getTeamId() != null
+                && teamService.isMember(work.getTeamId(), user.id());
         if (!WorkAccess.canRead(work, user.id(), isTeamMember)) {
             throw new BizException(ErrorCode.FORBIDDEN);
         }

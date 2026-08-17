@@ -11,6 +11,7 @@ import com.design.platform.common.error.ErrorCode;
 import com.design.platform.security.AuthUser;
 import com.design.platform.storage.StorageService;
 import com.design.platform.storage.StoredObject;
+import com.design.platform.team.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,6 +33,7 @@ class AssetServiceTest {
 
     private AssetMapper assetMapper;
     private StubStorageService storageService;
+    private TeamService teamService;
     private AssetService assetService;
 
     private final AuthUser uploader = new AuthUser(1L, "alice", "USER");
@@ -41,7 +43,8 @@ class AssetServiceTest {
     void setUp() {
         assetMapper = mock(AssetMapper.class);
         storageService = new StubStorageService();
-        assetService = new AssetService(assetMapper, storageService, "assets");
+        teamService = new StubTeamService();
+        assetService = new AssetService(assetMapper, storageService, teamService, "assets");
     }
 
     @Test
@@ -97,6 +100,17 @@ class AssetServiceTest {
     }
 
     @Test
+    void getAllowsTeamMemberWhenTeamIdSet() {
+        Asset asset = sampleAsset(false);
+        asset.setTeamId(8L);
+        when(assetMapper.selectById(1L)).thenReturn(asset);
+        ((StubTeamService) teamService).member = true;
+
+        AssetVO vo = assetService.get(1L, other);
+        assertEquals(1L, vo.id());
+    }
+
+    @Test
     void updateAndDeleteOnlyUploader() {
         Asset asset = sampleAsset(false);
         when(assetMapper.selectById(1L)).thenReturn(asset);
@@ -136,6 +150,17 @@ class AssetServiceTest {
         query.setScope("team");
         BizException ex = assertThrows(BizException.class, () -> assetService.list(query, uploader));
         assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
+    }
+
+    @Test
+    void listTeamAssertsMembership() {
+        AssetQuery query = new AssetQuery();
+        query.setScope("team");
+        query.setTeamId(8L);
+        ((StubTeamService) teamService).forbidAssert = true;
+
+        BizException ex = assertThrows(BizException.class, () -> assetService.list(query, uploader));
+        assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
     }
 
     @Test
@@ -195,6 +220,27 @@ class AssetServiceTest {
                 throw new BizException(ErrorCode.INTERNAL, "文件删除失败");
             }
             deleted = true;
+        }
+    }
+
+    static final class StubTeamService extends TeamService {
+        boolean member;
+        boolean forbidAssert;
+
+        StubTeamService() {
+            super(null, null, null, null, null);
+        }
+
+        @Override
+        public boolean isMember(Long teamId, Long userId) {
+            return member;
+        }
+
+        @Override
+        public void assertMember(Long teamId, Long userId) {
+            if (forbidAssert) {
+                throw new BizException(ErrorCode.FORBIDDEN);
+            }
         }
     }
 }

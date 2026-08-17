@@ -36,7 +36,7 @@ public class WorkController {
 
     @GetMapping("/{id}")
     public Result<WorkVO> get(@PathVariable Long id) {
-        return Result.ok(workService.get(id, SecurityUtils.requireUser(), false));
+        return Result.ok(workService.get(id, SecurityUtils.requireUser()));
     }
 
     @PostMapping

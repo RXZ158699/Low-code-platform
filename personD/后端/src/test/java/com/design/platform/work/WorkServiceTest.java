@@ -8,6 +8,7 @@ import com.design.platform.common.error.ErrorCode;
 import com.design.platform.security.AuthUser;
 import com.design.platform.storage.StorageService;
 import com.design.platform.storage.StoredObject;
+import com.design.platform.team.service.TeamService;
 import com.design.platform.template.entity.Template;
 import com.design.platform.template.mapper.TemplateMapper;
 import com.design.platform.work.dto.WorkCreateRequest;
@@ -43,6 +44,7 @@ class WorkServiceTest {
     private TemplateMapper templateMapper;
     private StubStorageService storageService;
     private StringRedisTemplate redis;
+    private TeamService teamService;
     private WorkService workService;
 
     private final AuthUser owner = new AuthUser(1L, "alice", "USER");
@@ -54,7 +56,8 @@ class WorkServiceTest {
         templateMapper = mock(TemplateMapper.class);
         storageService = new StubStorageService();
         redis = new FakeStringRedisTemplate();
-        workService = new WorkService(workMapper, templateMapper, storageService, redis, "works");
+        teamService = new StubTeamService();
+        workService = new WorkService(workMapper, templateMapper, storageService, redis, teamService, "works");
     }
 
     @Test
@@ -79,18 +82,29 @@ class WorkServiceTest {
     void getAllowsOwnerAndForbidsOtherWhenNotMember() {
         when(workMapper.selectById(10L)).thenReturn(sampleWork());
 
-        WorkVO vo = workService.get(10L, owner, false);
+        WorkVO vo = workService.get(10L, owner);
         assertEquals(10L, vo.id());
         assertEquals("{\"w\":1}", vo.canvasJson());
 
-        BizException ex = assertThrows(BizException.class, () -> workService.get(10L, other, false));
+        BizException ex = assertThrows(BizException.class, () -> workService.get(10L, other));
         assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+    }
+
+    @Test
+    void getAllowsTeamMemberWhenTeamIdSet() {
+        Work work = sampleWork();
+        work.setTeamId(8L);
+        when(workMapper.selectById(10L)).thenReturn(work);
+        ((StubTeamService) teamService).member = true;
+
+        WorkVO vo = workService.get(10L, other);
+        assertEquals(10L, vo.id());
     }
 
     @Test
     void getThrowsNotFoundWhenMissing() {
         when(workMapper.selectById(9L)).thenReturn(null);
-        BizException ex = assertThrows(BizException.class, () -> workService.get(9L, owner, false));
+        BizException ex = assertThrows(BizException.class, () -> workService.get(9L, owner));
         assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
     }
 
@@ -321,6 +335,19 @@ class WorkServiceTest {
         @Override
         public Boolean delete(String key) {
             return false;
+        }
+    }
+
+    static final class StubTeamService extends TeamService {
+        boolean member;
+
+        StubTeamService() {
+            super(null, null, null, null, null);
+        }
+
+        @Override
+        public boolean isMember(Long teamId, Long userId) {
+            return member;
         }
     }
 }

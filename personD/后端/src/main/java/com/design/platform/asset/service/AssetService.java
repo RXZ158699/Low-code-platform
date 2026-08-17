@@ -13,6 +13,7 @@ import com.design.platform.common.error.ErrorCode;
 import com.design.platform.security.AuthUser;
 import com.design.platform.storage.StorageService;
 import com.design.platform.storage.StoredObject;
+import com.design.platform.team.service.TeamService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,14 +33,17 @@ public class AssetService {
 
     private final AssetMapper assetMapper;
     private final StorageService storageService;
+    private final TeamService teamService;
     private final String assetsBucket;
 
     public AssetService(
             AssetMapper assetMapper,
             StorageService storageService,
+            TeamService teamService,
             @Value("${app.minio.buckets.assets}") String assetsBucket) {
         this.assetMapper = assetMapper;
         this.storageService = storageService;
+        this.teamService = teamService;
         this.assetsBucket = assetsBucket;
     }
 
@@ -59,6 +63,7 @@ public class AssetService {
                 if (query.getTeamId() == null) {
                     throw new BizException(ErrorCode.BAD_REQUEST);
                 }
+                teamService.assertMember(query.getTeamId(), user.id());
                 wrapper.eq(Asset::getTeamId, query.getTeamId());
             }
             default -> throw new BizException(ErrorCode.BAD_REQUEST);
@@ -109,6 +114,9 @@ public class AssetService {
         }
         if (category != null && category.length() > 32) {
             throw new BizException(ErrorCode.BAD_REQUEST);
+        }
+        if (teamId != null) {
+            teamService.assertMember(teamId, user.id());
         }
 
         StoredObject stored;
@@ -179,14 +187,17 @@ public class AssetService {
         }
     }
 
-    static boolean canRead(Asset asset, AuthUser user) {
+    boolean canRead(Asset asset, AuthUser user) {
         if (asset == null || user == null) {
             return false;
         }
         if (user.id().equals(asset.getUploaderId())) {
             return true;
         }
-        return Boolean.TRUE.equals(asset.getIsPublic());
+        if (Boolean.TRUE.equals(asset.getIsPublic())) {
+            return true;
+        }
+        return asset.getTeamId() != null && teamService.isMember(asset.getTeamId(), user.id());
     }
 
     public static List<String> normalizeTags(List<String> tags) {
