@@ -49,7 +49,7 @@ public class JwtService {
                 .claim("role", role)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expireAt))
-                .signWith(key)
+                .signWith(key, Jwts.SIG.HS256)
                 .compact();
     }
 
@@ -57,6 +57,10 @@ public class JwtService {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(key)
+                    .sig()
+                    .remove(Jwts.SIG.HS384)
+                    .remove(Jwts.SIG.HS512)
+                    .and()
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
