@@ -68,6 +68,7 @@ class AssetServiceTest {
 
     @Test
     void uploadStoresTagsFromCommaSeparatedAndRepeatedParams() {
+        ((StubTeamService) teamService).member = true;
         MultipartFile file = mockFile("a.png", "image/png");
         when(assetMapper.insert(any(Asset.class))).thenAnswer(invocation -> {
             Asset asset = invocation.getArgument(0);
@@ -81,6 +82,17 @@ class AssetServiceTest {
         assertEquals(List.of("a", "b", "c"), vo.tags());
         assertTrue(storageService.uploaded);
         assertEquals("assets", storageService.lastBucket);
+    }
+
+    @Test
+    void uploadTeamIdForbiddenWhenNotMember() {
+        MultipartFile file = mockFile("a.png", "image/png");
+        BizException ex = assertThrows(
+                BizException.class,
+                () -> assetService.upload(file, "image", null, null, false, 9L, uploader));
+        assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+        assertEquals(40300, ex.getErrorCode().getCode());
+        assertFalse(storageService.uploaded);
     }
 
     @Test
@@ -122,6 +134,7 @@ class AssetServiceTest {
                 () -> assetService.update(1L, new AssetUpdateRequest("x", null, null, null), other));
         assertEquals(ErrorCode.FORBIDDEN, forbidden.getErrorCode());
 
+        ((StubTeamService) teamService).member = true;
         AssetVO updated = assetService.update(1L, new AssetUpdateRequest("logo", List.of("t1"), true, 3L), uploader);
         assertEquals("logo", updated.category());
         assertEquals(List.of("t1"), updated.tags());
@@ -131,6 +144,18 @@ class AssetServiceTest {
         assetService.delete(1L, uploader);
         assertTrue(storageService.deleted);
         verify(assetMapper).deleteById(1L);
+    }
+
+    @Test
+    void updateTeamIdForbiddenWhenNotMember() {
+        Asset asset = sampleAsset(false);
+        when(assetMapper.selectById(1L)).thenReturn(asset);
+
+        BizException ex = assertThrows(
+                BizException.class,
+                () -> assetService.update(1L, new AssetUpdateRequest(null, null, null, 3L), uploader));
+        assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+        assertEquals(40300, ex.getErrorCode().getCode());
     }
 
     @Test
@@ -157,10 +182,10 @@ class AssetServiceTest {
         AssetQuery query = new AssetQuery();
         query.setScope("team");
         query.setTeamId(8L);
-        ((StubTeamService) teamService).forbidAssert = true;
 
         BizException ex = assertThrows(BizException.class, () -> assetService.list(query, uploader));
         assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+        assertEquals(40300, ex.getErrorCode().getCode());
     }
 
     @Test
@@ -225,7 +250,6 @@ class AssetServiceTest {
 
     static final class StubTeamService extends TeamService {
         boolean member;
-        boolean forbidAssert;
 
         StubTeamService() {
             super(null, null, null, null, null);
@@ -238,7 +262,7 @@ class AssetServiceTest {
 
         @Override
         public void assertMember(Long teamId, Long userId) {
-            if (forbidAssert) {
+            if (!isMember(teamId, userId)) {
                 throw new BizException(ErrorCode.FORBIDDEN);
             }
         }

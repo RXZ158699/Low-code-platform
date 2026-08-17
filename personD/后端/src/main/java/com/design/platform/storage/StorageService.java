@@ -7,6 +7,7 @@ import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.SetBucketPolicyArgs;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -75,10 +76,31 @@ public class StorageService {
                 if (!exists) {
                     minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
                 }
+                minioClient.setBucketPolicy(
+                        SetBucketPolicyArgs.builder()
+                                .bucket(bucket)
+                                .config(publicReadPolicy(bucket))
+                                .build());
             } catch (Exception e) {
                 throw new BizException(ErrorCode.INTERNAL, "初始化存储桶失败: " + bucket);
             }
         }
+    }
+
+    static String publicReadPolicy(String bucket) {
+        return """
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Principal": {"AWS": ["*"]},
+                      "Action": ["s3:GetObject"],
+                      "Resource": ["arn:aws:s3:::%s/*"]
+                    }
+                  ]
+                }
+                """.formatted(bucket);
     }
 
     private static String stripTrailingSlash(String url) {

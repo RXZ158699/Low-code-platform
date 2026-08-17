@@ -83,6 +83,7 @@ public class GlobalExceptionHandler {
             case 41000 -> HttpStatus.GONE;
             case 41300 -> HttpStatus.PAYLOAD_TOO_LARGE;
             case 41500 -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
+            case 50000 -> HttpStatus.INTERNAL_SERVER_ERROR;
             default -> HttpStatus.BAD_REQUEST;
         };
     }

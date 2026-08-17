@@ -10,9 +10,11 @@ public final class ObjectKeys {
 
     public static String of(String originalFilename, LocalDate date, String uuid) {
         String ext = "";
-        int dot = originalFilename.lastIndexOf('.');
-        if (dot >= 0) {
-            ext = originalFilename.substring(dot).toLowerCase(Locale.ROOT);
+        if (originalFilename != null) {
+            int dot = originalFilename.lastIndexOf('.');
+            if (dot >= 0) {
+                ext = originalFilename.substring(dot).toLowerCase(Locale.ROOT);
+            }
         }
         return "%04d/%02d/%s%s".formatted(date.getYear(), date.getMonthValue(), uuid, ext);
     }

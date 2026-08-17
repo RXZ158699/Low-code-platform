@@ -113,6 +113,7 @@ public class WorkService {
         work.setTitle(resolveTitle(request == null ? null : request.title()));
         work.setCanvasJson(request == null ? null : request.canvasJson());
         work.setTeamId(request == null ? null : request.teamId());
+        assertTeamMemberIfPresent(work.getTeamId(), user);
         work.setStatus(STATUS_DRAFT);
         workMapper.insert(work);
         return toVo(work);
@@ -142,6 +143,7 @@ public class WorkService {
             String titleOverride,
             String canvasJsonOverride,
             Long teamIdOverride) {
+        assertTeamMemberIfPresent(teamIdOverride, user);
         long downloads = template.getDownloadCount() == null ? 0L : template.getDownloadCount();
         template.setDownloadCount(downloads + 1);
         templateMapper.updateById(template);
@@ -177,6 +179,7 @@ public class WorkService {
             work.setStatus(normalizeStatus(request.status()));
         }
         if (request.teamId() != null) {
+            teamService.assertMember(request.teamId(), user.id());
             work.setTeamId(request.teamId());
         }
         workMapper.updateById(work);
@@ -242,6 +245,12 @@ public class WorkService {
     private static void requireLogin(AuthUser user) {
         if (user == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED);
+        }
+    }
+
+    private void assertTeamMemberIfPresent(Long teamId, AuthUser user) {
+        if (teamId != null) {
+            teamService.assertMember(teamId, user.id());
         }
     }
 

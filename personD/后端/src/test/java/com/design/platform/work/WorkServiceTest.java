@@ -177,6 +177,7 @@ class WorkServiceTest {
 
     @Test
     void createWithTemplateIdAppliesOverridesInOneInsert() {
+        ((StubTeamService) teamService).member = true;
         Template template = publicTemplate();
         template.setDownloadCount(2L);
         when(templateMapper.selectById(1L)).thenReturn(template);
@@ -201,6 +202,32 @@ class WorkServiceTest {
     }
 
     @Test
+    void createWithTeamIdForbiddenWhenNotMember() {
+        BizException ex = assertThrows(
+                BizException.class,
+                () -> workService.create(new WorkCreateRequest(null, "空白稿", null, 99L), owner));
+        assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+        assertEquals(40300, ex.getErrorCode().getCode());
+        verify(workMapper, never()).insert(any(Work.class));
+    }
+
+    @Test
+    void createWithTemplateIdForbiddenWhenNotTeamMember() {
+        Template template = publicTemplate();
+        template.setDownloadCount(2L);
+        when(templateMapper.selectById(1L)).thenReturn(template);
+
+        BizException ex = assertThrows(
+                BizException.class,
+                () -> workService.create(new WorkCreateRequest(1L, "自定义标题", "{\"x\":1}", 99L), owner));
+        assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+        assertEquals(40300, ex.getErrorCode().getCode());
+        assertEquals(2L, template.getDownloadCount());
+        verify(workMapper, never()).insert(any(Work.class));
+        verify(templateMapper, never()).updateById(any(Template.class));
+    }
+
+    @Test
     void createWithTemplateIdAndInvalidTitleDoesNotInsertOrIncrementDownloads() {
         Template template = publicTemplate();
         template.setDownloadCount(5L);
@@ -209,7 +236,7 @@ class WorkServiceTest {
         String tooLong = "a".repeat(129);
         BizException ex = assertThrows(
                 BizException.class,
-                () -> workService.create(new WorkCreateRequest(1L, tooLong, "{\"x\":1}", 99L), owner));
+                () -> workService.create(new WorkCreateRequest(1L, tooLong, "{\"x\":1}", null), owner));
         assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
         assertEquals(5L, template.getDownloadCount());
         verify(workMapper, never()).insert(any(Work.class));
@@ -228,6 +255,7 @@ class WorkServiceTest {
                 () -> workService.update(10L, new WorkUpdateRequest("x", null, null, null), other));
         assertEquals(ErrorCode.FORBIDDEN, forbidden.getErrorCode());
 
+        ((StubTeamService) teamService).member = true;
         WorkVO updated = workService.update(
                 10L, new WorkUpdateRequest("新标题", "{\"a\":1}", "PUBLISHED", 9L), owner);
         assertEquals("新标题", updated.title());
@@ -237,6 +265,19 @@ class WorkServiceTest {
 
         workService.delete(10L, owner);
         verify(workMapper).deleteById(10L);
+    }
+
+    @Test
+    void updateTeamIdForbiddenWhenNotMember() {
+        Work work = sampleWork();
+        when(workMapper.selectById(10L)).thenReturn(work);
+
+        BizException ex = assertThrows(
+                BizException.class,
+                () -> workService.update(10L, new WorkUpdateRequest(null, null, null, 9L), owner));
+        assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+        assertEquals(40300, ex.getErrorCode().getCode());
+        verify(workMapper, never()).updateById(any(Work.class));
     }
 
     @Test
@@ -348,6 +389,13 @@ class WorkServiceTest {
         @Override
         public boolean isMember(Long teamId, Long userId) {
             return member;
+        }
+
+        @Override
+        public void assertMember(Long teamId, Long userId) {
+            if (!isMember(teamId, userId)) {
+                throw new BizException(ErrorCode.FORBIDDEN);
+            }
         }
     }
 }

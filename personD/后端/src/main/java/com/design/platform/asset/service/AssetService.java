@@ -166,6 +166,7 @@ public class AssetService {
             asset.setIsPublic(request.isPublic());
         }
         if (request.teamId() != null) {
+            teamService.assertMember(request.teamId(), user.id());
             asset.setTeamId(request.teamId());
         }
         assetMapper.updateById(asset);
