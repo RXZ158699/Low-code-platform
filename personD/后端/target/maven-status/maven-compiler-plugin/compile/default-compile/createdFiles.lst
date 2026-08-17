@@ -1,0 +1,13 @@
+com\design\platform\config\RedisConfig.class
+com\design\platform\common\api\Result.class
+com\design\platform\common\error\BizException.class
+com\design\platform\common\mybatis\ListStringTypeHandler$1.class
+com\design\platform\config\CorsConfig.class
+com\design\platform\common\error\ErrorCode.class
+com\design\platform\DesignPlatformApplication.class
+com\design\platform\config\Knife4jConfig.class
+com\design\platform\config\MybatisPlusConfig.class
+com\design\platform\common\error\GlobalExceptionHandler.class
+com\design\platform\common\mybatis\ListStringTypeHandler.class
+com\design\platform\common\api\PageData.class
+com\design\platform\config\MetaTimeHandler.class

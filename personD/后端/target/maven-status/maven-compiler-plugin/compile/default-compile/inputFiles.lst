@@ -1,0 +1,12 @@
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\common\api\PageData.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\common\api\Result.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\common\error\BizException.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\common\error\ErrorCode.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\common\error\GlobalExceptionHandler.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\common\mybatis\ListStringTypeHandler.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\config\CorsConfig.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\config\Knife4jConfig.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\config\MetaTimeHandler.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\config\MybatisPlusConfig.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\config\RedisConfig.java
+E:\实训二\项目\low-code_platform\personD\后端\src\main\java\com\design\platform\DesignPlatformApplication.java

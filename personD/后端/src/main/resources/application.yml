@@ -1,0 +1,45 @@
+server:
+  port: 8080
+spring:
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+  jackson:
+    default-property-inclusion: non_null
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+      continue-on-error: true
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+app:
+  jwt:
+    secret: "design-platform-dev-secret-change-me-32bytes!!"
+    expire-days: 7
+  minio:
+    endpoint: http://localhost:9000
+    public-base-url: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin123
+    buckets:
+      templates: templates
+      assets: assets
+      works: works
