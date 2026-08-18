@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Avatar, Button, Dropdown, Tooltip, App as AntdApp } from "antd";
-import { useNavigate } from "react-router-dom";
 import lightbulbIcon from "../assets/icons/lightbulb.svg";
 import bookmarkIcon from "../assets/icons/bookmark.svg";
 import userCogIcon from "../assets/icons/user-cog.svg";
@@ -8,6 +7,7 @@ import plusCircleIcon from "../assets/icons/plus-circle.svg";
 import awardIcon from "../assets/icons/award.svg";
 import CreatePopover, { useCreatePopover } from "./CreatePopover.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { openLoginTab } from "../auth/openLoginTab.js";
 
 const NAV_ITEMS = [
   { key: "create", label: "创作", icon: lightbulbIcon },
@@ -21,7 +21,6 @@ export default function Sidebar() {
   const { open } = useCreatePopover();
   const { user, logout } = useAuth();
   const { message } = AntdApp.useApp();
-  const navigate = useNavigate();
 
   const handleLogout = async () => {
     await logout();
@@ -82,7 +81,7 @@ export default function Sidebar() {
             </button>
           </Dropdown>
         ) : (
-          <Button type="primary" className="sidebar-login-btn" onClick={() => navigate("/login")}>
+          <Button type="primary" className="sidebar-login-btn" onClick={openLoginTab}>
             登录
           </Button>
         )}

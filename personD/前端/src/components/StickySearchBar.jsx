@@ -1,7 +1,11 @@
 import { Button } from "antd";
 import SearchPill from "./SearchPill.jsx";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { openLoginTab } from "../auth/openLoginTab.js";
 
 export default function StickySearchBar({ visible, scale, left, width }) {
+  const { user } = useAuth();
+
   return (
     <div
       className={`sticky-search-bar ${visible ? "visible" : ""}`}
@@ -13,7 +17,13 @@ export default function StickySearchBar({ visible, scale, left, width }) {
       >
         <div className="sticky-search-content">
           <SearchPill className="sticky-pill" withButton={false} />
-          <Button className="login-register-btn sticky-login">登录/注册</Button>
+          {user ? (
+            <span className="header-user-name sticky-user">{user.nickname || user.username}</span>
+          ) : (
+            <Button className="login-register-btn sticky-login" onClick={openLoginTab}>
+              登录/注册
+            </Button>
+          )}
         </div>
       </div>
     </div>

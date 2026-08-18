@@ -18,6 +18,21 @@ export function AuthProvider({ children }) {
       .finally(() => setReady(true));
   }, []);
 
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key !== "dp.token") return;
+      if (!event.newValue) {
+        setUser(null);
+        return;
+      }
+      fetchMe()
+        .then(setUser)
+        .catch(() => setUser(null));
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   const login = useCallback(async (username, password) => {
     const me = await apiLogin(username, password);
     setUser(me);
