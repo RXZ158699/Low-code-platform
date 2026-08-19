@@ -29,11 +29,11 @@ describe("TemplateShowcase", () => {
     vi.clearAllMocks();
   });
 
-  it("loads templates of the active category from the API", async () => {
+  it("loads featured templates from the API without category filter", async () => {
     listTemplates.mockResolvedValue({
-      total: 1,
+      total: 4,
       page: 1,
-      size: 8,
+      size: 4,
       records: [
         {
           id: 1,
@@ -42,27 +42,37 @@ describe("TemplateShowcase", () => {
           tags: ["海报", "节日"],
           authorNickname: "Alice",
         },
+        {
+          id: 2,
+          title: "活动营销示例",
+          category: "活动营销",
+          tags: ["促销"],
+          authorNickname: "Alice",
+        },
       ],
     });
 
     renderShowcase();
 
     expect(await screen.findByText("夏日海报")).toBeInTheDocument();
+    expect(await screen.findByText("活动营销示例")).toBeInTheDocument();
     expect(listTemplates).toHaveBeenCalledWith(
-      expect.objectContaining({ category: "主题海报", keyword: undefined }),
+      expect.objectContaining({ keyword: undefined, page: 1, size: 4 }),
     );
+    expect(listTemplates.mock.calls[0][0].category).toBeUndefined();
   });
 
   it("searches by keyword without category filter", async () => {
-    listTemplates.mockResolvedValue({ total: 0, page: 1, size: 8, records: [] });
+    listTemplates.mockResolvedValue({ total: 0, page: 1, size: 4, records: [] });
 
     renderShowcase({ keyword: "七夕" });
 
     await waitFor(() =>
       expect(listTemplates).toHaveBeenCalledWith(
-        expect.objectContaining({ category: undefined, keyword: "七夕" }),
+        expect.objectContaining({ keyword: "七夕", page: 1, size: 4 }),
       ),
     );
+    expect(listTemplates.mock.calls[0][0].category).toBeUndefined();
     expect(await screen.findByText(/暂无模板/)).toBeInTheDocument();
   });
 

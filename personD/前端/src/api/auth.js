@@ -1,5 +1,5 @@
 import { apiFetch } from "./client.js";
-import { saveTokens, clearTokens, getToken } from "./tokenStore.js";
+import { saveTokens, clearTokens, getToken, saveUser } from "./tokenStore.js";
 
 export async function login(username, password) {
   const data = await apiFetch("/auth/login", {
@@ -8,6 +8,7 @@ export async function login(username, password) {
     auth: false,
   });
   saveTokens(data);
+  saveUser(data.user);
   return data.user;
 }
 

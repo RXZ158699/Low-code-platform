@@ -17,9 +17,7 @@ export default function StickySearchBar({ visible, scale, left, width }) {
       >
         <div className="sticky-search-content">
           <SearchPill className="sticky-pill" withButton={false} />
-          {user ? (
-            <span className="header-user-name sticky-user">{user.nickname || user.username}</span>
-          ) : (
+          {!user && (
             <Button className="login-register-btn sticky-login" onClick={openLoginTab}>
               登录/注册
             </Button>

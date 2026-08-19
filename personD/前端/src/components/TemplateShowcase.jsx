@@ -17,11 +17,20 @@ const TEMPLATE_TABS = [
 ];
 
 const FALLBACK_COVERS = [card1, card2, card3, card4];
-const PAGE_SIZE = 8;
+const CATEGORY_ORDER = TEMPLATE_TABS.map((item) => item.label);
+const PAGE_SIZE = 4;
+
+function sortByCategory(templates) {
+  return [...templates].sort((a, b) => {
+    const left = CATEGORY_ORDER.indexOf(a.category);
+    const right = CATEGORY_ORDER.indexOf(b.category);
+    return (left === -1 ? CATEGORY_ORDER.length : left) - (right === -1 ? CATEGORY_ORDER.length : right);
+  });
+}
 
 export default function TemplateShowcase({ keyword = "" }) {
   const [tab, setTab] = useState("poster");
-  // 初次加载前 loading 为 true；切换 tab/关键词时保留旧数据避免闪烁，故不在 effect 里同步重置
+  // 初次加载前 loading 为 true；切换关键词时保留旧数据避免闪烁，故不在 effect 里同步重置
   const [state, setState] = useState({ loading: true, templates: [], error: null });
   const { loading, templates, error } = state;
   const [usingId, setUsingId] = useState(null);
@@ -31,11 +40,14 @@ export default function TemplateShowcase({ keyword = "" }) {
 
   useEffect(() => {
     let cancelled = false;
-    const category = keyword ? undefined : TEMPLATE_TABS.find((item) => item.key === tab)?.label;
-    listTemplates({ category, keyword: keyword || undefined, page: 1, size: PAGE_SIZE })
+    listTemplates({ keyword: keyword || undefined, page: 1, size: PAGE_SIZE })
       .then((pageData) => {
         if (!cancelled) {
-          setState({ loading: false, templates: pageData.records || [], error: null });
+          setState({
+            loading: false,
+            templates: sortByCategory(pageData.records || []),
+            error: null,
+          });
         }
       })
       .catch((err) => {
@@ -46,7 +58,7 @@ export default function TemplateShowcase({ keyword = "" }) {
     return () => {
       cancelled = true;
     };
-  }, [tab, keyword]);
+  }, [keyword]);
 
   const handleUse = async (template) => {
     if (!user) {

@@ -16,11 +16,29 @@ const NAV_ITEMS = [
   { key: "new", label: "创建", icon: plusCircleIcon },
 ];
 
-export default function Sidebar() {
-  const [active, setActive] = useState("create");
+export default function Sidebar({ active: activeProp, onNavigate }) {
+  const [internalActive, setInternalActive] = useState("create");
+  const active = activeProp ?? internalActive;
   const { open } = useCreatePopover();
   const { user, logout } = useAuth();
   const { message } = AntdApp.useApp();
+
+  const handleNavClick = (key) => {
+    if (key === "mine" && !user) {
+      openLoginTab();
+      return;
+    }
+    if (key === "new") {
+      if (activeProp === undefined) {
+        setInternalActive(key);
+      }
+      return;
+    }
+    onNavigate?.(key);
+    if (activeProp === undefined) {
+      setInternalActive(key);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -41,7 +59,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`sidebar-nav-item ${active === item.key ? "active" : ""}`}
-                onClick={() => setActive(item.key)}
+                onClick={() => handleNavClick(item.key)}
                 aria-current={active === item.key ? "page" : undefined}
                 aria-haspopup={item.key === "new" ? "dialog" : undefined}
               >

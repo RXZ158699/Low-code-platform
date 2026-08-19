@@ -4,6 +4,14 @@ import { DownOutlined, EllipsisOutlined, MailOutlined, UserOutlined } from "@ant
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { register } from "../api/auth.js";
+import { returnToOpenerOrHome } from "../auth/openLoginTab.js";
+
+const DEMO_USERNAME = "demo";
+const DEMO_PASSWORD = "demo123";
+
+function randomCode() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
 
 function WechatQrMark() {
   const size = 25;
@@ -46,9 +54,11 @@ function WechatQrMark() {
 export default function LoginPage() {
   const [mode, setMode] = useState("phone");
   const [countdown, setCountdown] = useState(0);
+  const [sentCode, setSentCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [phoneForm] = Form.useForm();
   const { login } = useAuth();
-  const { message } = AntdApp.useApp();
+  const { message, notification } = AntdApp.useApp();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -68,7 +78,7 @@ export default function LoginPage() {
         await login(values.username.trim(), values.password);
         message.success("登录成功");
       }
-      navigate("/", { replace: true });
+      returnToOpenerOrHome(() => navigate("/", { replace: true }));
     } catch (error) {
       message.error(error.message || "操作失败，请重试");
     } finally {
@@ -76,15 +86,44 @@ export default function LoginPage() {
     }
   };
 
-  const finishPhone = async () => {
-    message.info("演示环境暂未接入短信验证，请使用手机密码登录");
-    setMode("password");
+  const finishPhone = async (values) => {
+    if (!sentCode) {
+      message.error("请先获取验证码");
+      return;
+    }
+    if (values.code.trim() !== sentCode) {
+      message.error("验证码错误");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await login(DEMO_USERNAME, DEMO_PASSWORD);
+      message.success("登录成功");
+      returnToOpenerOrHome(() => navigate("/", { replace: true }));
+    } catch (error) {
+      message.error(error.message || "登录失败，请确认后端已启动");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const sendCode = () => {
+  const sendCode = async () => {
     if (countdown > 0) return;
+    try {
+      await phoneForm.validateFields(["phone"]);
+    } catch {
+      return;
+    }
+    const code = randomCode();
+    setSentCode(code);
     setCountdown(60);
-    message.success("验证码已发送（演示）");
+    notification.open({
+      message: "短信验证码",
+      description: code,
+      placement: "top",
+      duration: 10,
+      className: "login-code-notice",
+    });
   };
 
   return (
@@ -118,7 +157,7 @@ export default function LoginPage() {
             </h2>
 
             {mode === "phone" ? (
-              <Form layout="vertical" requiredMark={false} onFinish={finishPhone}>
+              <Form form={phoneForm} layout="vertical" requiredMark={false} onFinish={finishPhone}>
                 <div className="login-phone-row">
                   <button type="button" className="login-cc" aria-label="区号">
                     +86
@@ -139,9 +178,12 @@ export default function LoginPage() {
                   <Form.Item
                     name="code"
                     className="login-field"
-                    rules={[{ required: true, whitespace: true, message: "请输入验证码" }]}
+                    rules={[
+                      { required: true, whitespace: true, message: "请输入验证码" },
+                      { pattern: /^\d{4}$/, message: "请输入 4 位验证码" },
+                    ]}
                   >
-                    <Input placeholder="输入验证码" maxLength={6} />
+                    <Input placeholder="输入验证码" maxLength={4} />
                   </Form.Item>
                   <button
                     type="button"
@@ -152,7 +194,13 @@ export default function LoginPage() {
                     {countdown > 0 ? `${countdown}s` : "获取验证码"}
                   </button>
                 </div>
-                <Button type="primary" htmlType="submit" className="login-submit" block>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  className="login-submit"
+                  block
+                  loading={submitting}
+                >
                   登录/注册
                 </Button>
                 <button type="button" className="login-switch" onClick={() => setMode("password")}>
