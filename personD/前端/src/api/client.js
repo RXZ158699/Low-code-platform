@@ -2,6 +2,7 @@ import { getToken, getRefreshToken, saveTokens, clearTokens } from "./tokenStore
 
 const BASE_URL = import.meta.env.VITE_API_BASE || "/api";
 const UNAUTHORIZED = 401;
+const UNAUTHORIZED_BIZ = 40100;
 
 export class ApiError extends Error {
   constructor(code, message) {
@@ -9,6 +10,10 @@ export class ApiError extends Error {
     this.name = "ApiError";
     this.code = code;
   }
+}
+
+export function isUnauthorized(error) {
+  return error instanceof ApiError && (error.code === UNAUTHORIZED || error.code === UNAUTHORIZED_BIZ);
 }
 
 let refreshing = null;
@@ -65,7 +70,7 @@ export async function apiFetch(path, options = {}) {
   try {
     return await rawFetch(path, options);
   } catch (error) {
-    if (error instanceof ApiError && error.code === UNAUTHORIZED && options.auth !== false) {
+    if (isUnauthorized(error) && options.auth !== false) {
       if (await tryRefresh()) {
         return rawFetch(path, options);
       }

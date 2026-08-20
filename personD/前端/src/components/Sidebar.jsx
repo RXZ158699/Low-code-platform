@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Avatar, Button, Dropdown, Tooltip, App as AntdApp } from "antd";
+import { Avatar, Button, Dropdown, Input, Modal, Tooltip, App as AntdApp } from "antd";
 import lightbulbIcon from "../assets/icons/lightbulb.svg";
 import bookmarkIcon from "../assets/icons/bookmark.svg";
 import userCogIcon from "../assets/icons/user-cog.svg";
@@ -8,6 +8,7 @@ import awardIcon from "../assets/icons/award.svg";
 import CreatePopover, { useCreatePopover } from "./CreatePopover.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { openLoginTab } from "../auth/openLoginTab.js";
+import { updateMe, uploadAvatar } from "../api/users.js";
 
 const NAV_ITEMS = [
   { key: "create", label: "创作", icon: lightbulbIcon },
@@ -18,9 +19,12 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ active: activeProp, onNavigate }) {
   const [internalActive, setInternalActive] = useState("create");
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [nickname, setNickname] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
   const active = activeProp ?? internalActive;
   const { open } = useCreatePopover();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { message } = AntdApp.useApp();
 
   const handleNavClick = (key) => {
@@ -43,6 +47,38 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
   const handleLogout = async () => {
     await logout();
     message.success("已退出登录");
+  };
+
+  const openProfile = () => {
+    setNickname(user?.nickname || user?.username || "");
+    setProfileOpen(true);
+  };
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const next = await updateMe({ nickname: nickname.trim() });
+      updateUser(next);
+      message.success("资料已更新");
+      setProfileOpen(false);
+    } catch (err) {
+      message.error(err.message || "保存失败");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleAvatar = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const next = await uploadAvatar(file);
+      updateUser(next);
+      message.success("头像已更新");
+    } catch (err) {
+      message.error(err.message || "头像上传失败");
+    }
   };
 
   return (
@@ -84,9 +120,13 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
         {user ? (
           <Dropdown
             menu={{
-              items: [{ key: "logout", label: "退出登录" }],
+              items: [
+                { key: "profile", label: "编辑资料" },
+                { key: "logout", label: "退出登录" },
+              ],
               onClick: ({ key }) => {
                 if (key === "logout") handleLogout();
+                if (key === "profile") openProfile();
               },
             }}
             placement="topRight"
@@ -104,6 +144,26 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
           </Button>
         )}
       </div>
+      <Modal
+        title="编辑资料"
+        open={profileOpen}
+        onCancel={() => setProfileOpen(false)}
+        onOk={saveProfile}
+        confirmLoading={savingProfile}
+        okText="保存"
+        cancelText="取消"
+      >
+        <div className="profile-form">
+          <label>
+            头像
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleAvatar} />
+          </label>
+          <label>
+            昵称
+            <Input value={nickname} onChange={(event) => setNickname(event.target.value)} maxLength={32} />
+          </label>
+        </div>
+      </Modal>
     </aside>
   );
 }

@@ -7,6 +7,7 @@ import Sidebar from "./Sidebar.jsx";
 import { CreatePopoverProvider } from "./CreatePopover.jsx";
 import { AuthProvider } from "../auth/AuthContext.jsx";
 import { openLoginTab } from "../auth/openLoginTab.js";
+import { createWork } from "../api/works.js";
 
 vi.mock("../auth/openLoginTab.js", () => ({
   openLoginTab: vi.fn(),
@@ -28,13 +29,13 @@ vi.mock("../api/works.js", () => ({
   createWork: vi.fn(),
 }));
 
-function renderSidebar(props = {}) {
+function renderSidebar() {
   return render(
     <MemoryRouter>
       <AntdApp>
         <AuthProvider>
           <CreatePopoverProvider>
-            <Sidebar {...props} />
+            <Sidebar />
           </CreatePopoverProvider>
         </AuthProvider>
       </AntdApp>
@@ -42,53 +43,36 @@ function renderSidebar(props = {}) {
   );
 }
 
-describe("Sidebar", () => {
+describe("CreatePopover", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
   });
 
-  it("opens the login page when 我的 is clicked while logged out", async () => {
+  it("asks logged-out users to sign in when clicking 新增画布", async () => {
     const user = userEvent.setup();
     renderSidebar();
 
-    await user.click(screen.getByRole("button", { name: "我的" }));
+    await user.click(screen.getByRole("button", { name: "新增画布" }));
 
     expect(openLoginTab).toHaveBeenCalledTimes(1);
+    expect(createWork).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: "创建设计" })).not.toBeInTheDocument();
   });
 
-  it("does not open login when other nav items are clicked while logged out", async () => {
-    const user = userEvent.setup();
-    renderSidebar();
-
-    await user.click(screen.getByRole("button", { name: "发现" }));
-
-    expect(openLoginTab).not.toHaveBeenCalled();
-  });
-
-  it("notifies parent when 发现 is clicked", async () => {
-    const onNavigate = vi.fn();
-    const user = userEvent.setup();
-    renderSidebar({ active: "create", onNavigate });
-
-    await user.click(screen.getByRole("button", { name: "发现" }));
-
-    expect(onNavigate).toHaveBeenCalledWith("discover");
-  });
-
-  it("notifies parent when 我的 is clicked while logged in", async () => {
+  it("opens the canvas size modal instead of creating immediately", async () => {
     localStorage.setItem("dp.token", "token");
     localStorage.setItem(
       "dp.user",
       JSON.stringify({ id: 2, username: "demo", nickname: "演示用户" }),
     );
-    const onNavigate = vi.fn();
     const user = userEvent.setup();
-    renderSidebar({ active: "create", onNavigate });
+    renderSidebar();
 
-    await user.click(screen.getByRole("button", { name: "我的" }));
+    await user.click(screen.getByRole("button", { name: "新增画布" }));
 
-    expect(openLoginTab).not.toHaveBeenCalled();
-    expect(onNavigate).toHaveBeenCalledWith("mine");
+    expect(createWork).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "创建设计" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("搜索全部尺寸")).toBeInTheDocument();
   });
 });

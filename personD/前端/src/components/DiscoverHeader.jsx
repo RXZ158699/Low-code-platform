@@ -35,22 +35,24 @@ const DiscoverNavContext = createContext(null);
 export function DiscoverNavProvider({ children }) {
   const [category, setCategory] = useState("模板推荐");
   const [mediaType, setMediaType] = useState("图片模板");
+  const [keyword, setKeyword] = useState("");
   const value = useMemo(
-    () => ({ category, setCategory, mediaType, setMediaType }),
-    [category, mediaType],
+    () => ({ category, setCategory, mediaType, setMediaType, keyword, setKeyword }),
+    [category, mediaType, keyword],
   );
   return <DiscoverNavContext.Provider value={value}>{children}</DiscoverNavContext.Provider>;
 }
 
-function useDiscoverNav() {
+export function useDiscoverNav() {
   const context = useContext(DiscoverNavContext);
-  const [category, setCategory] = useState("模板推荐");
-  const [mediaType, setMediaType] = useState("图片模板");
-  return context ?? { category, setCategory, mediaType, setMediaType };
+  if (!context) {
+    throw new Error("useDiscoverNav 必须在 DiscoverNavProvider 内使用");
+  }
+  return context;
 }
 
 export function DiscoverSearchTabs() {
-  const { category, setCategory } = useDiscoverNav();
+  const { category, setCategory, setKeyword } = useDiscoverNav();
 
   return (
     <div className="discover-search-tabs">
@@ -58,6 +60,7 @@ export function DiscoverSearchTabs() {
         className="discover-search"
         withButton={false}
         placeholder="搜索你想要的创意模板、素材与作品"
+        onSearch={setKeyword}
         suffix={
           <button type="button" className="discover-camera" aria-label="以图搜图">
             <img src={cameraIcon} alt="" />

@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { login as apiLogin, logout as apiLogout, fetchMe } from "../api/auth.js";
-import { getCachedUser, getToken, saveUser } from "../api/tokenStore.js";
+import { getCachedUser, getToken, saveUser, clearTokens } from "../api/tokenStore.js";
 import { notifyAuthSync, subscribeAuthSync } from "./authSync.js";
+import { isUnauthorized } from "../api/client.js";
 
 const AuthContext = createContext(null);
 
@@ -12,7 +13,12 @@ function readLocalUser() {
 function sameUser(left, right) {
   if (left === right) return true;
   if (!left || !right) return false;
-  return left.id === right.id && left.username === right.username && left.nickname === right.nickname;
+  return (
+    left.id === right.id &&
+    left.username === right.username &&
+    left.nickname === right.nickname &&
+    left.avatar === right.avatar
+  );
 }
 
 export function AuthProvider({ children }) {
@@ -36,8 +42,13 @@ export function AuthProvider({ children }) {
         setUser(me);
         saveUser(me);
       })
-      .catch(() => {
-        const fallback = getCachedUser();
+      .catch((error) => {
+        if (isUnauthorized(error)) {
+          clearTokens();
+          setUser(null);
+          return;
+        }
+        const fallback = getToken() ? getCachedUser() : null;
         if (fallback) {
           setUser(fallback);
         }
@@ -58,8 +69,6 @@ export function AuthProvider({ children }) {
     const unsubscribe = subscribeAuthSync((nextUser) => {
       if (nextUser) {
         saveUser(nextUser);
-        setUser(nextUser);
-        return;
       }
       applyLocalSession();
     });
@@ -98,9 +107,15 @@ export function AuthProvider({ children }) {
     notifyAuthSync(null);
   }, []);
 
+  const updateUser = useCallback((me) => {
+    setUser(me);
+    saveUser(me);
+    notifyAuthSync(me);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, ready, login, logout }),
-    [user, ready, login, logout],
+    () => ({ user, ready, login, logout, updateUser }),
+    [user, ready, login, logout, updateUser],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { App as AntdApp } from "antd";
 import plusIcon from "../assets/icons/plus.svg";
 import imageIcon from "../assets/icons/image.svg";
 import folderPlusIcon from "../assets/icons/folder-plus.svg";
@@ -11,6 +12,9 @@ import collageIcon from "../assets/icons/collage.svg";
 import psIcon from "../assets/icons/ps.svg";
 import articleIcon from "../assets/icons/article.svg";
 import scissorsIcon from "../assets/icons/scissors.svg";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { openLoginTab } from "../auth/openLoginTab.js";
+import CreateCanvasModal from "./CreateCanvasModal.jsx";
 
 const CREATE_ACTIONS = [
   { label: "新增画布", icon: plusIcon },
@@ -35,12 +39,14 @@ const CreatePopoverContext = createContext(null);
 
 export function CreatePopoverProvider({ children }) {
   const [open, setOpen] = useState(false);
+  const [canvasModalOpen, setCanvasModalOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return undefined;
 
     const handlePointerDown = (event) => {
       if (event.target.closest("[data-create-popover]")) return;
+      if (event.target.closest("[data-create-canvas-modal]")) return;
       setOpen(false);
     };
     const handleKeyDown = (event) => {
@@ -55,22 +61,52 @@ export function CreatePopoverProvider({ children }) {
     };
   }, [open]);
 
-  const value = useMemo(() => ({ open, setOpen }), [open]);
+  const value = useMemo(
+    () => ({ open, setOpen, canvasModalOpen, setCanvasModalOpen }),
+    [open, canvasModalOpen],
+  );
 
   return (
-    <CreatePopoverContext.Provider value={value}>{children}</CreatePopoverContext.Provider>
+    <CreatePopoverContext.Provider value={value}>
+      {children}
+      {canvasModalOpen ? (
+        <CreateCanvasModal open onClose={() => setCanvasModalOpen(false)} />
+      ) : null}
+    </CreatePopoverContext.Provider>
   );
 }
 
 export function useCreatePopover() {
   const context = useContext(CreatePopoverContext);
   if (!context) {
-    return { open: false, setOpen: () => {} };
+    return {
+      open: false,
+      setOpen: () => {},
+      canvasModalOpen: false,
+      setCanvasModalOpen: () => {},
+    };
   }
   return context;
 }
 
 export default function CreatePopover() {
+  const { user } = useAuth();
+  const { setOpen, setCanvasModalOpen } = useCreatePopover();
+  const { message } = AntdApp.useApp();
+
+  const handleAction = (label) => {
+    if (label !== "新增画布") {
+      message.info("功能开发中");
+      return;
+    }
+    if (!user) {
+      openLoginTab();
+      return;
+    }
+    setOpen(false);
+    setCanvasModalOpen(true);
+  };
+
   return (
     <div className="create-popover" aria-label="创建设计">
       <div className="create-popover-inner">
@@ -78,7 +114,12 @@ export default function CreatePopover() {
           <h3 className="create-popover-title">创建设计</h3>
           <div className="create-actions">
             {CREATE_ACTIONS.map((item) => (
-              <button type="button" className="create-action-card" key={item.label}>
+              <button
+                type="button"
+                className="create-action-card"
+                key={item.label}
+                onClick={() => handleAction(item.label)}
+              >
                 <img src={item.icon} alt="" />
                 <span>{item.label}</span>
               </button>

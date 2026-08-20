@@ -62,6 +62,23 @@ describe("api client", () => {
     expect(retryOptions.headers.Authorization).toBe("Bearer t2");
   });
 
+  it("refreshes token on 40100 and retries the original request", async () => {
+    saveTokens({ token: "expired", refreshToken: "r1" });
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ code: 40100, message: "未登录或 token 无效" }))
+      .mockImplementationOnce(() =>
+        jsonResponse({ code: 0, data: { token: "t2", refreshToken: "r2" } }),
+      )
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: "ok" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const data = await apiFetch("/auth/me");
+
+    expect(data).toBe("ok");
+    expect(getToken()).toBe("t2");
+  });
+
   it("clears tokens and rethrows when refresh fails", async () => {
     saveTokens({ token: "expired", refreshToken: "r1" });
     vi.stubGlobal(

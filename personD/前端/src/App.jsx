@@ -2,13 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Sidebar from "./components/Sidebar.jsx";
 import DesignHomepage from "./components/DesignHomepage.jsx";
 import DiscoverPage from "./components/DiscoverPage.jsx";
+import MinePage from "./components/MinePage.jsx";
 import DiscoverStickyHeader, { DiscoverNavProvider } from "./components/DiscoverHeader.jsx";
 import StickySearchBar from "./components/StickySearchBar.jsx";
 import { CreatePopoverProvider } from "./components/CreatePopover.jsx";
+import { AppPageProvider } from "./AppPageContext.jsx";
 
 const DESIGN_WIDTH = 1440;
 const HOME_HEIGHT = 1302;
 const DISCOVER_HEIGHT = 1180;
+const MINE_HEIGHT = 980;
 
 function App() {
   const shellRef = useRef(null);
@@ -22,7 +25,9 @@ function App() {
   const [stickyVisible, setStickyVisible] = useState(false);
 
   const isDiscover = page === "discover";
-  const designHeight = isDiscover ? DISCOVER_HEIGHT : HOME_HEIGHT;
+  const isMine = page === "mine";
+  const isHome = page === "create";
+  const designHeight = isDiscover ? DISCOVER_HEIGHT : isMine ? MINE_HEIGHT : HOME_HEIGHT;
 
   useEffect(() => {
     shellRef.current?.scrollTo(0, 0);
@@ -52,6 +57,10 @@ function App() {
         setStickyVisible(shell.scrollTop > 1);
         return;
       }
+      if (isMine) {
+        setStickyVisible(false);
+        return;
+      }
       const searchBox = document.querySelector(".hero .search-pill");
       if (!searchBox) {
         setStickyVisible(false);
@@ -67,7 +76,7 @@ function App() {
       shell.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
     };
-  }, [isDiscover]);
+  }, [isDiscover, isMine]);
 
   const scale = useMemo(() => shellWidth / DESIGN_WIDTH, [shellWidth]);
   const canvasHeight = useMemo(
@@ -79,8 +88,15 @@ function App() {
 
   return (
     <CreatePopoverProvider>
+      <AppPageProvider
+        page={page}
+        setPage={setPage}
+        scale={scale}
+        sidebarVisualWidth={sidebarVisualWidth}
+        stickyBarWidth={stickyBarWidth}
+      >
       <DiscoverNavProvider>
-      <main className={`stage-shell${isDiscover ? " is-discover" : ""}`} ref={shellRef}>
+      <main className={`stage-shell${isDiscover ? " is-discover" : ""}${isMine ? " is-mine" : ""}`} ref={shellRef}>
         {isDiscover && (
           <DiscoverStickyHeader
             pinned={stickyVisible}
@@ -89,7 +105,7 @@ function App() {
             width={stickyBarWidth}
           />
         )}
-        {!isDiscover && (
+        {isHome && (
           <StickySearchBar
             visible={stickyVisible}
             scale={scale}
@@ -121,11 +137,12 @@ function App() {
               "--page-scale": scale,
             }}
           >
-            {isDiscover ? <DiscoverPage /> : <DesignHomepage />}
+            {isDiscover ? <DiscoverPage /> : isMine ? <MinePage /> : <DesignHomepage />}
           </div>
         </div>
       </main>
       </DiscoverNavProvider>
+      </AppPageProvider>
     </CreatePopoverProvider>
   );
 }

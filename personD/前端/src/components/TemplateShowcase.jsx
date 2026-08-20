@@ -6,10 +6,12 @@ import card2 from "../assets/templates/card-2.png";
 import card3 from "../assets/templates/card-3.png";
 import card4 from "../assets/templates/card-4.png";
 import logoDot from "../assets/icons/logo-dot.svg";
-import { listTemplates, createWorkFromTemplate } from "../api/templates.js";
+import { listHotTemplates, listTemplates, createWorkFromTemplate } from "../api/templates.js";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { openLoginTab } from "../auth/openLoginTab.js";
 
-const TEMPLATE_TABS = [
+export const TEMPLATE_TABS = [
+  { key: "hot", label: "热门" },
   { key: "poster", label: "主题海报" },
   { key: "promo", label: "活动营销" },
   { key: "xiaohongshu", label: "小红书种草" },
@@ -17,20 +19,15 @@ const TEMPLATE_TABS = [
 ];
 
 const FALLBACK_COVERS = [card1, card2, card3, card4];
-const CATEGORY_ORDER = TEMPLATE_TABS.map((item) => item.label);
 const PAGE_SIZE = 4;
 
-function sortByCategory(templates) {
-  return [...templates].sort((a, b) => {
-    const left = CATEGORY_ORDER.indexOf(a.category);
-    const right = CATEGORY_ORDER.indexOf(b.category);
-    return (left === -1 ? CATEGORY_ORDER.length : left) - (right === -1 ? CATEGORY_ORDER.length : right);
-  });
+function asRecords(data) {
+  if (Array.isArray(data)) return data;
+  return data?.records || [];
 }
 
 export default function TemplateShowcase({ keyword = "" }) {
-  const [tab, setTab] = useState("poster");
-  // 初次加载前 loading 为 true；切换关键词时保留旧数据避免闪烁，故不在 effect 里同步重置
+  const [tab, setTab] = useState("hot");
   const [state, setState] = useState({ loading: true, templates: [], error: null });
   const { loading, templates, error } = state;
   const [usingId, setUsingId] = useState(null);
@@ -40,14 +37,17 @@ export default function TemplateShowcase({ keyword = "" }) {
 
   useEffect(() => {
     let cancelled = false;
-    listTemplates({ keyword: keyword || undefined, page: 1, size: PAGE_SIZE })
-      .then((pageData) => {
+    const active = TEMPLATE_TABS.find((item) => item.key === tab);
+    const request = keyword
+      ? listTemplates({ keyword, page: 1, size: PAGE_SIZE })
+      : tab === "hot"
+        ? listHotTemplates(PAGE_SIZE)
+        : listTemplates({ category: active?.label, page: 1, size: PAGE_SIZE });
+
+    request
+      .then((data) => {
         if (!cancelled) {
-          setState({
-            loading: false,
-            templates: sortByCategory(pageData.records || []),
-            error: null,
-          });
+          setState({ loading: false, templates: asRecords(data), error: null });
         }
       })
       .catch((err) => {
@@ -58,18 +58,19 @@ export default function TemplateShowcase({ keyword = "" }) {
     return () => {
       cancelled = true;
     };
-  }, [keyword]);
+  }, [keyword, tab]);
 
   const handleUse = async (template) => {
     if (!user) {
       message.info("请先登录后再使用模板");
-      navigate("/login");
+      openLoginTab();
       return;
     }
     setUsingId(template.id);
     try {
       const work = await createWorkFromTemplate(template.id);
-      message.success(`已创建作品「${work.title}」，编辑器开发中`);
+      message.success(`已创建作品「${work.title}」`);
+      navigate(`/works/${work.id}`);
     } catch (err) {
       message.error(err.message || "创建作品失败");
     } finally {
@@ -119,7 +120,7 @@ export default function TemplateShowcase({ keyword = "" }) {
                     <span className="template-logo-text">{template.authorNickname || "稿定"}</span>
                   </div>
                   <div className="template-card-body">
-                    <p className="template-title-main">{template.category}</p>
+                    <p className="template-title-main">{template.category || "热门"}</p>
                     <p className="template-title-en">
                       {(template.tags || []).slice(0, 2).join(" · ") || "模板"}
                     </p>

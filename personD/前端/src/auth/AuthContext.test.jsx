@@ -31,6 +31,7 @@ describe("AuthProvider", () => {
 
     expect(screen.getByText("guest")).toBeInTheDocument();
 
+    localStorage.setItem("dp.token", "token");
     window.dispatchEvent(
       new MessageEvent("message", {
         data: { type: AUTH_SYNC_TYPE, user: { id: 2, username: "demo", nickname: "演示用户" } },
@@ -54,5 +55,21 @@ describe("AuthProvider", () => {
     );
 
     expect(screen.getByText("演示用户")).toBeInTheDocument();
+  });
+
+  it("does not treat a user sync without token as logged in", async () => {
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: { type: AUTH_SYNC_TYPE, user: { id: 2, username: "demo", nickname: "演示用户" } },
+      }),
+    );
+
+    await waitFor(() => expect(screen.getByText("guest")).toBeInTheDocument());
   });
 });
