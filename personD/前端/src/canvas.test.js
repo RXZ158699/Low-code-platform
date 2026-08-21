@@ -1,23 +1,47 @@
 import { describe, expect, it } from "vitest";
 import {
+  addCollageElement,
+  addMediaElement,
   addRectElement,
+  addShapeElement,
   addTextElement,
+  applyCollageLayout,
   applyHandleResize,
   applyTextHandleResize,
+  boxFromDrag,
   clampCanvasZoom,
   createEmptyCanvas,
   duplicateElement,
+  fillCollageCells,
+  fitCollageToCanvas,
   fitTextBox,
+  flipLine,
   formatTextContent,
+  getCollageProps,
+  getLineProps,
   getHighlightEllipses,
   getTextGlyphs,
   getTextProps,
   isBlankText,
+  isLineKind,
+  isShapeElement,
+  lineStrokeProps,
   MIN_ELEMENT_SIZE,
   moveElementLayer,
   parseCanvas,
   patchTextElement,
+  pointerAngle,
   removeElement,
+  clearCanvasElements,
+  resizeCanvas,
+  rotateFromDrag,
+  scaledShapePoints,
+  setCollageSize,
+  setLineEndpoint,
+  setLineLength,
+  setLineOrigin,
+  setLineStrokeWidth,
+  shapeKind,
   stringifyCanvas,
   TEXT_BOX_MAX_WIDTH,
   textElementStyle,
@@ -56,36 +80,164 @@ describe("canvas helpers", () => {
   });
 
   it("round-trips text elements", () => {
-    const next = addTextElement(parseCanvas('{"width":800,"height":600,"elements":[]}'));
+    const next = addTextElement(
+      parseCanvas('{"width":800,"height":600,"elements":[]}'),
+    );
     expect(next.width).toBe(800);
     expect(next.elements).toHaveLength(1);
     expect(JSON.parse(stringifyCanvas(next)).elements[0].type).toBe("text");
   });
 
+  it("adds an image element fitted to the artboard", () => {
+    const next = addMediaElement(
+      parseCanvas('{"width":800,"height":600,"elements":[]}'),
+      {
+        type: "image",
+        src: "http://cdn/a.png",
+        name: "a.png",
+        width: 1600,
+        height: 900,
+      },
+    );
+    expect(next.elements).toHaveLength(1);
+    expect(next.elements[0]).toMatchObject({
+      type: "image",
+      src: "http://cdn/a.png",
+      name: "a.png",
+    });
+    expect(next.elements[0].width).toBeLessThanOrEqual(800 * 0.62);
+    expect(next.elements[0].height).toBeLessThanOrEqual(600 * 0.62);
+  });
+
+  it("adds a collage fitted to the artboard from a layout id", () => {
+    const next = addCollageElement(createEmptyCanvas(800, 600), "2-v");
+    expect(next.elements).toHaveLength(1);
+    expect(next.elements[0]).toMatchObject({
+      type: "collage",
+      layoutId: "2-v",
+      rowCount: 1,
+      colCount: 2,
+    });
+    expect(next.elements[0].cells).toHaveLength(2);
+    expect(next.elements[0].gap).toBeGreaterThan(0);
+    expect(next.elements[0].width).toBeLessThanOrEqual(800 * 0.62);
+    expect(next.elements[0].height).toBeLessThanOrEqual(600 * 0.62);
+    expect(getCollageProps(next.elements[0])).toMatchObject({
+      gap: 8,
+      padding: 0,
+      radius: 0,
+      opacity: 100,
+      seamless: false,
+      aspectLocked: true,
+    });
+  });
+
+  it("switches collage layout while keeping cell images", () => {
+    const item = {
+      type: "collage",
+      layoutId: "2-v",
+      rowCount: 1,
+      colCount: 2,
+      cells: [
+        { r: 1, c: 1, rs: 1, cs: 1, src: "a.png" },
+        { r: 1, c: 2, rs: 1, cs: 1, src: "b.png" },
+      ],
+    };
+    const next = applyCollageLayout(item, "2-h");
+    expect(next).toMatchObject({
+      layoutId: "2-h",
+      rowCount: 2,
+      colCount: 1,
+    });
+    expect(next.cells.map((cell) => cell.src)).toEqual(["a.png", "b.png"]);
+  });
+
+  it("fits a collage to the artboard and fills empty cells", () => {
+    const canvas = createEmptyCanvas(800, 600);
+    const item = addCollageElement(canvas, "2-v").elements[0];
+    expect(fitCollageToCanvas(canvas, item)).toEqual({
+      x: 0,
+      y: 0,
+      width: 800,
+      height: 600,
+    });
+    const filled = fillCollageCells(item, ["one.png", "two.png"]);
+    expect(filled.cells.map((cell) => cell.src)).toEqual(["one.png", "two.png"]);
+  });
+
+  it("keeps collage aspect ratio when resizing one side", () => {
+    const sized = setCollageSize(
+      { width: 200, height: 100, aspectLocked: true },
+      { width: 400 },
+    );
+    expect(sized).toEqual({ width: 400, height: 200 });
+  });
+
+  it("computes free rotation around a center point", () => {
+    expect(pointerAngle(400, 300, 400, 500)).toBeCloseTo(90);
+    expect(pointerAngle(400, 300, 600, 300)).toBeCloseTo(0);
+    expect(rotateFromDrag(0, 90, 0)).toBeCloseTo(-90);
+    expect(rotateFromDrag(15, 90, 180)).toBeCloseTo(105);
+  });
+
+  it("ignores unknown collage layouts", () => {
+    const canvas = createEmptyCanvas(800, 600);
+    expect(addCollageElement(canvas, "missing-layout").elements).toHaveLength(
+      0,
+    );
+  });
+
   it("removes an element by id", () => {
-    const withText = addTextElement(parseCanvas('{"width":800,"height":600,"elements":[]}'));
+    const withText = addTextElement(
+      parseCanvas('{"width":800,"height":600,"elements":[]}'),
+    );
     const withRect = addRectElement(withText);
     const removed = removeElement(withRect, withText.elements[0].id);
     expect(removed.elements).toHaveLength(1);
     expect(removed.elements[0].type).toBe("rect");
   });
 
+  it("clears all artboard elements and keeps canvas size", () => {
+    const withText = addTextElement(
+      parseCanvas('{"width":800,"height":600,"background":"#abcdef","elements":[]}'),
+    );
+    const withRect = addRectElement(withText);
+    const cleared = clearCanvasElements(withRect);
+    expect(cleared.elements).toEqual([]);
+    expect(cleared.width).toBe(800);
+    expect(cleared.height).toBe(600);
+    expect(cleared.background).toBe("#abcdef");
+    expect(clearCanvasElements(cleared)).toBe(cleared);
+  });
+
   it("resizes a box from each handle direction", () => {
     const box = { x: 10, y: 20, width: 100, height: 80 };
-    expect(applyHandleResize(box, "se", 10, 20)).toEqual({ x: 10, y: 20, width: 110, height: 100 });
-    expect(applyHandleResize(box, "nw", 10, 20)).toEqual({ x: 20, y: 40, width: 90, height: 60 });
+    expect(applyHandleResize(box, "se", 10, 20)).toEqual({
+      x: 10,
+      y: 20,
+      width: 110,
+      height: 100,
+    });
+    expect(applyHandleResize(box, "nw", 10, 20)).toEqual({
+      x: 20,
+      y: 40,
+      width: 90,
+      height: 60,
+    });
     expect(applyHandleResize(box, "e", 30, 0).width).toBe(130);
     expect(applyHandleResize(box, "n", 0, 10).height).toBe(70);
   });
 
   it("keeps aspect ratio when lockAspect is on", () => {
     const box = { x: 10, y: 20, width: 100, height: 50 };
-    expect(applyHandleResize(box, "se", 50, 0, MIN_ELEMENT_SIZE, true)).toEqual({
-      x: 10,
-      y: 20,
-      width: 150,
-      height: 75,
-    });
+    expect(applyHandleResize(box, "se", 50, 0, MIN_ELEMENT_SIZE, true)).toEqual(
+      {
+        x: 10,
+        y: 20,
+        width: 150,
+        height: 75,
+      },
+    );
     const east = applyHandleResize(box, "e", 50, 0, MIN_ELEMENT_SIZE, true);
     expect(east).toEqual({ x: 10, y: 7.5, width: 150, height: 75 });
     const north = applyHandleResize(box, "n", 0, 10, MIN_ELEMENT_SIZE, true);
@@ -108,6 +260,53 @@ describe("canvas helpers", () => {
     expect(next.autoWidth).toBe(false);
   });
 
+  it("resizes the artboard from a handle and shifts elements when the origin moves", () => {
+    const canvas = {
+      width: 800,
+      height: 600,
+      background: "#ffffff",
+      backgroundOpacity: 100,
+      elements: [
+        {
+          id: "a",
+          type: "rect",
+          x: 100,
+          y: 80,
+          width: 40,
+          height: 40,
+          x1: 100,
+          y1: 80,
+          x2: 140,
+          y2: 120,
+        },
+      ],
+    };
+
+    const east = resizeCanvas(canvas, "e", 50, 20);
+    expect(east.width).toBe(850);
+    expect(east.height).toBe(600);
+    expect(east.elements[0].x).toBe(100);
+
+    const south = resizeCanvas(canvas, "s", 20, 40);
+    expect(south.width).toBe(800);
+    expect(south.height).toBe(640);
+
+    const west = resizeCanvas(canvas, "w", -40, 0);
+    expect(west.width).toBe(840);
+    expect(west.elements[0].x).toBe(140);
+    expect(west.elements[0].x1).toBe(140);
+    expect(west.elements[0].x2).toBe(180);
+
+    const north = resizeCanvas(canvas, "n", 0, -30);
+    expect(north.height).toBe(630);
+    expect(north.elements[0].y).toBe(110);
+
+    const se = resizeCanvas(canvas, "se", 20, 30);
+    expect(se.width).toBe(820);
+    expect(se.height).toBe(630);
+    expect(se.elements[0]).toMatchObject({ x: 100, y: 80 });
+  });
+
   it("clamps and steps canvas zoom from wheel delta", () => {
     expect(clampCanvasZoom(0)).toBe(0.05);
     expect(clampCanvasZoom(8)).toBe(4);
@@ -116,7 +315,12 @@ describe("canvas helpers", () => {
   });
 
   it("fills default text props for older canvas json", () => {
-    const props = getTextProps({ type: "text", text: "Hi", fontSize: 20, color: "#000000" });
+    const props = getTextProps({
+      type: "text",
+      text: "Hi",
+      fontSize: 20,
+      color: "#000000",
+    });
     expect(props.fontWeight).toBe(400);
     expect(props.textAlign).toBe("left");
     expect(props.fontSize).toBe(20);
@@ -146,17 +350,29 @@ describe("canvas helpers", () => {
       fillColor: "#00ff00",
     });
     expect(box.background).toBe("transparent");
-    expect(textGlyphStyle({ type: "text", color: "#ff3366" }).color).toBe("#ff3366");
+    expect(textGlyphStyle({ type: "text", color: "#ff3366" }).color).toBe(
+      "#ff3366",
+    );
   });
 
   it("keeps box background on the text box and does not fill highlight", () => {
-    expect(textElementStyle({ type: "text", boxBackground: "#abcdef" }).background).toBe("#abcdef");
-    expect(textElementStyle({ type: "text", highlight: "#fde047", boxBackground: "#abcdef" }).background).toBe(
-      "#abcdef",
-    );
-    expect(textElementStyle({ type: "text", boxBackground: "#ff0000", boxBackgroundOpacity: 50 }).background).toBe(
-      "rgba(255, 0, 0, 0.5)",
-    );
+    expect(
+      textElementStyle({ type: "text", boxBackground: "#abcdef" }).background,
+    ).toBe("#abcdef");
+    expect(
+      textElementStyle({
+        type: "text",
+        highlight: "#fde047",
+        boxBackground: "#abcdef",
+      }).background,
+    ).toBe("#abcdef");
+    expect(
+      textElementStyle({
+        type: "text",
+        boxBackground: "#ff0000",
+        boxBackgroundOpacity: 50,
+      }).background,
+    ).toBe("rgba(255, 0, 0, 0.5)");
   });
 
   it("circles the whole copy when highlight is on the text box", () => {
@@ -191,7 +407,9 @@ describe("canvas helpers", () => {
     const top = ring.cy - ring.ry;
     const bottom = ring.cy + ring.ry;
     expect(top).toBeLessThan(glyph.y + (glyph.height - item.fontSize) / 2);
-    expect(bottom).toBeGreaterThan(glyph.y + (glyph.height - item.fontSize) / 2 + item.fontSize);
+    expect(bottom).toBeGreaterThan(
+      glyph.y + (glyph.height - item.fontSize) / 2 + item.fontSize,
+    );
   });
 
   it("circles only the highlighted characters", () => {
@@ -201,10 +419,7 @@ describe("canvas helpers", () => {
       fontSize: 20,
       width: 400,
       height: 40,
-      spans: [
-        { text: "你好" },
-        { text: "世界", highlight: "#ef4444" },
-      ],
+      spans: [{ text: "你好" }, { text: "世界", highlight: "#ef4444" }],
     });
     expect(rings).toHaveLength(1);
     expect(rings[0].color).toBe("#ef4444");
@@ -226,13 +441,20 @@ describe("canvas helpers", () => {
       gradientFrom: "#111111",
       gradientTo: "#eeeeee",
     });
-    expect(fill.backgroundImage).toBe("linear-gradient(90deg, #111111 0%, #eeeeee 100%)");
+    expect(fill.backgroundImage).toBe(
+      "linear-gradient(90deg, #111111 0%, #eeeeee 100%)",
+    );
     expect(fill.backgroundSize).toBe("100% 100%");
     expect(fill.WebkitTextFillColor).toBe("transparent");
     expect(fill.color).toBe("transparent");
-    expect(textElementStyle({ type: "text", gradientEnabled: true, gradientFrom: "#111111", gradientTo: "#eeeeee" }).background).toBe(
-      "transparent",
-    );
+    expect(
+      textElementStyle({
+        type: "text",
+        gradientEnabled: true,
+        gradientFrom: "#111111",
+        gradientTo: "#eeeeee",
+      }).background,
+    ).toBe("transparent");
   });
 
   it("keeps the same gradient box whether stroke is on or off", () => {
@@ -242,12 +464,16 @@ describe("canvas helpers", () => {
       gradientFrom: "#ff0000",
       gradientTo: "#00ff00",
     };
-    expect(textFillPaint({ ...base, strokeEnabled: false, strokeWidth: 0 })).toEqual({
+    expect(
+      textFillPaint({ ...base, strokeEnabled: false, strokeWidth: 0 }),
+    ).toEqual({
       type: "gradient",
       from: "#ff0000",
       to: "#00ff00",
     });
-    expect(textFillPaint({ ...base, strokeEnabled: true, strokeWidth: 1 })).toEqual({
+    expect(
+      textFillPaint({ ...base, strokeEnabled: true, strokeWidth: 1 }),
+    ).toEqual({
       type: "gradient",
       from: "#ff0000",
       to: "#00ff00",
@@ -264,7 +490,13 @@ describe("canvas helpers", () => {
     };
     expect(textElementStyle(stroked).WebkitTextStroke).toBeUndefined();
     expect(textGlyphStyle(stroked).WebkitTextStroke).toBeUndefined();
-    expect(textStrokeLayerStyle({ type: "text", strokeEnabled: false, strokeWidth: 0 })).toBeNull();
+    expect(
+      textStrokeLayerStyle({
+        type: "text",
+        strokeEnabled: false,
+        strokeWidth: 0,
+      }),
+    ).toBeNull();
 
     const stroke = textStrokeLayerStyle(stroked);
     expect(stroke.WebkitTextStroke).toBe("8px #ff0000");
@@ -273,7 +505,9 @@ describe("canvas helpers", () => {
   });
 
   it("prefixes list markers without changing stored copy", () => {
-    expect(formatTextContent({ text: "一\n二", listStyle: "decimal" })).toBe("1. 一\n2. 二");
+    expect(formatTextContent({ text: "一\n二", listStyle: "decimal" })).toBe(
+      "1. 一\n2. 二",
+    );
     expect(formatTextContent({ text: "一", listStyle: "disc" })).toBe("• 一");
   });
 
@@ -297,7 +531,9 @@ describe("canvas helpers", () => {
     const firstId = canvas.elements[0].id;
     const moved = moveElementLayer(canvas, firstId, "up");
     expect(moved.elements[1].id).toBe(firstId);
-    expect(moveElementLayer(moved, firstId, "bottom").elements[0].id).toBe(firstId);
+    expect(moveElementLayer(moved, firstId, "bottom").elements[0].id).toBe(
+      firstId,
+    );
   });
 
   it("sizes a new text box to its copy and wraps at 1000px", () => {
@@ -317,24 +553,46 @@ describe("canvas helpers", () => {
 
   it("grows the box so every line stays inside", () => {
     const one = fitTextBox({ text: "标题", fontSize: 48, autoWidth: true });
-    const two = fitTextBox({ text: "标题\n副标题\n正文", fontSize: 48, autoWidth: true });
+    const two = fitTextBox({
+      text: "标题\n副标题\n正文",
+      fontSize: 48,
+      autoWidth: true,
+    });
     expect(two.height).toBeGreaterThan(one.height);
     expect(two.width).toBeLessThanOrEqual(TEXT_BOX_MAX_WIDTH);
 
     const next = patchTextElement(
-      { type: "text", text: "标题", fontSize: 48, autoWidth: true, width: one.width, height: one.height },
+      {
+        type: "text",
+        text: "标题",
+        fontSize: 48,
+        autoWidth: true,
+        width: one.width,
+        height: one.height,
+      },
       { text: "标题\n副标题" },
     );
     expect(next.height).toBeGreaterThan(one.height);
   });
 
   it("keeps every typed character inside the auto-width box", () => {
-    const typed = fitTextBox({ text: "你好世界", fontSize: 48, autoWidth: true });
+    const typed = fitTextBox({
+      text: "你好世界",
+      fontSize: 48,
+      autoWidth: true,
+    });
     expect(typed.width).toBeGreaterThanOrEqual(48 * 4);
     expect(typed.height).toBeGreaterThanOrEqual(48);
 
     const longer = patchTextElement(
-      { type: "text", text: "你", fontSize: 48, autoWidth: true, width: 56, height: 76 },
+      {
+        type: "text",
+        text: "你",
+        fontSize: 48,
+        autoWidth: true,
+        width: 56,
+        height: 76,
+      },
       { text: "你好世界" },
     );
     expect(longer.width).toBeGreaterThan(56);
@@ -344,7 +602,13 @@ describe("canvas helpers", () => {
   it("grows the box while typing even if autoWidth was never stored", () => {
     const start = fitTextBox({ type: "text", text: "你", fontSize: 48 });
     const longer = patchTextElement(
-      { type: "text", text: "你", fontSize: 48, width: start.width, height: start.height },
+      {
+        type: "text",
+        text: "你",
+        fontSize: 48,
+        width: start.width,
+        height: start.height,
+      },
       { text: "你好世界你好世界" },
     );
     expect(longer.width).toBeGreaterThan(start.width);
@@ -353,7 +617,14 @@ describe("canvas helpers", () => {
 
   it("lets a manually resized text box grow past the auto-wrap width", () => {
     const next = patchTextElement(
-      { type: "text", text: "标题", fontSize: 48, autoWidth: false, width: 400, height: 80 },
+      {
+        type: "text",
+        text: "标题",
+        fontSize: 48,
+        autoWidth: false,
+        width: 400,
+        height: 80,
+      },
       { width: 1400 },
     );
     expect(next.width).toBe(1400);
@@ -367,5 +638,127 @@ describe("canvas helpers", () => {
       width: 1400,
     });
     expect(fitted.width).toBe(1400);
+  });
+
+  it("builds a draw box with independent width and height", () => {
+    expect(boxFromDrag(100, 80, 260, 140)).toEqual({
+      x: 100,
+      y: 80,
+      width: 160,
+      height: 60,
+    });
+    expect(boxFromDrag(260, 140, 100, 80)).toEqual({
+      x: 100,
+      y: 80,
+      width: 160,
+      height: 60,
+    });
+    expect(boxFromDrag(10, 10, 11, 11)).toBeNull();
+  });
+
+  it("adds polygon shapes that stretch independently with the box", () => {
+    const canvas = addShapeElement(createEmptyCanvas(800, 600), "triangle", {
+      x: 20,
+      y: 30,
+      width: 200,
+      height: 80,
+    });
+    expect(isShapeElement(canvas.elements[0])).toBe(true);
+    expect(canvas.elements[0]).toMatchObject({
+      type: "shape",
+      kind: "triangle",
+      x: 20,
+      y: 30,
+      width: 200,
+      height: 80,
+    });
+    expect(scaledShapePoints("triangle", 200, 80)).toEqual([
+      [100, 0],
+      [200, 80],
+      [0, 80],
+    ]);
+  });
+
+  it("treats legacy rect elements as independently scalable squares", () => {
+    expect(shapeKind({ type: "rect" })).toBe("square");
+    expect(isShapeElement({ type: "rect" })).toBe(true);
+    expect(isShapeElement({ type: "shape", kind: "pentagon" })).toBe(true);
+    const east = applyHandleResize(
+      { x: 10, y: 20, width: 100, height: 80 },
+      "e",
+      40,
+      30,
+    );
+    expect(east).toEqual({ x: 10, y: 20, width: 140, height: 80 });
+    const south = applyHandleResize(
+      { x: 10, y: 20, width: 100, height: 80 },
+      "s",
+      40,
+      30,
+    );
+    expect(south).toEqual({ x: 10, y: 20, width: 100, height: 110 });
+  });
+
+  it("adds 1px black lines from endpoints that cannot be treated as a scalable box", () => {
+    const canvas = addShapeElement(createEmptyCanvas(800, 600), "dash", {
+      x1: 10,
+      y1: 20,
+      x2: 250,
+      y2: 20,
+    });
+    expect(canvas.elements[0]).toMatchObject({
+      type: "shape",
+      kind: "dash",
+      x1: 10,
+      y1: 20,
+      x2: 250,
+      y2: 20,
+      fill: "#000000",
+      strokeWidth: 1,
+    });
+    expect(isLineKind("line")).toBe(true);
+    expect(isLineKind("dot")).toBe(true);
+    expect(isLineKind("triangle")).toBe(false);
+    expect(lineStrokeProps("line")).toMatchObject({ width: 1, dash: null });
+    expect(lineStrokeProps("dash").dash).toBeTruthy();
+    expect(lineStrokeProps("dot").cap).toBe("round");
+    const line = { x1: 10, y1: 10, x2: 30, y2: 20, strokeWidth: 4 };
+    expect(getLineProps(line)).toMatchObject({
+      length: Math.hypot(20, 10),
+      originX: 10,
+      originY: 10,
+      strokeWidth: 4,
+    });
+    expect(setLineLength({ x1: 0, y1: 0, x2: 100, y2: 0 }, 200)).toMatchObject({
+      x1: -50,
+      x2: 150,
+      y1: 0,
+      y2: 0,
+    });
+    expect(setLineOrigin(line, 0, 0)).toMatchObject({
+      x1: 0,
+      y1: 0,
+      x2: 20,
+      y2: 10,
+    });
+    expect(flipLine(line, "x")).toMatchObject({
+      x1: 30,
+      y1: 10,
+      x2: 10,
+      y2: 20,
+    });
+    expect(setLineStrokeWidth(line, 8)).toMatchObject({ strokeWidth: 8 });
+    expect(setLineEndpoint({ x1: 10, y1: 20, x2: 110, y2: 20 }, "end", 80, 90)).toMatchObject({
+      x1: 10,
+      y1: 20,
+      x2: 80,
+      y2: 90,
+    });
+    expect(setLineEndpoint({ x1: 10, y1: 20, x2: 110, y2: 20 }, "start", 0, 0)).toMatchObject({
+      x1: 0,
+      y1: 0,
+      x2: 110,
+      y2: 20,
+    });
   });
 });

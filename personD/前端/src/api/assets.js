@@ -19,3 +19,11 @@ export function uploadAsset(file, { fileType = "image" } = {}) {
 export function deleteAsset(id) {
   return apiFetch(`/assets/${id}`, { method: "DELETE" });
 }
+
+export function getAsset(id) {
+  return apiFetch(`/assets/${id}`);
+}
+
+export function updateAsset(id, payload) {
+  return apiFetch(`/assets/${id}`, { method: "PUT", body: payload });
+}

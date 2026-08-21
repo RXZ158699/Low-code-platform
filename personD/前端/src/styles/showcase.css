@@ -1,0 +1,177 @@
+/* Template showcase */
+.showcase {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.showcase-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.showcase-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.promo-tag {
+  margin: 0 !important;
+  padding: 3px 8px !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: #fee2e2 !important;
+  color: #ef4444 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+
+.showcase-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.showcase-tabs .category-tag,
+.showcase-tabs .category-tag:hover,
+.showcase-tabs .category-tag.active {
+  color: #7f8792 !important;
+}
+
+.template-cards {
+  display: flex;
+  gap: 20px;
+}
+
+.template-card {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 450px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  cursor: pointer;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.template-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.template-card img.cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.template-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.16) 0%,
+    rgba(0, 0, 0, 0) 50%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+}
+
+.template-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.template-card-head img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.template-logo-text {
+  font-size: 11px;
+  font-weight: 800;
+  color: #000;
+  white-space: nowrap;
+}
+
+.template-card-body {
+  text-align: center;
+}
+
+.template-title-main {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 1;
+  color: #111;
+}
+
+.template-title-en {
+  margin: 4px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #333;
+  text-transform: uppercase;
+}
+
+.template-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.template-name {
+  min-width: 0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.use-btn {
+  height: auto !important;
+  padding: 4px 10px !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  color: #0f172a !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+}
+
+/* Template loading / empty / error status */
+.template-status {
+  width: 100%;
+  padding: 48px 0;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}

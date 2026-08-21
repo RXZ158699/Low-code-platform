@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { uploadAsset, listAssets } from "./assets.js";
+import { uploadAsset, listAssets, getAsset, updateAsset } from "./assets.js";
 
 function jsonResponse(payload) {
   return Promise.resolve({
@@ -36,5 +36,24 @@ describe("assets api", () => {
     expect(options.body.get("fileType")).toBe("image");
     expect(options.body.get("file")).toBe(file);
     expect(options.headers["Content-Type"]).toBeUndefined();
+  });
+
+  it("loads and updates an asset", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { id: 8, isPublic: false, teamId: null } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { id: 8, isPublic: true, teamId: 1 } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getAsset(8)).resolves.toEqual({ id: 8, isPublic: false, teamId: null });
+    await updateAsset(8, { isPublic: true, teamId: 1, category: "海报" });
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/assets/8");
+    expect(fetchMock.mock.calls[1][1].method).toBe("PUT");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      isPublic: true,
+      teamId: 1,
+      category: "海报",
+    });
   });
 });

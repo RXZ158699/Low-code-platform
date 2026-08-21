@@ -11,7 +11,7 @@ import { AppPageProvider } from "./AppPageContext.jsx";
 const DESIGN_WIDTH = 1440;
 const HOME_HEIGHT = 1302;
 const DISCOVER_HEIGHT = 1180;
-const MINE_HEIGHT = 980;
+const MINE_HEIGHT = 1020;
 
 function App() {
   const shellRef = useRef(null);

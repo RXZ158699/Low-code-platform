@@ -1,0 +1,181 @@
+/* Collage properties panel */
+.editor-collage-panel .editor-line-actions {
+  justify-content: space-between;
+}
+
+.editor-collage-action {
+  display: block;
+  width: 100%;
+  height: 40px;
+  margin-bottom: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.editor-collage-action:hover {
+  background: #eceef2;
+}
+
+.editor-collage-action:focus {
+  outline: none;
+}
+
+.editor-collage-action:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.editor-collage-layout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 56px;
+  margin: 4px 0 4px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.editor-collage-layout:hover {
+  background: #eceef2;
+}
+
+.editor-collage-layout:focus {
+  outline: none;
+}
+
+.editor-collage-layout:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.editor-collage-layout > span:nth-child(2) {
+  flex: 1;
+  text-align: left;
+}
+
+.editor-collage-layout .anticon {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.editor-collage-layout-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 6px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.editor-collage-layout-icon .editor-collage-thumb {
+  width: 100%;
+  height: 100%;
+  gap: 2px;
+}
+
+.editor-collage-layout-menu {
+  width: 248px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.14);
+}
+
+.editor-collage-layout-menu section + section {
+  margin-top: 12px;
+}
+
+.editor-collage-layout-menu h3 {
+  margin: 0 0 8px;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.editor-collage-layout-menu .editor-collage-item {
+  height: 56px;
+  padding: 6px;
+}
+
+.editor-collage-layout-menu .editor-collage-item.is-on {
+  box-shadow: inset 0 0 0 2px #2563eb;
+}
+
+.editor-collage-settings,
+.editor-collage-style,
+.editor-collage-panel .editor-text-geo {
+  padding: 14px 0 4px;
+  border-top: 1px solid #f0f1f4;
+}
+
+.editor-collage-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.editor-collage-row .editor-color-picker.ant-color-picker-trigger {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #6b7280;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.editor-collage-row .editor-color-picker.ant-color-picker-trigger:hover {
+  color: #111827;
+}
+
+.editor-collage-row button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.editor-collage-slider {
+  margin: 10px 0;
+}
+
+.editor-collage-slider em {
+  width: 28px;
+}
+
+.editor-collage-size {
+  grid-template-columns: 28px 1fr 1fr;
+}
+
+.editor-el-collage {
+  overflow: hidden;
+  transform-origin: center center;
+}

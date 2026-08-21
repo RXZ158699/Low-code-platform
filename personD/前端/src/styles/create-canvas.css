@@ -1,0 +1,384 @@
+/* Create canvas modal */
+.create-canvas-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.create-canvas-dialog {
+  display: flex;
+  width: 920px;
+  height: 640px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.create-canvas-side {
+  position: relative;
+  width: 196px;
+  flex-shrink: 0;
+  padding: 28px 16px 24px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #4f74f6 0%, #7b96fb 58%, #93a8fc 100%);
+}
+
+.create-canvas-side::after {
+  content: "+";
+  position: absolute;
+  left: -18px;
+  bottom: -42px;
+  color: rgba(255, 255, 255, 0.16);
+  font-size: 180px;
+  font-weight: 300;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.create-canvas-side-title {
+  margin: 0 8px 28px;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.create-canvas-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-canvas-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.create-canvas-nav-item .anticon {
+  font-size: 16px;
+}
+
+.create-canvas-nav-item.is-active {
+  background: #fff;
+  color: #1f2937;
+}
+
+.create-canvas-badge {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #3b6cff;
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.create-canvas-nav-item.is-active .create-canvas-badge {
+  background: #2563eb;
+}
+
+.create-canvas-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 28px 28px 20px;
+}
+
+.create-canvas-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.create-canvas-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.create-canvas-body {
+  height: 100%;
+  padding-right: 8px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c5cad1 transparent;
+}
+
+.create-canvas-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.create-canvas-body::-webkit-scrollbar-thumb {
+  background: #c5cad1;
+  border-radius: 999px;
+}
+
+.create-canvas-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  margin-bottom: 22px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #f3f4f6;
+}
+
+.create-canvas-search img {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.create-canvas-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  font-size: 14px;
+  outline: none;
+}
+
+.create-canvas-section + .create-canvas-section {
+  margin-top: 22px;
+}
+
+.create-canvas-section h3 {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.create-canvas-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.create-canvas-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 132px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.create-canvas-field input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  font-size: 14px;
+  outline: none;
+}
+
+.create-canvas-lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.create-canvas-lock.is-locked {
+  color: #2563eb;
+}
+
+.create-canvas-unit {
+  height: 40px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.create-canvas-submit {
+  height: 40px;
+  min-width: 72px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.create-canvas-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.create-canvas-mine-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.create-canvas-mine-head h3 {
+  margin: 0;
+}
+
+.create-canvas-mine-head button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.create-canvas-empty,
+.create-canvas-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72px;
+  border-radius: 12px;
+  background: #f4f5f7;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.create-canvas-placeholder {
+  height: 100%;
+  min-height: 280px;
+}
+
+.create-canvas-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.create-canvas-preset {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: #f4f5f7;
+  text-align: left;
+  cursor: pointer;
+}
+
+.create-canvas-preset:hover {
+  background: #eef0f4;
+}
+
+.create-canvas-preset:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.create-canvas-preset-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.create-canvas-preset-icon.is-xhs {
+  background: #ff2442;
+}
+
+.create-canvas-preset-icon.is-wechat {
+  background: #22c55e;
+}
+
+.create-canvas-preset-icon.is-wechat.is-square {
+  background: #16a34a;
+}
+
+.create-canvas-preset-icon.is-article {
+  background: #fb923c;
+}
+
+.create-canvas-preset-icon.is-video {
+  background: #6366f1;
+}
+
+.create-canvas-preset-icon.is-shop {
+  background: #f59e0b;
+}
+
+.create-canvas-preset-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.create-canvas-preset-copy strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-canvas-preset-copy em {
+  color: #9ca3af;
+  font-size: 12px;
+  font-style: normal;
+}

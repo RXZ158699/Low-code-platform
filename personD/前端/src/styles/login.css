@@ -1,0 +1,259 @@
+/* Login page */
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+  color: #222;
+}
+
+.login-glow {
+  position: absolute;
+  top: -180px;
+  left: 50%;
+  z-index: 0;
+  width: 1280px;
+  height: 500px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 32%,
+    #e7f9ff 0%,
+    #e7f9ff 26%,
+    #f3fbff 52%,
+    #ffffff 78%
+  );
+}
+
+.login-shell {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px 32px;
+}
+
+.login-hero-title {
+  margin: 0 0 64px;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #2b2b2b;
+}
+
+.login-columns {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 120px;
+}
+
+.login-col-title {
+  margin: 0 0 24px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  color: #333;
+}
+
+.login-wechat {
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-qr-box {
+  width: 220px;
+  height: 220px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.login-qr-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.login-other-label {
+  margin: 22px 0 0;
+  font-size: 13px;
+  color: #999;
+}
+
+.login-other-icons {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.login-other-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #c0c4cc;
+  font-size: 16px;
+}
+
+.login-mobile {
+  width: 320px;
+}
+
+.login-phone-row,
+.login-code-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.login-cc {
+  flex: 0 0 76px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.login-cc .anticon {
+  font-size: 10px;
+  color: #999;
+}
+
+.login-field {
+  flex: 1;
+  margin-bottom: 16px !important;
+}
+
+.login-field-block {
+  margin-bottom: 16px !important;
+}
+
+.login-field .ant-input,
+.login-field .ant-input-affix-wrapper,
+.login-field-block .ant-input,
+.login-field-block .ant-input-affix-wrapper {
+  height: 44px;
+  border-radius: 8px;
+  border-color: #e0e0e0;
+}
+
+.login-code-btn {
+  flex: 0 0 108px;
+  height: 44px;
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  color: #555;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.login-code-btn:disabled {
+  color: #999;
+  cursor: default;
+}
+
+.login-submit {
+  height: 44px !important;
+  margin-top: 4px;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: #2e5bff !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+}
+
+.login-submit:hover,
+.login-submit:focus {
+  background: #254fe6 !important;
+}
+
+.login-switch {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #999;
+  font: inherit;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.login-switch:hover {
+  color: #666;
+}
+
+.login-switch-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.login-switch-row .login-switch {
+  width: auto;
+}
+
+.login-legal {
+  position: relative;
+  z-index: 1;
+  padding: 0 24px 28px;
+  text-align: center;
+  color: #b0b0b0;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.login-legal p {
+  margin: 0;
+}
+
+.login-legal-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.login-legal-links a {
+  color: #b0b0b0;
+  text-decoration: none;
+}
+
+.login-legal-links a:hover {
+  color: #888;
+}
+
+.login-code-notice .ant-notification-notice-description {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  color: #1f2937;
+  text-align: center;
+}

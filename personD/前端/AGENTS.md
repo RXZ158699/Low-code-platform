@@ -40,7 +40,7 @@ npm test           # Vitest 单元测试（jsdom 环境）
 └── src/
     ├── main.jsx            # React 挂载入口，ConfigProvider 全局主题（主色 #2563eb）+ 路由 + AuthProvider
     ├── App.jsx             # 首页根组件：负责整体缩放、滚动监听、CreatePopoverProvider
-    ├── styles.css          # 全局样式（按组件分区块注释）
+    ├── styles/             # 按页面区域拆分的样式模块（入口 index.css）
     ├── setupTests.js       # Vitest 测试初始化（jest-dom 匹配器）
     ├── api/                # 后端 API 层
     │   ├── client.js       #   fetch 封装：解包 Result<T>、Bearer 注入、401 自动 refresh 重试
@@ -97,14 +97,31 @@ npm test           # Vitest 单元测试（jsdom 环境）
 
 ### 4. 样式组织
 
-所有样式集中在 `src/styles.css`，按组件用注释分块（如 `/* Feature entries */`、`/* Template showcase */`）。组件 className 与 CSS 选择器一一对应，命名用 kebab-case。
+样式按页面区域拆在 `src/styles/` 下，由 `src/styles/index.css` 统一引入（`main.jsx` 只 import 这一份入口）。组件 className 与 CSS 选择器一一对应，命名用 kebab-case；不要改成 CSS Modules。
+
+| 文件 | 负责区域 |
+| --- | --- |
+| `base.css` | 全局 reset、路由懒加载占位 |
+| `stage.css` | 1440px 缩放舞台、固定侧栏壳 |
+| `homepage.css` | 创作首页画布 |
+| `sidebar.css` | 侧边栏、创建弹框、登录用户入口 |
+| `header.css` | 首页顶栏 |
+| `hero.css` | Hero、搜索框、分类弹框 |
+| `features.css` | 功能入口行 |
+| `showcase.css` | 模板推荐区 |
+| `login.css` | 登录页 |
+| `discover.css` | 发现页 |
+| `mine.css` | 我的空间 / 作品详情 |
+| `editor.css` | 编辑器与分享预览 |
+| `editor-text.css` | 文字属性面板 |
+| `create-canvas.css` | 新建画布弹窗 |
 
 ## 代码约定
 
 - **语言**：JavaScript（JSX），不使用 TypeScript；暂不需要 `.ts/.tsx` 文件
 - **组件**：函数组件 + Hooks，默认导出，文件名 PascalCase
 - **导入路径**：组件间引用必须带 `.jsx` 后缀（如 `import App from "./App.jsx"`）
-- **样式**：写在 `styles.css`，不用 CSS Modules 或内联样式（动态缩放值除外）
+- **样式**：写在 `src/styles/` 对应区域文件中，不用 CSS Modules 或内联样式（动态缩放值除外）
 - **UI 库**：优先使用 Ant Design 组件（`Button`、`Input`、`Tag`、`Tooltip` 等），图标用 `@ant-design/icons` 或 `assets/icons/` 下的 SVG
 - **文案**：界面文案为中文
 - **注释**：只在非显而易见的逻辑处写注释，不要写「导入模块」「定义函数」这类废话注释
@@ -123,7 +140,7 @@ npm test           # Vitest 单元测试（jsdom 环境）
 | 换浏览器标签页图标 | `public/favicon.svg` |
 | 改页面标题 | `index.html` 的 `<title>` |
 | 增删分类标签 | `HeroSection.jsx` 的 `CATEGORY_MENU` |
-| 改分类弹框样式 | `styles.css` 的 `.category-popover-*` 区块 |
+| 改分类弹框样式 | `src/styles/hero.css` 的 `.category-popover-*` |
 | 改创建弹框内容 | `CreatePopover.jsx` 的 `CREATE_ACTIONS` / `CREATE_TOOLS` |
 | 改功能入口（AI画布等） | `FeaturesRow.jsx` 的 `FEATURES` |
 | 改模板卡片/Tab | `TemplateShowcase.jsx`（`TEMPLATE_TABS`；卡片数据来自 `GET /api/templates`，无封面时用 `FALLBACK_COVERS` 兜底） |

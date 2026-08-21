@@ -1,14 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ConfigProvider, App as AntdApp } from "antd";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 import zhCN from "antd/locale/zh_CN";
-import App from "./App.jsx";
-import LoginPage from "./pages/LoginPage.jsx";
-import WorkEditorPage from "./pages/WorkEditorPage.jsx";
-import ShareViewPage from "./pages/ShareViewPage.jsx";
+import AppRoutes from "./AppRoutes.jsx";
 import { AuthProvider } from "./auth/AuthContext.jsx";
-import "./styles.css";
+import "./styles/index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -37,12 +34,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <AntdApp>
         <AuthProvider>
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<App />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/works/:id" element={<WorkEditorPage />} />
-              <Route path="/share/:token" element={<ShareViewPage />} />
-            </Routes>
+            <AppRoutes />
           </BrowserRouter>
         </AuthProvider>
       </AntdApp>

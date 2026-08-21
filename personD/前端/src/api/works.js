@@ -27,3 +27,9 @@ export function publishWork(id) {
 export function deleteWork(id) {
   return apiFetch(`/works/${id}`, { method: "DELETE" });
 }
+
+export function uploadWorkThumbnail(id, file) {
+  const body = new FormData();
+  body.append("file", file);
+  return apiFetch(`/works/${id}/thumbnail`, { method: "POST", body });
+}

@@ -9,7 +9,7 @@ function cssHex(color, fallback) {
   return hexColor(String(color?.toHexString?.() || color || "").slice(0, 7), fallback);
 }
 
-export default function EditorColorPicker({ label, value, fallback = "#111827", onChange }) {
+export default function EditorColorPicker({ label, value, fallback = "#111827", onChange, children }) {
   const hex = hexColor(value, fallback);
   return (
     <ColorPicker
@@ -23,6 +23,8 @@ export default function EditorColorPicker({ label, value, fallback = "#111827", 
       aria-label={label}
       getPopupContainer={() => document.body}
       onChange={(next) => onChange(cssHex(next, fallback))}
-    />
+    >
+      {children}
+    </ColorPicker>
   );
 }

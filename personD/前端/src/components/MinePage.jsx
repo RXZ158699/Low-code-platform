@@ -13,6 +13,7 @@ import {
   UserAddOutlined,
 } from "@ant-design/icons";
 import SearchPill from "./SearchPill.jsx";
+import MineWorkDetail from "./MineWorkDetail.jsx";
 import cameraIcon from "../assets/icons/camera.svg";
 import downloadIcon from "../assets/icons/download.svg";
 import mineEmptyIcon from "../assets/icons/mine-empty.svg";
@@ -20,15 +21,27 @@ import card1 from "../assets/templates/card-1.png";
 import card2 from "../assets/templates/card-2.png";
 import card3 from "../assets/templates/card-3.png";
 import card4 from "../assets/templates/card-4.png";
-import { createWork, deleteWork, listWorks } from "../api/works.js";
-import { deleteAsset, listAssets, uploadAsset } from "../api/assets.js";
-import { createTeam, inviteMember, listTeams } from "../api/teams.js";
-import { createShare, sharePageUrl } from "../api/shares.js";
+import { createWork, deleteWork, getWork, listWorks } from "../api/works.js";
+import { deleteAsset, getAsset, listAssets, updateAsset, uploadAsset } from "../api/assets.js";
+import {
+  createTeam,
+  deleteTeam,
+  getTeam,
+  inviteMember,
+  listMembers,
+  listTeamAssets,
+  listTeams,
+  listTeamWorks,
+  removeMember,
+  updateTeam,
+} from "../api/teams.js";
+import { createShare, deleteShare, listWorkShares, sharePageUrl } from "../api/shares.js";
 import { useAppPage } from "../AppPageContext.jsx";
 import { useCreatePopover } from "./CreatePopover.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { openLoginTab } from "../auth/openLoginTab.js";
 import { useNavigate } from "react-router-dom";
+import { canvasPreviewBlob } from "../canvasPreview.js";
 
 const SPACE_TABS = ["我的空间", "最近", "收藏夹", "草稿箱", "回收站", "分享管理", "发布"];
 const TYPE_TABS = [
@@ -41,6 +54,7 @@ const FILTER_OPTIONS = [{ key: "all", label: "不限" }];
 const FALLBACK_COVERS = [card1, card2, card3, card4];
 const PLACEHOLDER_SPACES = new Set(["收藏夹", "回收站"]);
 const ASSET_SPACES = new Set(["我的空间", "最近"]);
+const SHARE_TAB = "分享管理";
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif";
 const IMAGE_NAME = /\.(jpe?g|png|webp|gif)$/i;
 
@@ -60,12 +74,28 @@ function queryStatus(spaceTab) {
   return undefined;
 }
 
+function permissionLabel(permission) {
+  return permission === "EDIT" ? "可编辑" : "只读";
+}
+
+function canManageTeam(role) {
+  return role === "OWNER" || role === "ADMIN";
+}
+
+function canDissolveTeam(role) {
+  return role === "OWNER";
+}
+
 function toWorkItem(work) {
   return {
     kind: "work",
     id: work.id,
     title: work.title,
     imageUrl: work.thumbnailUrl,
+    canvasJson: work.canvasJson,
+    createdAt: work.createdAt,
+    updatedAt: work.updatedAt,
+    status: work.status,
     subtitle: `${statusLabel(work.status)} · ${formatTime(work.updatedAt)}`,
     sortAt: work.updatedAt || work.createdAt || "",
   };
@@ -77,6 +107,9 @@ function toAssetItem(asset) {
     id: asset.id,
     title: asset.fileName || "未命名图片",
     imageUrl: asset.url,
+    isPublic: Boolean(asset.isPublic),
+    teamId: asset.teamId ?? null,
+    category: asset.category || "",
     subtitle: `图片 · ${formatTime(asset.createdAt)}`,
     sortAt: asset.createdAt || "",
   };
@@ -97,6 +130,47 @@ function isImageFile(file) {
   return IMAGE_NAME.test(file.name);
 }
 
+const previewUrlCache = new Map();
+
+function WorkCover({ item, fallback }) {
+  const [src, setSrc] = useState(item.imageUrl || fallback);
+  useEffect(() => {
+    if (item.imageUrl) {
+      setSrc(item.imageUrl);
+      return undefined;
+    }
+    const cacheKey = `${item.kind}-${item.id}:${item.canvasJson || ""}`;
+    const cached = previewUrlCache.get(cacheKey);
+    if (cached) {
+      setSrc(cached);
+      return undefined;
+    }
+    if (!item.canvasJson) {
+      setSrc(fallback);
+      return undefined;
+    }
+    let cancelled = false;
+    canvasPreviewBlob(item.canvasJson)
+      .then((blob) => {
+        if (cancelled) return;
+        if (!blob) {
+          setSrc(fallback);
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        previewUrlCache.set(cacheKey, url);
+        setSrc(url);
+      })
+      .catch(() => {
+        if (!cancelled) setSrc(fallback);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [item.kind, item.id, item.imageUrl, item.canvasJson, fallback]);
+  return <img src={src} alt={item.title} />;
+}
+
 export default function MinePage() {
   const { setPage, scale, sidebarVisualWidth, stickyBarWidth } = useAppPage();
   const pageScale = scale || 1;
@@ -114,9 +188,24 @@ export default function MinePage() {
   const [teamName, setTeamName] = useState("");
   const [inviteUsername, setInviteUsername] = useState("");
   const [inviteTeamId, setInviteTeamId] = useState();
+  const [members, setMembers] = useState([]);
+  const [renameName, setRenameName] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
   const [shareWorkId, setShareWorkId] = useState(null);
   const [shareUrl, setShareUrl] = useState("");
+  const [shareLinks, setShareLinks] = useState([]);
+  const [shareRows, setShareRows] = useState([]);
+  const [activeTeamId, setActiveTeamId] = useState(null);
+  const [activeTeam, setActiveTeam] = useState(null);
+  const [assetOpen, setAssetOpen] = useState(false);
+  const [assetDraft, setAssetDraft] = useState({
+    id: null,
+    isPublic: false,
+    teamId: null,
+    category: "",
+  });
+  const [detailWork, setDetailWork] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [state, setState] = useState({
     loading: true,
     works: [],
@@ -128,6 +217,9 @@ export default function MinePage() {
   const { loading, works, assets, workTotal, assetTotal, error } = state;
 
   const skipList = PLACEHOLDER_SPACES.has(spaceTab);
+  const shareManage = spaceTab === SHARE_TAB;
+  const selectedTeam = teams.find((team) => team.id === inviteTeamId);
+  const selectedTeamRole = selectedTeam?.myRole;
 
   useEffect(() => {
     if (!ready) {
@@ -137,15 +229,43 @@ export default function MinePage() {
       return undefined;
     }
     let cancelled = false;
-    const includeAssets = ASSET_SPACES.has(spaceTab);
-    Promise.all([
-      listWorks({ status: queryStatus(spaceTab), page: 1, size: 24 }),
-      includeAssets
-        ? listAssets({ scope: "mine", fileType: "image", page: 1, size: 24 })
-        : Promise.resolve({ total: 0, records: [] }),
-    ])
-      .then(([worksPage, assetsPage]) => {
+    const includeAssets = !shareManage && !activeTeamId && ASSET_SPACES.has(spaceTab);
+
+    async function loadMine() {
+      if (shareManage) {
+        const worksPage = await listWorks({ page: 1, size: 24 });
+        const records = worksPage.records || [];
+        const grouped = await Promise.all(
+          records.map(async (work) => {
+            const links = await listWorkShares(work.id);
+            return (Array.isArray(links) ? links : []).map((link) => ({
+              ...link,
+              workId: work.id,
+              workTitle: work.title,
+            }));
+          }),
+        );
         if (cancelled) return;
+        setShareRows(grouped.flat());
+        setState({
+          loading: false,
+          works: records.map(toWorkItem),
+          assets: [],
+          workTotal: worksPage.total || 0,
+          assetTotal: 0,
+          error: null,
+        });
+        return;
+      }
+
+      if (activeTeamId) {
+        const [team, worksPage, assetsPage] = await Promise.all([
+          getTeam(activeTeamId),
+          listTeamWorks(activeTeamId, { page: 1, size: 24 }),
+          listTeamAssets(activeTeamId, { page: 1, size: 24 }),
+        ]);
+        if (cancelled) return;
+        setActiveTeam(team);
         setState({
           loading: false,
           works: (worksPage.records || []).map(toWorkItem),
@@ -154,28 +274,66 @@ export default function MinePage() {
           assetTotal: assetsPage.total || 0,
           error: null,
         });
+        return;
+      }
+
+      const [worksPage, assetsPage] = await Promise.all([
+        listWorks({ status: queryStatus(spaceTab), page: 1, size: 24 }),
+        includeAssets
+          ? listAssets({ scope: "mine", fileType: "image", page: 1, size: 24 })
+          : Promise.resolve({ total: 0, records: [] }),
+      ]);
+      if (cancelled) return;
+      setShareRows([]);
+      setState({
+        loading: false,
+        works: (worksPage.records || []).map(toWorkItem),
+        assets: (assetsPage.records || []).map(toAssetItem),
+        workTotal: worksPage.total || 0,
+        assetTotal: assetsPage.total || 0,
+        error: null,
+      });
+    }
+
+    loadMine().catch((err) => {
+      if (!cancelled) {
+        setState({
+          loading: false,
+          works: [],
+          assets: [],
+          workTotal: 0,
+          assetTotal: 0,
+          error: err.message || "加载失败",
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [spaceTab, skipList, shareManage, ready, user, activeTeamId]);
+
+  useEffect(() => {
+    if (!inviteOpen || !inviteTeamId) {
+      return undefined;
+    }
+    let cancelled = false;
+    listMembers(inviteTeamId)
+      .then((rows) => {
+        if (!cancelled) setMembers(Array.isArray(rows) ? rows : []);
       })
       .catch((err) => {
-        if (!cancelled) {
-          setState({
-            loading: false,
-            works: [],
-            assets: [],
-            workTotal: 0,
-            assetTotal: 0,
-            error: err.message || "加载失败",
-          });
-        }
+        if (!cancelled) message.error(err.message || "加载成员失败");
       });
     return () => {
       cancelled = true;
     };
-  }, [spaceTab, skipList, ready, user]);
+  }, [inviteOpen, inviteTeamId, message]);
 
   const countLabel = useMemo(() => {
     if (PLACEHOLDER_SPACES.has(spaceTab)) return 0;
+    if (shareManage) return shareRows.length;
     return workTotal + assetTotal;
-  }, [spaceTab, workTotal, assetTotal]);
+  }, [spaceTab, shareManage, shareRows.length, workTotal, assetTotal]);
 
   const openFilePicker = () => {
     if (!user) {
@@ -264,6 +422,15 @@ export default function MinePage() {
     });
   };
 
+  const openWorkDetail = (item) => {
+    setDetailWork(item);
+    setDetailLoading(true);
+    getWork(item.id)
+      .then((work) => setDetailWork(toWorkItem(work)))
+      .catch((err) => message.error(err.message || "加载作品失败"))
+      .finally(() => setDetailLoading(false));
+  };
+
   const handleCreateDesign = (item) => {
     if (item.kind === "work") {
       navigate(`/works/${item.id}`);
@@ -279,8 +446,11 @@ export default function MinePage() {
     }
     try {
       const mine = await listTeams();
-      setTeams(Array.isArray(mine) ? mine : []);
-      setInviteTeamId(mine?.[0]?.id);
+      const nextTeams = Array.isArray(mine) ? mine : [];
+      setTeams(nextTeams);
+      const firstId = nextTeams[0]?.id;
+      setInviteTeamId(firstId);
+      setRenameName(nextTeams[0]?.name || "");
       setInviteOpen(true);
     } catch (err) {
       message.error(err.message || "加载团队失败");
@@ -296,6 +466,7 @@ export default function MinePage() {
       const team = await createTeam(teamName.trim());
       setTeams((prev) => [team, ...prev]);
       setInviteTeamId(team.id);
+      setRenameName(team.name || "");
       setTeamName("");
       message.success(`已创建团队「${team.name}」`);
     } catch (err) {
@@ -312,19 +483,91 @@ export default function MinePage() {
       await inviteMember(inviteTeamId, inviteUsername.trim());
       message.success("已发送邀请");
       setInviteUsername("");
+      const rows = await listMembers(inviteTeamId);
+      setMembers(Array.isArray(rows) ? rows : []);
     } catch (err) {
       message.error(err.message || "邀请失败");
     }
   };
 
-  const openShare = (workId) => {
+  const handleRenameTeam = async () => {
+    if (!inviteTeamId || !renameName.trim()) {
+      message.error("请输入团队名称");
+      return;
+    }
+    try {
+      const team = await updateTeam(inviteTeamId, renameName.trim());
+      setTeams((prev) => prev.map((item) => (item.id === team.id ? { ...item, ...team } : item)));
+      if (activeTeamId === team.id) setActiveTeam(team);
+      message.success("已保存团队名称");
+    } catch (err) {
+      message.error(err.message || "重命名失败");
+    }
+  };
+
+  const handleDissolveTeam = () => {
+    if (!inviteTeamId) return;
+    modal.confirm({
+      title: "解散团队",
+      content: `确定解散「${selectedTeam?.name || "该团队"}」吗？`,
+      okText: "解散",
+      okButtonProps: { danger: true },
+      cancelText: "取消",
+      onOk: async () => {
+        await deleteTeam(inviteTeamId);
+        setTeams((prev) => prev.filter((item) => item.id !== inviteTeamId));
+        if (activeTeamId === inviteTeamId) {
+          setActiveTeamId(null);
+          setActiveTeam(null);
+        }
+        const rest = teams.filter((item) => item.id !== inviteTeamId);
+        setInviteTeamId(rest[0]?.id);
+        setRenameName(rest[0]?.name || "");
+        message.success("已解散团队");
+      },
+    });
+  };
+
+  const handleRemoveMember = async (member) => {
+    try {
+      await removeMember(inviteTeamId, member.userId);
+      setMembers((prev) => prev.filter((item) => item.userId !== member.userId));
+      message.success(`已移除 ${member.nickname || member.username}`);
+    } catch (err) {
+      message.error(err.message || "移除失败");
+    }
+  };
+
+  const handleViewTeam = () => {
+    if (!inviteTeamId) {
+      message.error("请选择团队");
+      return;
+    }
+    setInviteOpen(false);
+    setSpaceTab("我的空间");
+    setActiveTeamId(inviteTeamId);
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+  };
+
+  const refreshShareLinks = async (workId) => {
+    const links = await listWorkShares(workId);
+    setShareLinks(Array.isArray(links) ? links : []);
+  };
+
+  const openShare = async (workId) => {
     if (!user) {
       openLoginTab();
       return;
     }
     setShareWorkId(workId);
     setShareUrl("");
+    setShareLinks([]);
     setShareOpen(true);
+    try {
+      await refreshShareLinks(workId);
+    } catch (err) {
+      message.error(err.message || "加载分享链接失败");
+    }
   };
 
   const handleCreateShare = async (permission = "VIEW") => {
@@ -334,8 +577,64 @@ export default function MinePage() {
       setShareUrl(url);
       await navigator.clipboard?.writeText(url);
       message.success("分享链接已复制");
+      await refreshShareLinks(shareWorkId);
     } catch (err) {
       message.error(err.message || "创建分享失败");
+    }
+  };
+
+  const handleRevokeShare = async (link) => {
+    try {
+      await deleteShare(link.id);
+      setShareLinks((prev) => prev.filter((item) => item.id !== link.id));
+      setShareRows((prev) => prev.filter((item) => item.id !== link.id));
+      message.success("已撤销分享链接");
+    } catch (err) {
+      message.error(err.message || "撤销失败");
+    }
+  };
+
+  const openAssetSettings = async (item) => {
+    if (!user) {
+      openLoginTab();
+      return;
+    }
+    setAssetDraft({
+      id: item.id,
+      isPublic: Boolean(item.isPublic),
+      teamId: item.teamId ?? null,
+      category: item.category || "",
+    });
+    setAssetOpen(true);
+    try {
+      const [asset, mine] = await Promise.all([getAsset(item.id), teams.length ? Promise.resolve(teams) : listTeams()]);
+      if (!teams.length) setTeams(Array.isArray(mine) ? mine : []);
+      setAssetDraft({
+        id: asset.id,
+        isPublic: Boolean(asset.isPublic),
+        teamId: asset.teamId ?? null,
+        category: asset.category || "",
+      });
+    } catch (err) {
+      message.error(err.message || "加载素材失败");
+    }
+  };
+
+  const handleSaveAsset = async () => {
+    try {
+      const saved = await updateAsset(assetDraft.id, {
+        isPublic: assetDraft.isPublic,
+        teamId: assetDraft.teamId,
+        category: assetDraft.category || undefined,
+      });
+      setState((prev) => ({
+        ...prev,
+        assets: prev.assets.map((row) => (row.id === saved.id ? { ...row, ...toAssetItem({ ...row, ...saved }) } : row)),
+      }));
+      setAssetOpen(false);
+      message.success("已保存素材设置");
+    } catch (err) {
+      message.error(err.message || "保存失败");
     }
   };
 
@@ -383,6 +682,9 @@ export default function MinePage() {
           workTotal: item.kind === "work" ? Math.max(0, prev.workTotal - 1) : prev.workTotal,
           assetTotal: item.kind === "asset" ? Math.max(0, prev.assetTotal - 1) : prev.assetTotal,
         }));
+        if (item.kind === "work" && detailWork?.id === item.id) {
+          setDetailWork(null);
+        }
       },
     });
   };
@@ -414,8 +716,9 @@ export default function MinePage() {
     visibleRecords.length > 0 && selectedCount === visibleRecords.length;
   const listError = skipList || !user ? null : error;
   const listLoading = !ready || (Boolean(user) && !skipList && loading);
-  const showEmpty = !listLoading && !listError && visibleRecords.length === 0;
-  const showUploadTile = !showEmpty && !listError && typeTab === "uploads";
+  const showShareList = Boolean(user) && shareManage && !skipList;
+  const showEmpty = !listLoading && !listError && (showShareList ? shareRows.length === 0 : visibleRecords.length === 0);
+  const showUploadTile = !showEmpty && !listError && !showShareList && typeTab === "uploads";
   const toolbarFilters = selecting ? FILTERS.slice(0, 3) : FILTERS;
 
   const clearSelection = () => setSelectedKeys(new Set());
@@ -459,7 +762,7 @@ export default function MinePage() {
   };
 
   return (
-    <div className={`mine-page ${selecting ? "is-selecting" : ""}`}>
+    <div className={`mine-page ${selecting ? "is-selecting" : ""} ${detailWork ? "is-detail" : ""}`}>
       <input
         ref={fileInputRef}
         className="mine-file-input"
@@ -481,6 +784,19 @@ export default function MinePage() {
           }
         />
 
+        {detailWork ? (
+          <MineWorkDetail
+            work={detailWork}
+            locationLabel={spaceTab}
+            loading={detailLoading}
+            onBack={() => setDetailWork(null)}
+            onEdit={() => navigate(`/works/${detailWork.id}`)}
+            onShare={() => openShare(detailWork.id)}
+            onDelete={() => handleDelete(detailWork)}
+            onSoon={() => message.info("功能开发中")}
+          />
+        ) : (
+          <>
         <div className="mine-space-row">
           <nav className="mine-space-tabs" aria-label="我的空间分类">
             {SPACE_TABS.map((item) => (
@@ -490,12 +806,18 @@ export default function MinePage() {
                 className={`mine-space-tab ${spaceTab === item ? "active" : ""}`}
                 onClick={() => {
                   setSpaceTab(item);
+                  setActiveTeamId(null);
+                  setActiveTeam(null);
                   clearSelection();
                   setState((prev) => ({ ...prev, loading: true, error: null }));
                 }}
               >
                 {item}
-                {item === "分享管理" ? <span className="mine-upgrade">升级</span> : null}
+                {item === "分享管理" ? (
+                  <span className="mine-upgrade" aria-hidden="true">
+                    升级
+                  </span>
+                ) : null}
               </button>
             ))}
           </nav>
@@ -565,30 +887,74 @@ export default function MinePage() {
 
         <Spin spinning={listLoading}>
           <div className="mine-body">
+            {activeTeam ? (
+              <div className="mine-team-banner">
+                <span>
+                  正在查看团队「{activeTeam.name}」
+                </span>
+                <button
+                  type="button"
+                  className="mine-empty-btn"
+                  onClick={() => {
+                    setActiveTeamId(null);
+                    setActiveTeam(null);
+                    setState((prev) => ({ ...prev, loading: true, error: null }));
+                  }}
+                >
+                  返回我的空间
+                </button>
+              </div>
+            ) : null}
             {listError ? <div className="mine-status">加载失败：{listError}</div> : null}
             {showEmpty ? (
               <div className="mine-empty">
-                <img src={mineEmptyIcon} alt="" />
-                <p className="mine-empty-title">拖放文件到这里，开始云端作图</p>
-                <p className="mine-empty-sub">点击上传文件，支持上传本地文件</p>
-                <div className="mine-empty-actions">
-                  <button type="button" className="mine-empty-btn" onClick={openFilePicker}>
-                    上传文件
-                  </button>
-                  <button
-                    type="button"
-                    className="mine-empty-btn"
-                    onClick={() => {
-                      setOpen(false);
-                      setPage("create");
-                    }}
-                  >
-                    从「稿定设计」导入
-                  </button>
-                </div>
+                {showShareList ? (
+                  <>
+                    <img src={mineEmptyIcon} alt="" />
+                    <p className="mine-empty-title">还没有分享链接</p>
+                    <p className="mine-empty-sub">在作品卡片菜单中选择「分享」，即可生成只读或可编辑链接</p>
+                  </>
+                ) : (
+                  <>
+                    <img src={mineEmptyIcon} alt="" />
+                    <p className="mine-empty-title">拖放文件到这里，开始云端作图</p>
+                    <p className="mine-empty-sub">点击上传文件，支持上传本地文件</p>
+                    <div className="mine-empty-actions">
+                      <button type="button" className="mine-empty-btn" onClick={openFilePicker}>
+                        上传文件
+                      </button>
+                      <button
+                        type="button"
+                        className="mine-empty-btn"
+                        onClick={() => {
+                          setOpen(false);
+                          setPage("create");
+                        }}
+                      >
+                        从「稿定设计」导入
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : null}
-            {!showEmpty && !listError ? (
+            {showShareList && !showEmpty && !listError ? (
+              <div className="mine-share-list">
+                {shareRows.map((link) => (
+                  <div className="mine-share-row" key={link.id}>
+                    <div className="mine-card-copy">
+                      <strong>{link.workTitle || "未命名作品"}</strong>
+                      <span>{permissionLabel(link.permission)}</span>
+                    </div>
+                    <Input readOnly value={sharePageUrl(link.token)} />
+                    <Button danger aria-label={`撤销链接 ${link.token}`} onClick={() => handleRevokeShare(link)}>
+                      撤销
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {!showEmpty && !listError && !showShareList ? (
               <div className="mine-grid">
                 {showUploadTile ? (
                   <article className="mine-card">
@@ -609,10 +975,7 @@ export default function MinePage() {
                   return (
                     <article className={`mine-card ${selected ? "is-selected" : ""}`} key={key}>
                       <div className="mine-card-cover">
-                        <img
-                          src={item.imageUrl || FALLBACK_COVERS[index % FALLBACK_COVERS.length]}
-                          alt={item.title}
-                        />
+                        <WorkCover item={item} fallback={FALLBACK_COVERS[index % FALLBACK_COVERS.length]} />
                         <div
                           className="mine-card-hover"
                           onClick={() => {
@@ -620,7 +983,11 @@ export default function MinePage() {
                               toggleSelected(item);
                               return;
                             }
-                            handleCreateDesign(item);
+                            if (item.kind === "work") {
+                              openWorkDetail(item);
+                              return;
+                            }
+                            message.info("图片已上传，可在编辑器中继续使用");
                           }}
                         >
                           <button
@@ -662,12 +1029,13 @@ export default function MinePage() {
                                 items: [
                                   ...(item.kind === "work"
                                     ? [{ key: "share", label: "分享" }]
-                                    : []),
+                                    : [{ key: "asset", label: "素材设置" }]),
                                   { key: "delete", label: "删除", danger: true },
                                 ],
                                 onClick: ({ key: action }) => {
                                   if (action === "delete") handleDelete(item);
                                   if (action === "share") openShare(item.id);
+                                  if (action === "asset") openAssetSettings(item);
                                 },
                               }}
                               trigger={["click"]}
@@ -698,6 +1066,8 @@ export default function MinePage() {
             {!showEmpty && !listError ? <p className="mine-loaded">已全部加载完成</p> : null}
           </div>
         </Spin>
+          </>
+        )}
         {selectBarMounted
           ? createPortal(
               <div
@@ -785,9 +1155,53 @@ export default function MinePage() {
               value={inviteTeamId}
               placeholder="选择团队"
               options={teams.map((team) => ({ value: team.id, label: team.name }))}
-              onChange={setInviteTeamId}
+              onChange={(value) => {
+                setInviteTeamId(value);
+                setRenameName(teams.find((team) => team.id === value)?.name || "");
+              }}
             />
           </label>
+          {inviteTeamId ? (
+            <>
+              <label>
+                当前团队名称
+                <Input
+                  aria-label="团队名称"
+                  value={renameName}
+                  onChange={(event) => setRenameName(event.target.value)}
+                />
+              </label>
+              {canManageTeam(selectedTeamRole) ? (
+                <Button onClick={handleRenameTeam}>保存名称</Button>
+              ) : null}
+              <Button onClick={handleViewTeam}>查看团队内容</Button>
+              {canDissolveTeam(selectedTeamRole) ? (
+                <Button danger onClick={handleDissolveTeam}>
+                  解散团队
+                </Button>
+              ) : null}
+              <div className="mine-member-list">
+                {members.map((member) => (
+                  <div className="mine-member-row" key={member.userId}>
+                    <span>
+                      {member.nickname || member.username}
+                      <em>{member.role === "OWNER" ? "所有者" : member.role === "ADMIN" ? "管理员" : "成员"}</em>
+                    </span>
+                    {canManageTeam(selectedTeamRole) && member.role !== "OWNER" ? (
+                      <Button
+                        size="small"
+                        danger
+                        aria-label={`移除 ${member.nickname || member.username}`}
+                        onClick={() => handleRemoveMember(member)}
+                      >
+                        移除
+                      </Button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
           <label>
             用户名
             <Input
@@ -810,11 +1224,53 @@ export default function MinePage() {
         <div className="profile-form">
           <Button onClick={() => handleCreateShare("VIEW")}>创建只读链接</Button>
           <Button onClick={() => handleCreateShare("EDIT")}>创建可编辑链接</Button>
+          {shareLinks.map((link) => (
+            <div className="mine-share-row" key={link.id}>
+              <span>{permissionLabel(link.permission)}</span>
+              <Input readOnly value={sharePageUrl(link.token)} />
+              <Button danger aria-label={`撤销链接 ${link.token}`} onClick={() => handleRevokeShare(link)}>
+                撤销
+              </Button>
+            </div>
+          ))}
           {shareUrl ? (
             <Input readOnly value={shareUrl} />
           ) : (
             <p className="mine-empty-sub">生成后将自动复制到剪贴板</p>
           )}
+        </div>
+      </Modal>
+      <Modal title="素材设置" open={assetOpen} onCancel={() => setAssetOpen(false)} footer={null}>
+        <div className="profile-form">
+          <label className="mine-switch-row">
+            公开
+            <Switch
+              checked={assetDraft.isPublic}
+              onChange={(checked) => setAssetDraft((prev) => ({ ...prev, isPublic: checked }))}
+              aria-label="公开"
+            />
+          </label>
+          <label>
+            分类
+            <Input
+              value={assetDraft.category}
+              placeholder="可选"
+              onChange={(event) => setAssetDraft((prev) => ({ ...prev, category: event.target.value }))}
+            />
+          </label>
+          <label>
+            所属团队
+            <Select
+              allowClear
+              value={assetDraft.teamId ?? undefined}
+              placeholder="不挂到团队"
+              options={teams.map((team) => ({ value: team.id, label: team.name }))}
+              onChange={(value) => setAssetDraft((prev) => ({ ...prev, teamId: value ?? null }))}
+            />
+          </label>
+          <Button type="primary" onClick={handleSaveAsset}>
+            保存设置
+          </Button>
         </div>
       </Modal>
     </div>

@@ -1,0 +1,982 @@
+/* Mine space */
+.stage-shell.is-mine {
+  background: #fff;
+}
+
+.stage-shell.is-mine:has(.mine-page.is-detail) {
+  background: #f3f4f6;
+}
+
+.mine-page {
+  position: relative;
+  width: 1440px;
+  min-height: 100%;
+  padding-left: 80px;
+  background: #fff;
+  color: #111;
+}
+
+.mine-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mine-main {
+  position: relative;
+  min-height: 100%;
+  padding: 18px 28px 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+.mine-page.is-selecting .mine-main {
+  padding-bottom: 96px;
+}
+
+.mine-search {
+  width: 100%;
+  height: 44px;
+  padding: 0 8px 0 20px;
+  border-radius: 22px;
+  background: #f3f4f6;
+  box-shadow: none;
+}
+
+.mine-camera {
+  width: 36px;
+  height: 36px;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mine-camera img {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.mine-space-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.mine-space-tabs {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.mine-space-tab {
+  position: relative;
+  padding: 12px 0 14px;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  font: inherit;
+  font-size: 15px;
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mine-space-tab.active {
+  color: #111;
+  font-weight: 700;
+}
+
+.mine-space-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 2px;
+  background: #111;
+}
+
+.mine-upgrade {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: #22c55e;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.mine-space-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mine-invite {
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #4b5563;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mine-add {
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #111;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mine-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 14px 0 8px;
+  flex-wrap: wrap;
+}
+
+.mine-selected-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #111;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mine-check-badge {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: #4b5563;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.mine-types {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.mine-type {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mine-type.active {
+  color: #111;
+  font-weight: 600;
+}
+
+.mine-filters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.mine-filter {
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mine-filter .anticon {
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+.mine-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: conic-gradient(#ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ef4444);
+}
+
+.mine-folder-toggle {
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mine-view-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mine-view-btn.is-active {
+  background: #f3f4f6;
+}
+
+.mine-sort-icon {
+  width: 14px;
+  height: 12px;
+  background:
+    linear-gradient(#6b7280, #6b7280) 0 0 / 100% 2px no-repeat,
+    linear-gradient(#6b7280, #6b7280) 0 5px / 70% 2px no-repeat,
+    linear-gradient(#6b7280, #6b7280) 0 10px / 40% 2px no-repeat;
+}
+
+.mine-grid-icon {
+  background:
+    linear-gradient(#6b7280, #6b7280) 0 0 / 6px 6px no-repeat,
+    linear-gradient(#6b7280, #6b7280) 8px 0 / 6px 6px no-repeat,
+    linear-gradient(#6b7280, #6b7280) 0 8px / 6px 6px no-repeat,
+    linear-gradient(#6b7280, #6b7280) 8px 8px / 6px 6px no-repeat;
+  height: 14px;
+  width: 14px;
+}
+
+.mine-body {
+  min-height: 620px;
+}
+
+.mine-status {
+  padding: 48px 0;
+  text-align: center;
+  color: #6b7280;
+}
+
+.mine-empty {
+  min-height: 620px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.mine-empty img {
+  width: 220px;
+  height: 168px;
+  display: block;
+}
+
+.mine-empty-title {
+  margin: 18px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.mine-empty-sub {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.mine-empty-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.mine-empty-btn {
+  height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 6px;
+  background: #111;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mine-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px 16px;
+  padding-top: 8px;
+}
+
+.mine-card {
+  min-width: 0;
+}
+
+.mine-card-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.mine-card-hover {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+
+.mine-card-cover:hover .mine-card-hover,
+.mine-card.is-selected .mine-card-hover,
+.mine-card:focus-within .mine-card-hover,
+.mine-page.is-selecting .mine-card-hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mine-card.is-selected .mine-card-cover {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 1px #93c5fd;
+}
+
+.mine-page.is-selecting .mine-card-download,
+.mine-page.is-selecting .mine-card-hover-bar {
+  display: none;
+}
+
+.mine-card-check,
+.mine-card-download,
+.mine-card-hover-more,
+.mine-card-create {
+  border: 0;
+  background: #fff;
+  color: #111;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+}
+
+.mine-card-check,
+.mine-card-download {
+  position: absolute;
+  top: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.mine-card-check {
+  left: 10px;
+}
+
+.mine-card-check.is-checked {
+  background: #4b5563;
+  color: #fff;
+  box-shadow: none;
+  font-size: 12px;
+}
+
+.mine-card-download {
+  right: 10px;
+}
+
+.mine-card-download img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.mine-card-hover-bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mine-card-create {
+  flex: 1;
+  height: 36px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mine-card-hover-more {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.mine-card-upload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  background: #fafafa;
+  color: #6b7280;
+  font: inherit;
+  font-size: 14px;
+}
+
+.mine-card-cover > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.mine-card-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 2px 0;
+}
+
+.mine-card-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mine-card-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mine-card-copy span {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.mine-card-more {
+  border: 0;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.mine-loaded {
+  margin: 28px 0 8px;
+  text-align: center;
+  color: #d1d5db;
+  font-size: 13px;
+}
+
+.mine-page.is-detail {
+  background: #f3f4f6;
+}
+
+.mine-page.is-detail .mine-main {
+  min-height: 100%;
+}
+
+.mine-detail {
+  position: relative;
+  flex: 1;
+  min-height: 760px;
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.mine-detail-back {
+  position: absolute;
+  z-index: 3;
+  top: 16px;
+  left: 16px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #111;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mine-detail-back:hover {
+  background: #f3f4f6;
+}
+
+.mine-detail-stage {
+  position: relative;
+  min-width: 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.mine-detail-stage .ant-spin-nested-loading,
+.mine-detail-stage .ant-spin-container {
+  height: 100%;
+}
+
+.mine-detail-stage-inner {
+  min-height: 680px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 48px 88px;
+  box-sizing: border-box;
+}
+
+.mine-detail-artboard-shell {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+}
+
+.mine-detail-artboard {
+  position: relative;
+  transform-origin: top left;
+  background: #fff;
+}
+
+.mine-detail-artboard .editor-el {
+  cursor: default;
+  pointer-events: none;
+}
+
+.mine-detail-thumb {
+  display: block;
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+}
+
+.mine-detail-zoom {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
+}
+
+.mine-detail-zoom button {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #4b5563;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mine-detail-zoom button:hover {
+  background: #f3f4f6;
+}
+
+.mine-detail-zoom-value {
+  min-width: 44px !important;
+  color: #111 !important;
+  font-weight: 600;
+}
+
+.mine-detail-zoom-split {
+  width: 1px;
+  height: 16px;
+  margin: 0 6px;
+  background: #e5e7eb;
+}
+
+.mine-detail-side {
+  padding: 20px 24px 28px;
+  border-left: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mine-detail-side-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.mine-detail-side-tools button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mine-detail-side-tools button:hover {
+  background: #f3f4f6;
+  color: #111;
+}
+
+.mine-detail-title {
+  margin: 18px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #111;
+}
+
+.mine-detail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.mine-detail-edit,
+.mine-detail-ai {
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.mine-detail-edit {
+  background: #1677ff;
+  color: #fff;
+}
+
+.mine-detail-edit:hover {
+  background: #4096ff;
+}
+
+.mine-detail-ai {
+  background: #f3f4f6;
+  color: #111;
+}
+
+.mine-detail-ai:hover {
+  background: #e5e7eb;
+}
+
+.mine-detail-section {
+  margin: 32px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8c8c8c;
+}
+
+.mine-detail-meta {
+  margin: 14px 0 0;
+  display: grid;
+  gap: 12px;
+}
+
+.mine-detail-meta div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mine-detail-meta dt {
+  color: #8c8c8c;
+  font-size: 13px;
+}
+
+.mine-detail-meta dd {
+  margin: 0;
+  color: #111;
+  font-size: 13px;
+  text-align: right;
+}
+
+.mine-detail-tag {
+  align-self: flex-start;
+  margin-top: 12px;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 14px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mine-detail-tag:hover {
+  background: #e5e7eb;
+}
+
+.mine-select-bar {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.mine-select-bar-scale {
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  transform-origin: bottom center;
+}
+
+.mine-select-bar-inner {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 56px;
+  padding: 0 10px 0 16px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.16);
+}
+
+.mine-select-bar.is-open .mine-select-bar-inner {
+  animation: mine-select-slide-in 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mine-select-bar.is-leaving .mine-select-bar-inner {
+  animation: mine-select-slide-out 0.42s cubic-bezier(0.4, 0, 1, 0.6) forwards;
+}
+
+@keyframes mine-select-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(80px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mine-select-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(80px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mine-select-bar.is-open .mine-select-bar-inner,
+  .mine-select-bar.is-leaving .mine-select-bar-inner {
+    animation: none;
+  }
+}
+
+.mine-select-bar-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 10px;
+  color: #111;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mine-select-bar-inner > button {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.mine-select-bar-inner > button:hover {
+  background: #f3f4f6;
+  color: #111;
+}
+
+.mine-select-bar-inner > button img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  opacity: 0.7;
+}
+
+.mine-select-bar-split {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: #e5e7eb;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.mine-switch-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mine-team-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #eef4ff;
+  color: #1e3a8a;
+  font-size: 13px;
+}
+
+.mine-share-list,
+.mine-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mine-share-row,
+.mine-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mine-share-row .ant-input {
+  flex: 1;
+}
+
+.mine-member-row {
+  justify-content: space-between;
+}
+
+.mine-member-row em {
+  margin-left: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-style: normal;
+}

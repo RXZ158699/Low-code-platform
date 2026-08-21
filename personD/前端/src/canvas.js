@@ -1,4 +1,11 @@
-import { getTextSpans, hasSpanBoxPaint, resolvedStyleAt, SPAN_STYLE_KEYS, syncSpansToText } from "./textSpans.js";
+import {
+  getTextSpans,
+  hasSpanBoxPaint,
+  resolvedStyleAt,
+  SPAN_STYLE_KEYS,
+  syncSpansToText,
+} from "./textSpans.js";
+import { COLLAGE_GAP, findCollageLayout } from "./collageLayouts.js";
 
 export {
   applyTextStyle,
@@ -32,11 +39,16 @@ function readOpacity(value) {
 
 export function parseCanvas(json) {
   try {
-    const data = typeof json === "string" ? JSON.parse(json || "{}") : json || {};
+    const data =
+      typeof json === "string" ? JSON.parse(json || "{}") : json || {};
     return {
       width: Number(data.width) > 0 ? Number(data.width) : DEFAULT_CANVAS.width,
-      height: Number(data.height) > 0 ? Number(data.height) : DEFAULT_CANVAS.height,
-      background: typeof data.background === "string" && data.background ? data.background : DEFAULT_CANVAS.background,
+      height:
+        Number(data.height) > 0 ? Number(data.height) : DEFAULT_CANVAS.height,
+      background:
+        typeof data.background === "string" && data.background
+          ? data.background
+          : DEFAULT_CANVAS.background,
       backgroundOpacity: readOpacity(data.backgroundOpacity),
       elements: Array.isArray(data.elements) ? data.elements : [],
     };
@@ -86,6 +98,363 @@ export function addTextElement(canvas, patch = {}) {
   };
 }
 
+export const LINE_KINDS = ["line", "dash", "dot"];
+export const SHAPE_KINDS = [
+  "square",
+  "triangle",
+  "circle",
+  "pentagon",
+  ...LINE_KINDS,
+];
+export const SHAPE_LABELS = {
+  square: "方形",
+  triangle: "三角形",
+  circle: "圆形",
+  pentagon: "五边形",
+  line: "直线",
+  dash: "虚线",
+  dot: "点线",
+};
+export const DEFAULT_SHAPE_FILL = "#2563eb";
+export const DEFAULT_LINE_FILL = "#000000";
+export const LINE_STROKE_WIDTH = 1;
+export const LINE_HIT_PAD = 8;
+
+export function isLineKind(value) {
+  return LINE_KINDS.includes(value);
+}
+
+export function isShapeKind(value) {
+  return SHAPE_KINDS.includes(value);
+}
+
+export function isShapeElement(item) {
+  return item?.type === "shape" || item?.type === "rect";
+}
+
+export function shapeKind(item) {
+  if (item?.type === "rect") return "square";
+  return isShapeKind(item?.kind) ? item.kind : "square";
+}
+
+export function lineStrokeProps(kind, strokeWidth = LINE_STROKE_WIDTH) {
+  const width =
+    Number(strokeWidth) > 0 ? Number(strokeWidth) : LINE_STROKE_WIDTH;
+  if (kind === "dash") {
+    return {
+      width,
+      dash: `${Math.max(6, width * 4)} ${Math.max(4, width * 3)}`,
+      cap: "butt",
+    };
+  }
+  if (kind === "dot") {
+    return { width, dash: `0 ${Math.max(6, width * 4)}`, cap: "round" };
+  }
+  return { width, dash: null, cap: "butt" };
+}
+
+export function lineBounds(
+  x1,
+  y1,
+  x2,
+  y2,
+  pad = LINE_HIT_PAD,
+  strokeWidth = LINE_STROKE_WIDTH,
+) {
+  const left = Math.min(x1, x2);
+  const top = Math.min(y1, y2);
+  const width = Math.abs(x2 - x1);
+  const height = Math.abs(y2 - y1);
+  const stroke =
+    Number(strokeWidth) > 0 ? Number(strokeWidth) : LINE_STROKE_WIDTH;
+  return {
+    x: left - pad,
+    y: top - pad,
+    width: Math.max(stroke, width) + pad * 2,
+    height: Math.max(stroke, height) + pad * 2,
+  };
+}
+
+export function lineFromPoints(x1, y1, x2, y2, minSpan = 3) {
+  const left = Number(x1);
+  const top = Number(y1);
+  const right = Number(x2);
+  const bottom = Number(y2);
+  if (![left, top, right, bottom].every(Number.isFinite)) return null;
+  if (Math.hypot(right - left, bottom - top) < minSpan) return null;
+  return {
+    x1: left,
+    y1: top,
+    x2: right,
+    y2: bottom,
+    ...lineBounds(left, top, right, bottom),
+  };
+}
+
+export function getLineProps(item = {}) {
+  const x1 = Number(item.x1) || 0;
+  const y1 = Number(item.y1) || 0;
+  const x2 = Number(item.x2) || 0;
+  const y2 = Number(item.y2) || 0;
+  return {
+    kind: isLineKind(item.kind) ? item.kind : "line",
+    fill:
+      typeof item.fill === "string" && item.fill
+        ? item.fill
+        : DEFAULT_LINE_FILL,
+    strokeWidth:
+      Number(item.strokeWidth) > 0
+        ? Number(item.strokeWidth)
+        : LINE_STROKE_WIDTH,
+    opacity: Number.isFinite(Number(item.opacity))
+      ? Math.min(100, Math.max(0, Number(item.opacity)))
+      : 100,
+    strokeVisible: item.strokeVisible !== false,
+    locked: Boolean(item.locked),
+    x1,
+    y1,
+    x2,
+    y2,
+    length: Math.hypot(x2 - x1, y2 - y1),
+    originX: Math.min(x1, x2),
+    originY: Math.min(y1, y2),
+  };
+}
+
+export function lineGeometryPatch(
+  x1,
+  y1,
+  x2,
+  y2,
+  strokeWidth = LINE_STROKE_WIDTH,
+) {
+  return {
+    x1,
+    y1,
+    x2,
+    y2,
+    ...lineBounds(x1, y1, x2, y2, LINE_HIT_PAD, strokeWidth),
+  };
+}
+
+export function setLineLength(item, length) {
+  const line = getLineProps(item);
+  const next = Math.max(8, Number(length) || 0);
+  const dx = line.x2 - line.x1;
+  const dy = line.y2 - line.y1;
+  const current = Math.hypot(dx, dy);
+  if (!(current > 0)) {
+    return lineGeometryPatch(
+      line.x1,
+      line.y1,
+      line.x1 + next,
+      line.y1,
+      line.strokeWidth,
+    );
+  }
+  const cx = (line.x1 + line.x2) / 2;
+  const cy = (line.y1 + line.y2) / 2;
+  const half = next / 2;
+  const ux = dx / current;
+  const uy = dy / current;
+  return lineGeometryPatch(
+    cx - ux * half,
+    cy - uy * half,
+    cx + ux * half,
+    cy + uy * half,
+    line.strokeWidth,
+  );
+}
+
+export function setLineOrigin(item, x, y) {
+  const line = getLineProps(item);
+  const dx = (Number(x) || 0) - line.originX;
+  const dy = (Number(y) || 0) - line.originY;
+  return lineGeometryPatch(
+    line.x1 + dx,
+    line.y1 + dy,
+    line.x2 + dx,
+    line.y2 + dy,
+    line.strokeWidth,
+  );
+}
+
+export function setLineStrokeWidth(item, strokeWidth) {
+  const line = getLineProps(item);
+  const next = Math.min(
+    40,
+    Math.max(1, Number(strokeWidth) || LINE_STROKE_WIDTH),
+  );
+  return {
+    strokeWidth: next,
+    ...lineGeometryPatch(line.x1, line.y1, line.x2, line.y2, next),
+  };
+}
+
+export function setLineEndpoint(item, which, x, y, minSpan = 3) {
+  const line = getLineProps(item);
+  const pivotX = which === "start" ? line.x2 : line.x1;
+  const pivotY = which === "start" ? line.y2 : line.y1;
+  let nextX = Number(x);
+  let nextY = Number(y);
+  if (!Number.isFinite(nextX) || !Number.isFinite(nextY)) {
+    return lineGeometryPatch(line.x1, line.y1, line.x2, line.y2, line.strokeWidth);
+  }
+  const dx = nextX - pivotX;
+  const dy = nextY - pivotY;
+  const dist = Math.hypot(dx, dy);
+  if (dist < minSpan) {
+    if (dist === 0) {
+      nextX = pivotX + minSpan;
+      nextY = pivotY;
+    } else {
+      const scale = minSpan / dist;
+      nextX = pivotX + dx * scale;
+      nextY = pivotY + dy * scale;
+    }
+  }
+  if (which === "start") {
+    return lineGeometryPatch(nextX, nextY, pivotX, pivotY, line.strokeWidth);
+  }
+  return lineGeometryPatch(pivotX, pivotY, nextX, nextY, line.strokeWidth);
+}
+
+export function flipLine(item, axis) {
+  const line = getLineProps(item);
+  const cx = (line.x1 + line.x2) / 2;
+  const cy = (line.y1 + line.y2) / 2;
+  if (axis === "x") {
+    return lineGeometryPatch(
+      cx * 2 - line.x1,
+      line.y1,
+      cx * 2 - line.x2,
+      line.y2,
+      line.strokeWidth,
+    );
+  }
+  return lineGeometryPatch(
+    line.x1,
+    cy * 2 - line.y1,
+    line.x2,
+    cy * 2 - line.y2,
+    line.strokeWidth,
+  );
+}
+
+export function boxFromDrag(x1, y1, x2, y2, minSpan = 3) {
+  const left = Number(x1);
+  const top = Number(y1);
+  const right = Number(x2);
+  const bottom = Number(y2);
+  if (![left, top, right, bottom].every(Number.isFinite)) return null;
+  const width = Math.abs(right - left);
+  const height = Math.abs(bottom - top);
+  if (width < minSpan && height < minSpan) return null;
+  return {
+    x: Math.min(left, right),
+    y: Math.min(top, bottom),
+    width,
+    height,
+  };
+}
+
+export function regularPolygonUnitPoints(sides) {
+  const count = Math.max(3, Number(sides) || 3);
+  return Array.from({ length: count }, (_, index) => {
+    const angle = -Math.PI / 2 + (index * 2 * Math.PI) / count;
+    return [0.5 + 0.5 * Math.cos(angle), 0.5 + 0.5 * Math.sin(angle)];
+  });
+}
+
+export function shapeUnitPoints(kind) {
+  if (kind === "triangle")
+    return [
+      [0.5, 0],
+      [1, 1],
+      [0, 1],
+    ];
+  if (kind === "pentagon") return regularPolygonUnitPoints(5);
+  if (kind === "square" || kind === "rect") {
+    return [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ];
+  }
+  return null;
+}
+
+export function scaledShapePoints(kind, width, height) {
+  const points = shapeUnitPoints(kind);
+  if (!points) return [];
+  return points.map(([x, y]) => [x * width, y * height]);
+}
+
+export function addShapeElement(canvas, kind, box = {}) {
+  const shape = isShapeKind(kind) ? kind : "square";
+  if (isLineKind(shape)) {
+    const x1 = Number.isFinite(Number(box.x1))
+      ? Number(box.x1)
+      : Number.isFinite(Number(box.x))
+        ? Number(box.x)
+        : 80;
+    const y1 = Number.isFinite(Number(box.y1))
+      ? Number(box.y1)
+      : Number.isFinite(Number(box.y))
+        ? Number(box.y)
+        : 240;
+    const x2 = Number.isFinite(Number(box.x2))
+      ? Number(box.x2)
+      : x1 + (Number(box.width) > 0 ? Number(box.width) : 400);
+    const y2 = Number.isFinite(Number(box.y2)) ? Number(box.y2) : y1;
+    return {
+      ...canvas,
+      elements: [
+        ...canvas.elements,
+        {
+          id: nextElementId("shape"),
+          type: "shape",
+          kind: shape,
+          ...lineBounds(x1, y1, x2, y2),
+          x1,
+          y1,
+          x2,
+          y2,
+          fill:
+            typeof box.fill === "string" && box.fill
+              ? box.fill
+              : DEFAULT_LINE_FILL,
+          strokeWidth: LINE_STROKE_WIDTH,
+          opacity: 100,
+          strokeVisible: true,
+        },
+      ],
+    };
+  }
+  return {
+    ...canvas,
+    elements: [
+      ...canvas.elements,
+      {
+        id: nextElementId("shape"),
+        type: "shape",
+        kind: shape,
+        x: Number.isFinite(Number(box.x)) ? Number(box.x) : 80,
+        y: Number.isFinite(Number(box.y))
+          ? Number(box.y)
+          : 240 + canvas.elements.length * 24,
+        width: Number(box.width) > 0 ? Number(box.width) : 400,
+        height: Number(box.height) > 0 ? Number(box.height) : 160,
+        fill:
+          typeof box.fill === "string" && box.fill
+            ? box.fill
+            : DEFAULT_SHAPE_FILL,
+      },
+    ],
+  };
+}
+
 export function addRectElement(canvas) {
   return {
     ...canvas,
@@ -98,7 +467,218 @@ export function addRectElement(canvas) {
         y: 240 + canvas.elements.length * 24,
         width: 400,
         height: 160,
-        fill: "#2563eb",
+        fill: DEFAULT_SHAPE_FILL,
+      },
+    ],
+  };
+}
+
+export function isMediaElement(item) {
+  return item?.type === "image" || item?.type === "video";
+}
+
+export function fitMediaBox(canvas, naturalWidth, naturalHeight) {
+  const sourceW = Number(naturalWidth) > 0 ? Number(naturalWidth) : 640;
+  const sourceH = Number(naturalHeight) > 0 ? Number(naturalHeight) : 360;
+  const maxW = Math.max(80, canvas.width * 0.62);
+  const maxH = Math.max(80, canvas.height * 0.62);
+  const scale = Math.min(maxW / sourceW, maxH / sourceH, 1);
+  const width = Math.max(40, Math.round(sourceW * scale));
+  const height = Math.max(40, Math.round(sourceH * scale));
+  const offset = canvas.elements.filter(isMediaElement).length * 24;
+  return {
+    x: Math.max(0, Math.round((canvas.width - width) / 2) + offset),
+    y: Math.max(0, Math.round((canvas.height - height) / 2) + offset),
+    width,
+    height,
+  };
+}
+
+export function addMediaElement(canvas, patch = {}) {
+  const type = patch.type === "video" ? "video" : "image";
+  const box = fitMediaBox(canvas, patch.width, patch.height);
+  return {
+    ...canvas,
+    elements: [
+      ...canvas.elements,
+      {
+        id: nextElementId(type),
+        type,
+        src: typeof patch.src === "string" ? patch.src : "",
+        name: typeof patch.name === "string" ? patch.name : "",
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
+      },
+    ],
+  };
+}
+
+export function isCollageElement(item) {
+  return item?.type === "collage";
+}
+
+export function getCollageProps(item) {
+  const gap = Number(item?.gap);
+  const padding = Number(item?.padding);
+  const radius = Number(item?.radius);
+  const opacity = Number(item?.opacity);
+  return {
+    layoutId: item?.layoutId || "",
+    gap: Number.isFinite(gap) && gap >= 0 ? gap : COLLAGE_GAP,
+    padding: Number.isFinite(padding) && padding >= 0 ? padding : 0,
+    radius: Number.isFinite(radius) && radius >= 0 ? radius : 0,
+    opacity: Number.isFinite(opacity)
+      ? Math.min(100, Math.max(0, opacity))
+      : 100,
+    fill: item?.fill || "#ffffff",
+    seamless: Boolean(item?.seamless),
+    aspectLocked: item?.aspectLocked !== false,
+    locked: Boolean(item?.locked),
+    flippedX: Boolean(item?.flippedX),
+    flippedY: Boolean(item?.flippedY),
+    x: Number(item?.x) || 0,
+    y: Number(item?.y) || 0,
+    width: Number(item?.width) || 0,
+    height: Number(item?.height) || 0,
+  };
+}
+
+export function applyCollageLayout(item, layoutRef) {
+  const layout =
+    typeof layoutRef === "string" ? findCollageLayout(layoutRef) : layoutRef;
+  if (!layout?.id || !Array.isArray(layout.cells)) return {};
+  const srcs = (item?.cells || []).map((cell) => cell.src).filter(Boolean);
+  return {
+    layoutId: layout.id,
+    rowCount: layout.rowCount,
+    colCount: layout.colCount,
+    colTemplate: layout.colTemplate,
+    rowTemplate: layout.rowTemplate,
+    cells: layout.cells.map((cell, index) => ({
+      r: cell.r,
+      c: cell.c,
+      rs: cell.rs,
+      cs: cell.cs,
+      ...(srcs[index] ? { src: srcs[index] } : {}),
+    })),
+  };
+}
+
+export function fitCollageToCanvas(canvas, item) {
+  if (!isCollageElement(item) || !canvas) return {};
+  return {
+    x: 0,
+    y: 0,
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+export function fillCollageCells(item, urls) {
+  const sources = (urls || []).filter(Boolean);
+  if (!isCollageElement(item) || sources.length === 0) return {};
+  const cells = (item.cells || []).map((cell) => ({ ...cell }));
+  const queue = [...sources];
+  for (const cell of cells) {
+    if (!cell.src && queue.length) cell.src = queue.shift();
+  }
+  for (const cell of cells) {
+    if (!queue.length) break;
+    cell.src = queue.shift();
+  }
+  return { cells };
+}
+
+export function setCollageSize(item, next = {}) {
+  const min = MIN_ELEMENT_SIZE;
+  const lock = next.aspectLocked ?? item?.aspectLocked !== false;
+  const hasWidth = next.width != null;
+  const hasHeight = next.height != null;
+  let width = Math.max(
+    min,
+    Math.round(Number(hasWidth ? next.width : item?.width) || min),
+  );
+  let height = Math.max(
+    min,
+    Math.round(Number(hasHeight ? next.height : item?.height) || min),
+  );
+  if (lock && Number(item?.width) > 0 && Number(item?.height) > 0) {
+    const aspect = Number(item.width) / Number(item.height);
+    if (hasWidth && !hasHeight) {
+      height = Math.max(min, Math.round(width / aspect));
+    } else if (hasHeight && !hasWidth) {
+      width = Math.max(min, Math.round(height * aspect));
+    }
+  }
+  return { width, height };
+}
+
+function collageAspect(layout) {
+  if (layout.frame === "square") return 1;
+  if (layout.frame === "portrait") return 3 / 4;
+  if (layout.frame === "landscape") return 4 / 3;
+  const cols = Number(layout.colCount) || 1;
+  const rows = Number(layout.rowCount) || 1;
+  return Math.min(1.45, Math.max(0.7, cols / rows));
+}
+
+export function fitCollageBox(canvas, layout) {
+  const aspect = collageAspect(layout);
+  const maxW = Math.max(80, canvas.width * 0.62);
+  const maxH = Math.max(80, canvas.height * 0.62);
+  let width = maxW;
+  let height = width / aspect;
+  if (height > maxH) {
+    height = maxH;
+    width = height * aspect;
+  }
+  width = Math.max(80, Math.round(width));
+  height = Math.max(80, Math.round(height));
+  const offset = canvas.elements.filter(isCollageElement).length * 24;
+  return {
+    x: Math.max(0, Math.round((canvas.width - width) / 2) + offset),
+    y: Math.max(0, Math.round((canvas.height - height) / 2) + offset),
+    width,
+    height,
+  };
+}
+
+export function addCollageElement(canvas, layoutRef) {
+  const layout =
+    typeof layoutRef === "string" ? findCollageLayout(layoutRef) : layoutRef;
+  if (
+    !layout?.id ||
+    !Array.isArray(layout.cells) ||
+    layout.cells.length === 0
+  ) {
+    return canvas;
+  }
+  const box = fitCollageBox(canvas, layout);
+  return {
+    ...canvas,
+    elements: [
+      ...canvas.elements,
+      {
+        id: nextElementId("collage"),
+        type: "collage",
+        layoutId: layout.id,
+        rowCount: layout.rowCount,
+        colCount: layout.colCount,
+        colTemplate: layout.colTemplate,
+        rowTemplate: layout.rowTemplate,
+        gap: COLLAGE_GAP,
+        cells: layout.cells.map((cell) => ({
+          r: cell.r,
+          c: cell.c,
+          rs: cell.rs,
+          cs: cell.cs,
+        })),
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
       },
     ],
   };
@@ -107,7 +687,9 @@ export function addRectElement(canvas) {
 export function updateElement(canvas, id, patch) {
   return {
     ...canvas,
-    elements: canvas.elements.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    elements: canvas.elements.map((item) =>
+      item.id === id ? { ...item, ...patch } : item,
+    ),
   };
 }
 
@@ -115,6 +697,14 @@ export function removeElement(canvas, id) {
   return {
     ...canvas,
     elements: canvas.elements.filter((item) => item.id !== id),
+  };
+}
+
+export function clearCanvasElements(canvas) {
+  if (!canvas.elements.length) return canvas;
+  return {
+    ...canvas,
+    elements: [],
   };
 }
 
@@ -159,13 +749,22 @@ export const TEXT_FONTS = [
   {
     id: "source-han",
     label: "思源黑体 常规",
-    family: '"Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif',
+    family:
+      '"Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif',
   },
-  { id: "yahei", label: "微软雅黑", family: '"Microsoft YaHei", "PingFang SC", sans-serif' },
+  {
+    id: "yahei",
+    label: "微软雅黑",
+    family: '"Microsoft YaHei", "PingFang SC", sans-serif',
+  },
   { id: "simsun", label: "宋体", family: 'SimSun, "Songti SC", serif' },
   { id: "kaiti", label: "楷体", family: 'KaiTi, STKaiti, "Kaiti SC", serif' },
   { id: "arial", label: "Arial", family: "Arial, Helvetica, sans-serif" },
-  { id: "zcool", label: "站酷庆科黄油体", family: '"ZCOOL QingKe HuangYou", sans-serif' },
+  {
+    id: "zcool",
+    label: "站酷庆科黄油体",
+    family: '"ZCOOL QingKe HuangYou", sans-serif',
+  },
 ];
 
 export const DEFAULT_TEXT_PROPS = {
@@ -222,7 +821,9 @@ export function formatTextContent(item) {
   if (listStyle === "none" || !text) return text;
   return text
     .split("\n")
-    .map((line, index) => (listStyle === "decimal" ? `${index + 1}. ${line}` : `• ${line}`))
+    .map((line, index) =>
+      listStyle === "decimal" ? `${index + 1}. ${line}` : `• ${line}`,
+    )
     .join("\n");
 }
 
@@ -304,16 +905,29 @@ function boxFillColor(hex, opacity) {
 
 export function textElementStyle(item) {
   const t = getTextProps(item);
-  const boxFill = hasSpanBoxPaint(item) ? "" : boxFillColor(t.boxBackground, t.boxBackgroundOpacity);
-  const wrap = !isTextAutoWidth(item) || Number(item.width) >= TEXT_BOX_MAX_WIDTH;
+  const boxFill = hasSpanBoxPaint(item)
+    ? ""
+    : boxFillColor(t.boxBackground, t.boxBackgroundOpacity);
+  const wrap =
+    !isTextAutoWidth(item) || Number(item.width) >= TEXT_BOX_MAX_WIDTH;
   return {
     ...textTypeStyle(item),
     background: boxFill || "transparent",
     opacity: Number(t.opacity) / 100,
     transform: `scale(${t.flippedX ? -1 : 1}, ${t.flippedY ? -1 : 1})`,
     transformOrigin: "center center",
-    justifyContent: t.textAlign === "center" ? "center" : t.textAlign === "right" ? "flex-end" : "flex-start",
-    alignItems: t.verticalAlign === "top" ? "flex-start" : t.verticalAlign === "bottom" ? "flex-end" : "center",
+    justifyContent:
+      t.textAlign === "center"
+        ? "center"
+        : t.textAlign === "right"
+          ? "flex-end"
+          : "flex-start",
+    alignItems:
+      t.verticalAlign === "top"
+        ? "flex-start"
+        : t.verticalAlign === "bottom"
+          ? "flex-end"
+          : "center",
     overflow: "visible",
     overflowWrap: wrap ? "anywhere" : "normal",
     wordBreak: wrap ? "break-word" : "keep-all",
@@ -353,7 +967,9 @@ function canvasCharWidth(ch, style) {
   try {
     if (!measureCtx) {
       const canvas =
-        typeof OffscreenCanvas === "function" ? new OffscreenCanvas(1, 1) : document.createElement("canvas");
+        typeof OffscreenCanvas === "function"
+          ? new OffscreenCanvas(1, 1)
+          : document.createElement("canvas");
       measureCtx = canvas.getContext?.("2d") || null;
       if (!measureCtx) {
         measureUnavailable = true;
@@ -381,7 +997,9 @@ function lineWidth(text, style) {
   const chars = [...String(text)];
   if (!chars.length) return 0;
   const glyphs = chars.reduce((sum, ch) => sum + charWidth(ch, style), 0);
-  return glyphs + Math.max(0, chars.length - 1) * Number(style.letterSpacing || 0);
+  return (
+    glyphs + Math.max(0, chars.length - 1) * Number(style.letterSpacing || 0)
+  );
 }
 
 function wrapParagraph(text, maxInner, style) {
@@ -420,14 +1038,23 @@ export function textFillPaint(item) {
 
 export function getTextLines(item) {
   const style = getTextProps(item);
-  const display = formatTextContent({ ...style, text: item.text ?? style.text });
+  const display = formatTextContent({
+    ...style,
+    text: item.text ?? style.text,
+  });
   const autoWidth = isTextAutoWidth(item);
   const maxBox = autoWidth ? TEXT_BOX_MAX_WIDTH : TEXT_BOX_MAX_RESIZE;
   const maxInner = Math.max(1, maxBox - TEXT_BOX_PAD_X);
   const requested = Number(item.width);
   const wrapAt = autoWidth
     ? maxInner
-    : Math.min(maxInner, Math.max(1, (Number.isFinite(requested) ? requested : maxBox) - TEXT_BOX_PAD_X));
+    : Math.min(
+        maxInner,
+        Math.max(
+          1,
+          (Number.isFinite(requested) ? requested : maxBox) - TEXT_BOX_PAD_X,
+        ),
+      );
   return String(display)
     .split("\n")
     .flatMap((paragraph) => wrapParagraph(paragraph, wrapAt, style));
@@ -442,7 +1069,13 @@ function textWrapAt(item) {
   const requested = Number(item.width);
   return autoWidth
     ? maxInner
-    : Math.min(maxInner, Math.max(1, (Number.isFinite(requested) ? requested : maxBox) - TEXT_BOX_PAD_X));
+    : Math.min(
+        maxInner,
+        Math.max(
+          1,
+          (Number.isFinite(requested) ? requested : maxBox) - TEXT_BOX_PAD_X,
+        ),
+      );
 }
 
 export function getTextGlyphs(item) {
@@ -529,7 +1162,12 @@ export function getSelectionRects(item, start, end) {
   if (!(to > from)) return [];
   return getTextGlyphs(item)
     .filter((glyph) => glyph.end > from && glyph.start < to)
-    .map((glyph) => ({ x: glyph.x, y: glyph.y, width: glyph.width, height: glyph.height }));
+    .map((glyph) => ({
+      x: glyph.x,
+      y: glyph.y,
+      width: glyph.width,
+      height: glyph.height,
+    }));
 }
 
 export function getHighlightEllipses(item) {
@@ -637,21 +1275,39 @@ export function getTextPaintRuns(item) {
 
 export function fitTextBox(item) {
   const style = getTextProps(item);
-  const display = formatTextContent({ ...style, text: item.text ?? style.text });
+  const display = formatTextContent({
+    ...style,
+    text: item.text ?? style.text,
+  });
   const autoWidth = isTextAutoWidth(item);
   const paragraphs = String(display).split("\n");
-  const longestRaw = Math.max(0, ...paragraphs.map((paragraph) => lineWidth(paragraph, style)));
+  const longestRaw = Math.max(
+    0,
+    ...paragraphs.map((paragraph) => lineWidth(paragraph, style)),
+  );
   const requested = Number(item.width);
   const lines = getTextLines(item);
   const lineBox = Number(style.fontSize) * (Number(style.lineHeight) || 1.4);
-  const minBoxW = Math.max(MIN_ELEMENT_SIZE, Math.ceil((Number(style.fontSize) || 16) + TEXT_BOX_PAD_X));
+  const minBoxW = Math.max(
+    MIN_ELEMENT_SIZE,
+    Math.ceil((Number(style.fontSize) || 16) + TEXT_BOX_PAD_X),
+  );
   const width = autoWidth
-    ? Math.min(TEXT_BOX_MAX_WIDTH, Math.max(minBoxW, Math.ceil(longestRaw + TEXT_BOX_PAD_X)))
+    ? Math.min(
+        TEXT_BOX_MAX_WIDTH,
+        Math.max(minBoxW, Math.ceil(longestRaw + TEXT_BOX_PAD_X)),
+      )
     : Math.min(
         TEXT_BOX_MAX_RESIZE,
-        Math.max(minBoxW, Number.isFinite(requested) ? requested : longestRaw + TEXT_BOX_PAD_X),
+        Math.max(
+          minBoxW,
+          Number.isFinite(requested) ? requested : longestRaw + TEXT_BOX_PAD_X,
+        ),
       );
-  const height = Math.max(MIN_ELEMENT_SIZE, Math.ceil(Math.max(1, lines.length) * lineBox + TEXT_BOX_PAD_Y));
+  const height = Math.max(
+    MIN_ELEMENT_SIZE,
+    Math.ceil(Math.max(1, lines.length) * lineBox + TEXT_BOX_PAD_Y),
+  );
   return { width, height };
 }
 
@@ -665,7 +1321,9 @@ export function patchTextElement(item, patch) {
   if (patch.text != null && patch.spans === undefined) {
     next.spans = syncSpansToText(getTextSpans(item), next.text);
   }
-  const layoutChanged = TEXT_FIT_KEYS.some((key) => Object.prototype.hasOwnProperty.call(patch, key));
+  const layoutChanged = TEXT_FIT_KEYS.some((key) =>
+    Object.prototype.hasOwnProperty.call(patch, key),
+  );
   if (!layoutChanged && patch.width == null && patch.autoWidth === undefined) {
     if (patch.height == null) return next;
     const box = fitTextBox(next);
@@ -682,6 +1340,20 @@ export function patchTextElement(item, patch) {
   };
 }
 
+export function pointerAngle(cx, cy, px, py) {
+  return (Math.atan2(py - cy, px - cx) * 180) / Math.PI;
+}
+
+export function rotateFromDrag(startRotate, startAngle, currentAngle) {
+  return startRotate + (currentAngle - startAngle);
+}
+
+export function elementRotateStyle(item) {
+  const deg = Number(item?.rotate);
+  if (!Number.isFinite(deg) || deg === 0) return undefined;
+  return { transform: `rotate(${deg}deg)` };
+}
+
 export const TRANSFORM_HANDLES = [
   { id: "nw", label: "左上" },
   { id: "n", label: "上" },
@@ -693,7 +1365,14 @@ export const TRANSFORM_HANDLES = [
   { id: "w", label: "左" },
 ];
 
-export function applyHandleResize(box, handle, dx, dy, minSize = MIN_ELEMENT_SIZE, lockAspect = false) {
+export function applyHandleResize(
+  box,
+  handle,
+  dx,
+  dy,
+  minSize = MIN_ELEMENT_SIZE,
+  lockAspect = false,
+) {
   const right = box.x + box.width;
   const bottom = box.y + box.height;
   let x = box.x;
@@ -760,8 +1439,55 @@ export function applyHandleResize(box, handle, dx, dy, minSize = MIN_ELEMENT_SIZ
   return { x, y, width, height };
 }
 
+export const MIN_CANVAS_SIZE = 1;
+export const MAX_CANVAS_SIZE = 30000;
+
+function shiftElement(item, dx, dy) {
+  if (!dx && !dy) return item;
+  const next = { ...item };
+  for (const key of ["x", "x1", "x2"]) {
+    if (Number.isFinite(item[key])) next[key] = item[key] + dx;
+  }
+  for (const key of ["y", "y1", "y2"]) {
+    if (Number.isFinite(item[key])) next[key] = item[key] + dy;
+  }
+  return next;
+}
+
+export function resizeCanvas(canvas, handle, dx, dy) {
+  const box = applyHandleResize(
+    { x: 0, y: 0, width: canvas.width, height: canvas.height },
+    handle,
+    dx,
+    dy,
+    MIN_CANVAS_SIZE,
+  );
+  const width = Math.round(
+    Math.min(MAX_CANVAS_SIZE, Math.max(MIN_CANVAS_SIZE, box.width)),
+  );
+  const height = Math.round(
+    Math.min(MAX_CANVAS_SIZE, Math.max(MIN_CANVAS_SIZE, box.height)),
+  );
+  const ox = -box.x;
+  const oy = -box.y;
+  return {
+    ...canvas,
+    width,
+    height,
+    elements:
+      ox || oy
+        ? canvas.elements.map((item) => shiftElement(item, ox, oy))
+        : canvas.elements,
+  };
+}
+
 export function applyTextHandleResize(item, handle, dx, dy) {
-  const start = { x: item.x, y: item.y, width: item.width, height: item.height };
+  const start = {
+    x: item.x,
+    y: item.y,
+    width: item.width,
+    height: item.height,
+  };
   const box = applyHandleResize(start, handle, dx, dy, MIN_ELEMENT_SIZE, true);
   const width = Math.min(TEXT_BOX_MAX_RESIZE, box.width);
   const scale = start.width > 0 ? width / start.width : 1;
