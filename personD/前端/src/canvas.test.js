@@ -3,11 +3,14 @@ import {
   addRectElement,
   addTextElement,
   applyHandleResize,
+  applyTextHandleResize,
   clampCanvasZoom,
   createEmptyCanvas,
   duplicateElement,
   fitTextBox,
   formatTextContent,
+  getHighlightEllipses,
+  getTextGlyphs,
   getTextProps,
   isBlankText,
   MIN_ELEMENT_SIZE,
@@ -18,6 +21,9 @@ import {
   stringifyCanvas,
   TEXT_BOX_MAX_WIDTH,
   textElementStyle,
+  textFillPaint,
+  textGlyphStyle,
+  textStrokeLayerStyle,
   zoomByWheelDelta,
 } from "./canvas.js";
 
@@ -72,6 +78,36 @@ describe("canvas helpers", () => {
     expect(applyHandleResize(box, "n", 0, 10).height).toBe(70);
   });
 
+  it("keeps aspect ratio when lockAspect is on", () => {
+    const box = { x: 10, y: 20, width: 100, height: 50 };
+    expect(applyHandleResize(box, "se", 50, 0, MIN_ELEMENT_SIZE, true)).toEqual({
+      x: 10,
+      y: 20,
+      width: 150,
+      height: 75,
+    });
+    const east = applyHandleResize(box, "e", 50, 0, MIN_ELEMENT_SIZE, true);
+    expect(east).toEqual({ x: 10, y: 7.5, width: 150, height: 75 });
+    const north = applyHandleResize(box, "n", 0, 10, MIN_ELEMENT_SIZE, true);
+    expect(north).toEqual({ x: 20, y: 30, width: 80, height: 40 });
+  });
+
+  it("scales text font size with the box on handle resize", () => {
+    const item = {
+      type: "text",
+      text: "Hi",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 40,
+      fontSize: 20,
+    };
+    const next = applyTextHandleResize(item, "e", 50, 0);
+    expect(next.width).toBe(150);
+    expect(next.fontSize).toBe(30);
+    expect(next.autoWidth).toBe(false);
+  });
+
   it("clamps and steps canvas zoom from wheel delta", () => {
     expect(clampCanvasZoom(0)).toBe(0.05);
     expect(clampCanvasZoom(8)).toBe(4);
@@ -85,6 +121,7 @@ describe("canvas helpers", () => {
     expect(props.textAlign).toBe("left");
     expect(props.fontSize).toBe(20);
     expect(props.locked).toBe(false);
+    expect(props.autoWidth).toBe(true);
   });
 
   it("builds css for bold centered underlined text", () => {
@@ -99,6 +136,140 @@ describe("canvas helpers", () => {
     expect(style.textAlign).toBe("center");
     expect(style.justifyContent).toBe("center");
     expect(style.textDecoration).toContain("underline");
+  });
+
+  it("paints fill as glyph color instead of the text box background", () => {
+    const box = textElementStyle({
+      type: "text",
+      color: "#111827",
+      fillEnabled: true,
+      fillColor: "#00ff00",
+    });
+    expect(box.background).toBe("transparent");
+    expect(textGlyphStyle({ type: "text", color: "#ff3366" }).color).toBe("#ff3366");
+  });
+
+  it("keeps box background on the text box and does not fill highlight", () => {
+    expect(textElementStyle({ type: "text", boxBackground: "#abcdef" }).background).toBe("#abcdef");
+    expect(textElementStyle({ type: "text", highlight: "#fde047", boxBackground: "#abcdef" }).background).toBe(
+      "#abcdef",
+    );
+    expect(textElementStyle({ type: "text", boxBackground: "#ff0000", boxBackgroundOpacity: 50 }).background).toBe(
+      "rgba(255, 0, 0, 0.5)",
+    );
+  });
+
+  it("circles the whole copy when highlight is on the text box", () => {
+    const rings = getHighlightEllipses({
+      type: "text",
+      text: "你好",
+      fontSize: 20,
+      width: 200,
+      height: 40,
+      highlight: "#fde047",
+    });
+    expect(rings).toHaveLength(1);
+    expect(rings[0].color).toBe("#fde047");
+    expect(rings[0].rx).toBeGreaterThan(rings[0].ry);
+    expect(rings[0].strokeWidth).toBeGreaterThan(0);
+  });
+
+  it("centers highlight ellipses on the CSS line box so they wrap the painted glyphs", () => {
+    const item = {
+      type: "text",
+      text: "双击编辑文字",
+      fontSize: 48,
+      lineHeight: 1.4,
+      width: 296,
+      height: 76,
+      highlight: "#ef4444",
+    };
+    const glyph = getTextGlyphs(item)[0];
+    const ring = getHighlightEllipses(item)[0];
+    expect(ring.cy).toBeCloseTo(glyph.y + glyph.height / 2);
+    expect(ring.ry).toBeGreaterThan(item.fontSize / 2);
+    const top = ring.cy - ring.ry;
+    const bottom = ring.cy + ring.ry;
+    expect(top).toBeLessThan(glyph.y + (glyph.height - item.fontSize) / 2);
+    expect(bottom).toBeGreaterThan(glyph.y + (glyph.height - item.fontSize) / 2 + item.fontSize);
+  });
+
+  it("circles only the highlighted characters", () => {
+    const rings = getHighlightEllipses({
+      type: "text",
+      text: "你好世界",
+      fontSize: 20,
+      width: 400,
+      height: 40,
+      spans: [
+        { text: "你好" },
+        { text: "世界", highlight: "#ef4444" },
+      ],
+    });
+    expect(rings).toHaveLength(1);
+    expect(rings[0].color).toBe("#ef4444");
+    const whole = getHighlightEllipses({
+      type: "text",
+      text: "你好世界",
+      fontSize: 20,
+      width: 400,
+      height: 40,
+      highlight: "#ef4444",
+    });
+    expect(rings[0].rx).toBeLessThan(whole[0].rx);
+  });
+
+  it("paints a left-to-right glyph gradient", () => {
+    const fill = textGlyphStyle({
+      type: "text",
+      gradientEnabled: true,
+      gradientFrom: "#111111",
+      gradientTo: "#eeeeee",
+    });
+    expect(fill.backgroundImage).toBe("linear-gradient(90deg, #111111 0%, #eeeeee 100%)");
+    expect(fill.backgroundSize).toBe("100% 100%");
+    expect(fill.WebkitTextFillColor).toBe("transparent");
+    expect(fill.color).toBe("transparent");
+    expect(textElementStyle({ type: "text", gradientEnabled: true, gradientFrom: "#111111", gradientTo: "#eeeeee" }).background).toBe(
+      "transparent",
+    );
+  });
+
+  it("keeps the same gradient box whether stroke is on or off", () => {
+    const base = {
+      type: "text",
+      gradientEnabled: true,
+      gradientFrom: "#ff0000",
+      gradientTo: "#00ff00",
+    };
+    expect(textFillPaint({ ...base, strokeEnabled: false, strokeWidth: 0 })).toEqual({
+      type: "gradient",
+      from: "#ff0000",
+      to: "#00ff00",
+    });
+    expect(textFillPaint({ ...base, strokeEnabled: true, strokeWidth: 1 })).toEqual({
+      type: "gradient",
+      from: "#ff0000",
+      to: "#00ff00",
+    });
+  });
+
+  it("keeps text stroke on a transparent back layer instead of the glyph fill", () => {
+    const stroked = {
+      type: "text",
+      strokeEnabled: true,
+      strokeWidth: 4,
+      strokeColor: "#ff0000",
+      color: "#111827",
+    };
+    expect(textElementStyle(stroked).WebkitTextStroke).toBeUndefined();
+    expect(textGlyphStyle(stroked).WebkitTextStroke).toBeUndefined();
+    expect(textStrokeLayerStyle({ type: "text", strokeEnabled: false, strokeWidth: 0 })).toBeNull();
+
+    const stroke = textStrokeLayerStyle(stroked);
+    expect(stroke.WebkitTextStroke).toBe("8px #ff0000");
+    expect(stroke.WebkitTextFillColor).toBe("transparent");
+    expect(stroke.color).toBe("transparent");
   });
 
   it("prefixes list markers without changing stored copy", () => {
@@ -168,5 +339,33 @@ describe("canvas helpers", () => {
     );
     expect(longer.width).toBeGreaterThan(56);
     expect(longer.width).toBeGreaterThanOrEqual(48 * 4);
+  });
+
+  it("grows the box while typing even if autoWidth was never stored", () => {
+    const start = fitTextBox({ type: "text", text: "你", fontSize: 48 });
+    const longer = patchTextElement(
+      { type: "text", text: "你", fontSize: 48, width: start.width, height: start.height },
+      { text: "你好世界你好世界" },
+    );
+    expect(longer.width).toBeGreaterThan(start.width);
+    expect(longer.width).toBeLessThanOrEqual(TEXT_BOX_MAX_WIDTH);
+  });
+
+  it("lets a manually resized text box grow past the auto-wrap width", () => {
+    const next = patchTextElement(
+      { type: "text", text: "标题", fontSize: 48, autoWidth: false, width: 400, height: 80 },
+      { width: 1400 },
+    );
+    expect(next.width).toBe(1400);
+    expect(next.autoWidth).toBe(false);
+
+    const fitted = fitTextBox({
+      type: "text",
+      text: "标题",
+      fontSize: 48,
+      autoWidth: false,
+      width: 1400,
+    });
+    expect(fitted.width).toBe(1400);
   });
 });

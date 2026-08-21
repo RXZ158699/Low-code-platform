@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Spin } from "antd";
 import { Link, useParams } from "react-router-dom";
 import { getShare } from "../api/shares.js";
-import { parseCanvas } from "../canvas.js";
+import { parseCanvas, textElementStyle } from "../canvas.js";
+import CanvasTextCopy from "../components/CanvasTextCopy.jsx";
 
 export default function ShareViewPage() {
   const { token } = useParams();
@@ -41,18 +42,18 @@ export default function ShareViewPage() {
               {canvas.elements.map((item) => (
                 <div
                   key={item.id}
-                  className="editor-el"
+                  className={item.type === "text" ? "editor-el is-text" : "editor-el"}
                   style={{
                     left: item.x,
                     top: item.y,
                     width: item.width,
                     height: item.height,
-                    background: item.type === "rect" ? item.fill : "transparent",
-                    color: item.color,
-                    fontSize: item.fontSize,
+                    ...(item.type === "text"
+                      ? textElementStyle(item)
+                      : { background: item.fill, color: item.color }),
                   }}
                 >
-                  {item.type === "text" ? item.text : null}
+                  {item.type === "text" ? <CanvasTextCopy item={item} /> : null}
                 </div>
               ))}
             </div>

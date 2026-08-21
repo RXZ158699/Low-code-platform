@@ -1,3 +1,17 @@
+import { getTextSpans, hasSpanBoxPaint, resolvedStyleAt, SPAN_STYLE_KEYS, syncSpansToText } from "./textSpans.js";
+
+export {
+  applyTextStyle,
+  getTextSpans,
+  hasSpanBoxPaint,
+  hasSpanOverrides,
+  isSpanStylePatch,
+  itemForStylePanel,
+  resolvedStyleAt,
+  SPAN_STYLE_KEYS,
+  syncSpansToText,
+} from "./textSpans.js";
+
 const DEFAULT_CANVAS = {
   width: 1080,
   height: 1440,
@@ -170,6 +184,9 @@ export const DEFAULT_TEXT_PROPS = {
   opacity: 100,
   fillEnabled: false,
   fillColor: "#ffffff",
+  gradientEnabled: false,
+  gradientFrom: "#111827",
+  gradientTo: "#2563eb",
   strokeEnabled: false,
   strokeColor: "#111827",
   strokeWidth: 0,
@@ -179,14 +196,20 @@ export const DEFAULT_TEXT_PROPS = {
   shadowX: 0,
   shadowY: 4,
   boxBackground: "",
+  boxBackgroundOpacity: 100,
   locked: false,
   flippedX: false,
   flippedY: false,
   aspectLocked: true,
+  autoWidth: true,
 };
 
 export function getTextProps(item = {}) {
   return { ...DEFAULT_TEXT_PROPS, ...item };
+}
+
+export function isTextAutoWidth(item) {
+  return getTextProps(item).autoWidth !== false;
 }
 
 export function isBlankText(value) {
@@ -203,7 +226,49 @@ export function formatTextContent(item) {
     .join("\n");
 }
 
-export function textPaintStyle(item) {
+function hexOr(value, fallback) {
+  return /^#([0-9a-fA-F]{6})$/.test(value) ? value : fallback;
+}
+
+function textShadowValue(item) {
+  const t = getTextProps(item);
+  if (!t.shadowEnabled) return undefined;
+  return `${t.shadowX}px ${t.shadowY}px ${t.shadowBlur}px ${t.shadowColor}`;
+}
+
+export function textGlyphStyle(item) {
+  const t = getTextProps(item);
+  const strokeOn = t.strokeEnabled && Number(t.strokeWidth) > 0;
+  const shadow = strokeOn ? undefined : textShadowValue(item);
+  if (!t.gradientEnabled) {
+    return { color: t.color, textShadow: shadow };
+  }
+  const from = hexOr(t.gradientFrom, DEFAULT_TEXT_PROPS.gradientFrom);
+  const to = hexOr(t.gradientTo, DEFAULT_TEXT_PROPS.gradientTo);
+  return {
+    backgroundImage: `linear-gradient(90deg, ${from} 0%, ${to} 100%)`,
+    backgroundSize: "100% 100%",
+    backgroundRepeat: "no-repeat",
+    WebkitBackgroundClip: "text",
+    backgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    color: "transparent",
+    textShadow: shadow,
+  };
+}
+
+export function textStrokeLayerStyle(item) {
+  const t = getTextProps(item);
+  if (!t.strokeEnabled || !(Number(t.strokeWidth) > 0)) return null;
+  return {
+    WebkitTextStroke: `${Number(t.strokeWidth) * 2}px ${t.strokeColor}`,
+    WebkitTextFillColor: "transparent",
+    color: "transparent",
+    textShadow: textShadowValue(item),
+  };
+}
+
+function textTypeStyle(item) {
   const t = getTextProps(item);
   const decorations = [];
   if (t.underline) decorations.push("underline");
@@ -218,21 +283,31 @@ export function textPaintStyle(item) {
     lineHeight: t.lineHeight,
     letterSpacing: `${t.letterSpacing}px`,
     writingMode: t.writingMode === "vertical" ? "vertical-rl" : "horizontal-tb",
-    color: t.color,
-    WebkitTextStroke: t.strokeEnabled && t.strokeWidth > 0 ? `${t.strokeWidth}px ${t.strokeColor}` : undefined,
-    paintOrder: t.strokeEnabled && t.strokeWidth > 0 ? "stroke fill" : undefined,
-    textShadow: t.shadowEnabled
-      ? `${t.shadowX}px ${t.shadowY}px ${t.shadowBlur}px ${t.shadowColor}`
-      : undefined,
   };
+}
+
+export function textPaintStyle(item) {
+  return { ...textTypeStyle(item), ...textGlyphStyle(item) };
+}
+
+function boxFillColor(hex, opacity) {
+  const color = hexOr(hex, "");
+  if (!color) return "";
+  const pct = Number(opacity);
+  const alpha = Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : 100;
+  if (alpha >= 100) return color;
+  const r = Number.parseInt(color.slice(1, 3), 16);
+  const g = Number.parseInt(color.slice(3, 5), 16);
+  const b = Number.parseInt(color.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha / 100})`;
 }
 
 export function textElementStyle(item) {
   const t = getTextProps(item);
-  const boxFill = t.highlight || t.boxBackground || (t.fillEnabled ? t.fillColor : "");
-  const wrap = item.autoWidth === false || Number(item.width) >= TEXT_BOX_MAX_WIDTH;
+  const boxFill = hasSpanBoxPaint(item) ? "" : boxFillColor(t.boxBackground, t.boxBackgroundOpacity);
+  const wrap = !isTextAutoWidth(item) || Number(item.width) >= TEXT_BOX_MAX_WIDTH;
   return {
-    ...textPaintStyle(item),
+    ...textTypeStyle(item),
     background: boxFill || "transparent",
     opacity: Number(t.opacity) / 100,
     transform: `scale(${t.flippedX ? -1 : 1}, ${t.flippedY ? -1 : 1})`,
@@ -247,6 +322,7 @@ export function textElementStyle(item) {
 }
 
 export const TEXT_BOX_MAX_WIDTH = 1000;
+export const TEXT_BOX_MAX_RESIZE = 8000;
 export const MIN_ELEMENT_SIZE = 16;
 
 const TEXT_FIT_KEYS = [
@@ -330,22 +406,251 @@ function wrapParagraph(text, maxInner, style) {
   return lines;
 }
 
+export function textFillPaint(item) {
+  const t = getTextProps(item);
+  if (!t.gradientEnabled) {
+    return { type: "solid", color: t.color };
+  }
+  return {
+    type: "gradient",
+    from: hexOr(t.gradientFrom, DEFAULT_TEXT_PROPS.gradientFrom),
+    to: hexOr(t.gradientTo, DEFAULT_TEXT_PROPS.gradientTo),
+  };
+}
+
+export function getTextLines(item) {
+  const style = getTextProps(item);
+  const display = formatTextContent({ ...style, text: item.text ?? style.text });
+  const autoWidth = isTextAutoWidth(item);
+  const maxBox = autoWidth ? TEXT_BOX_MAX_WIDTH : TEXT_BOX_MAX_RESIZE;
+  const maxInner = Math.max(1, maxBox - TEXT_BOX_PAD_X);
+  const requested = Number(item.width);
+  const wrapAt = autoWidth
+    ? maxInner
+    : Math.min(maxInner, Math.max(1, (Number.isFinite(requested) ? requested : maxBox) - TEXT_BOX_PAD_X));
+  return String(display)
+    .split("\n")
+    .flatMap((paragraph) => wrapParagraph(paragraph, wrapAt, style));
+}
+
+const EDITOR_EL_PAD = 4;
+
+function textWrapAt(item) {
+  const autoWidth = isTextAutoWidth(item);
+  const maxBox = autoWidth ? TEXT_BOX_MAX_WIDTH : TEXT_BOX_MAX_RESIZE;
+  const maxInner = Math.max(1, maxBox - TEXT_BOX_PAD_X);
+  const requested = Number(item.width);
+  return autoWidth
+    ? maxInner
+    : Math.min(maxInner, Math.max(1, (Number.isFinite(requested) ? requested : maxBox) - TEXT_BOX_PAD_X));
+}
+
+export function getTextGlyphs(item) {
+  const style = getTextProps(item);
+  const text = String(item.text ?? "");
+  const fontSize = Number(style.fontSize) || 16;
+  const lineBox = fontSize * (Number(style.lineHeight) || 1.4);
+  const spacing = Number(style.letterSpacing) || 0;
+  const pad = EDITOR_EL_PAD;
+  const wrapAt = textWrapAt(item);
+  const boxW = Number(item.width) || 0;
+  const innerW = Math.max(1, boxW - pad * 2);
+  const vertical = style.writingMode === "vertical";
+  const glyphs = [];
+  let sourceIndex = 0;
+  let lineIndex = 0;
+  const paragraphs = text.split("\n");
+  paragraphs.forEach((paragraph, paragraphIndex) => {
+    wrapParagraph(paragraph, wrapAt, style).forEach((line) => {
+      const measured = lineWidth(line, style);
+      let x = pad;
+      let y = pad + lineIndex * lineBox;
+      if (vertical) {
+        x = Math.max(pad, boxW - pad - (lineIndex + 1) * lineBox);
+        y = pad;
+      } else if (style.textAlign === "center") {
+        x = pad + Math.max(0, (innerW - measured) / 2);
+      } else if (style.textAlign === "right") {
+        x = pad + Math.max(0, innerW - measured);
+      }
+      for (let i = 0; i < line.length; i += 1) {
+        const ch = line[i];
+        const width = Math.max(1, charWidth(ch, style));
+        glyphs.push({
+          start: sourceIndex,
+          end: sourceIndex + 1,
+          ch,
+          x,
+          y,
+          width: vertical ? lineBox : width,
+          height: vertical ? width : lineBox,
+        });
+        if (vertical) y += width + (i < line.length - 1 ? spacing : 0);
+        else x += width + (i < line.length - 1 ? spacing : 0);
+        sourceIndex += 1;
+      }
+      lineIndex += 1;
+    });
+    if (paragraphIndex < paragraphs.length - 1) sourceIndex += 1;
+  });
+  return glyphs;
+}
+
+export function hitTestTextOffset(item, localX, localY) {
+  const glyphs = getTextGlyphs(item);
+  if (!glyphs.length) return 0;
+  for (const glyph of glyphs) {
+    if (
+      localX >= glyph.x &&
+      localX <= glyph.x + glyph.width &&
+      localY >= glyph.y &&
+      localY <= glyph.y + glyph.height
+    ) {
+      return localX < glyph.x + glyph.width / 2 ? glyph.start : glyph.end;
+    }
+  }
+  let best = glyphs[0];
+  let bestDist = Infinity;
+  for (const glyph of glyphs) {
+    const cx = glyph.x + glyph.width / 2;
+    const cy = glyph.y + glyph.height / 2;
+    const dist = (localX - cx) ** 2 + (localY - cy) ** 2;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = glyph;
+    }
+  }
+  return localX < best.x + best.width / 2 ? best.start : best.end;
+}
+
+export function getSelectionRects(item, start, end) {
+  const from = Math.min(start, end);
+  const to = Math.max(start, end);
+  if (!(to > from)) return [];
+  return getTextGlyphs(item)
+    .filter((glyph) => glyph.end > from && glyph.start < to)
+    .map((glyph) => ({ x: glyph.x, y: glyph.y, width: glyph.width, height: glyph.height }));
+}
+
+export function getHighlightEllipses(item) {
+  const boxColor = hexOr(getTextProps(item).highlight, "");
+  const spanHit = getTextSpans(item).some((span) => hexOr(span.highlight, ""));
+  if (!boxColor && !spanHit) return [];
+  const glyphs = getTextGlyphs(item);
+  const groups = [];
+  let current = null;
+  for (const glyph of glyphs) {
+    const style = getTextProps(resolvedStyleAt(item, glyph.start));
+    const color = hexOr(style.highlight, "");
+    const fontSize = Number(style.fontSize) || 16;
+    const vertical = style.writingMode === "vertical";
+    const lineBox = vertical ? glyph.width : glyph.height;
+    // SVG copy inherits CSS line-height, so painted glyphs sit in the em-square
+    // centered in the line box rather than flush with glyph.y / glyph.x.
+    const halfLeading = Math.max(0, (lineBox - fontSize) / 2);
+    const left = vertical ? glyph.x + halfLeading : glyph.x;
+    const right = vertical ? left + fontSize : glyph.x + glyph.width;
+    const top = vertical ? glyph.y : glyph.y + halfLeading;
+    const bottom = vertical ? glyph.y + glyph.height : top + fontSize;
+    if (!color) {
+      if (current) {
+        groups.push(current);
+        current = null;
+      }
+      continue;
+    }
+    if (current && current.color === color && glyph.start === current.end) {
+      current.end = glyph.end;
+      current.minX = Math.min(current.minX, left);
+      current.minY = Math.min(current.minY, top);
+      current.maxX = Math.max(current.maxX, right);
+      current.maxY = Math.max(current.maxY, bottom);
+      current.fontSize = Math.max(current.fontSize, fontSize);
+    } else {
+      if (current) groups.push(current);
+      current = {
+        color,
+        end: glyph.end,
+        minX: left,
+        minY: top,
+        maxX: right,
+        maxY: bottom,
+        fontSize,
+      };
+    }
+  }
+  if (current) groups.push(current);
+  return groups.map((group) => {
+    const width = Math.max(1, group.maxX - group.minX);
+    const height = Math.max(1, group.maxY - group.minY);
+    const padX = group.fontSize * 0.22;
+    const padY = group.fontSize * 0.16;
+    return {
+      cx: group.minX + width / 2,
+      cy: group.minY + height / 2,
+      rx: width / 2 + padX,
+      ry: height / 2 + padY,
+      color: group.color,
+      strokeWidth: Math.max(2, group.fontSize * 0.08),
+    };
+  });
+}
+
+export function textBackgroundPaint(item) {
+  const t = getTextProps(item);
+  return boxFillColor(t.boxBackground, t.boxBackgroundOpacity) || "";
+}
+
+function paintKey(style) {
+  return SPAN_STYLE_KEYS.map((key) => `${key}:${style[key] ?? ""}`).join("|");
+}
+
+export function getTextPaintRuns(item) {
+  const runs = [];
+  for (const glyph of getTextGlyphs(item)) {
+    const style = resolvedStyleAt(item, glyph.start);
+    const key = paintKey(style);
+    const last = runs[runs.length - 1];
+    if (
+      last &&
+      last.key === key &&
+      Math.abs(last.y - glyph.y) < 0.5 &&
+      Math.abs(last.x + last.width - glyph.x) < 1.5
+    ) {
+      last.text += glyph.ch;
+      last.width = glyph.x + glyph.width - last.x;
+      last.height = Math.max(last.height, glyph.height);
+    } else {
+      runs.push({
+        key,
+        text: glyph.ch,
+        x: glyph.x,
+        y: glyph.y,
+        width: glyph.width,
+        height: glyph.height,
+        style,
+      });
+    }
+  }
+  return runs;
+}
+
 export function fitTextBox(item) {
   const style = getTextProps(item);
   const display = formatTextContent({ ...style, text: item.text ?? style.text });
-  const autoWidth = item.autoWidth === true;
-  const maxInner = Math.max(1, TEXT_BOX_MAX_WIDTH - TEXT_BOX_PAD_X);
+  const autoWidth = isTextAutoWidth(item);
   const paragraphs = String(display).split("\n");
   const longestRaw = Math.max(0, ...paragraphs.map((paragraph) => lineWidth(paragraph, style)));
-  const wrapAt = autoWidth
-    ? maxInner
-    : Math.min(maxInner, Math.max(1, Number(item.width) - TEXT_BOX_PAD_X || maxInner));
-  const lines = paragraphs.flatMap((paragraph) => wrapParagraph(paragraph, wrapAt, style));
+  const requested = Number(item.width);
+  const lines = getTextLines(item);
   const lineBox = Number(style.fontSize) * (Number(style.lineHeight) || 1.4);
   const minBoxW = Math.max(MIN_ELEMENT_SIZE, Math.ceil((Number(style.fontSize) || 16) + TEXT_BOX_PAD_X));
   const width = autoWidth
     ? Math.min(TEXT_BOX_MAX_WIDTH, Math.max(minBoxW, Math.ceil(longestRaw + TEXT_BOX_PAD_X)))
-    : Math.min(TEXT_BOX_MAX_WIDTH, Math.max(minBoxW, Number(item.width) || longestRaw + TEXT_BOX_PAD_X));
+    : Math.min(
+        TEXT_BOX_MAX_RESIZE,
+        Math.max(minBoxW, Number.isFinite(requested) ? requested : longestRaw + TEXT_BOX_PAD_X),
+      );
   const height = Math.max(MIN_ELEMENT_SIZE, Math.ceil(Math.max(1, lines.length) * lineBox + TEXT_BOX_PAD_Y));
   return { width, height };
 }
@@ -353,8 +658,12 @@ export function fitTextBox(item) {
 export function patchTextElement(item, patch) {
   const next = { ...item, ...patch };
   if (item?.type !== "text") return next;
+  if (next.autoWidth === undefined) next.autoWidth = true;
   if (patch.width != null && patch.autoWidth === undefined) {
     next.autoWidth = false;
+  }
+  if (patch.text != null && patch.spans === undefined) {
+    next.spans = syncSpansToText(getTextSpans(item), next.text);
   }
   const layoutChanged = TEXT_FIT_KEYS.some((key) => Object.prototype.hasOwnProperty.call(patch, key));
   if (!layoutChanged && patch.width == null && patch.autoWidth === undefined) {
@@ -363,12 +672,12 @@ export function patchTextElement(item, patch) {
     return { ...next, height: Math.max(Number(patch.height) || 0, box.height) };
   }
   const box = fitTextBox(next);
-  if (next.autoWidth === true) {
+  if (isTextAutoWidth(next)) {
     return { ...next, width: box.width, height: box.height };
   }
   return {
     ...next,
-    width: Math.min(TEXT_BOX_MAX_WIDTH, Number(next.width) || box.width),
+    width: Math.min(TEXT_BOX_MAX_RESIZE, Number(next.width) || box.width),
     height: box.height,
   };
 }
@@ -384,7 +693,7 @@ export const TRANSFORM_HANDLES = [
   { id: "w", label: "左" },
 ];
 
-export function applyHandleResize(box, handle, dx, dy, minSize = MIN_ELEMENT_SIZE) {
+export function applyHandleResize(box, handle, dx, dy, minSize = MIN_ELEMENT_SIZE, lockAspect = false) {
   const right = box.x + box.width;
   const bottom = box.y + box.height;
   let x = box.x;
@@ -407,7 +716,65 @@ export function applyHandleResize(box, handle, dx, dy, minSize = MIN_ELEMENT_SIZ
     height = bottom - y;
   }
 
+  if (!lockAspect || !(box.width > 0) || !(box.height > 0)) {
+    return { x, y, width, height };
+  }
+
+  const ratio = box.width / box.height;
+  const scaleX = width / box.width;
+  const scaleY = height / box.height;
+  const fromX = handle.includes("e") || handle.includes("w");
+  const fromY = handle.includes("n") || handle.includes("s");
+  let scale = 1;
+  if (fromX && fromY) {
+    scale = Math.abs(scaleX - 1) >= Math.abs(scaleY - 1) ? scaleX : scaleY;
+  } else if (fromX) {
+    scale = scaleX;
+  } else if (fromY) {
+    scale = scaleY;
+  }
+  width = Math.max(minSize, box.width * scale);
+  height = Math.max(minSize, width / ratio);
+  if (height < minSize) {
+    height = minSize;
+    width = Math.max(minSize, height * ratio);
+  }
+
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  if (handle.includes("e")) {
+    x = box.x;
+  } else if (handle.includes("w")) {
+    x = right - width;
+  } else {
+    x = cx - width / 2;
+  }
+  if (handle.includes("s")) {
+    y = box.y;
+  } else if (handle.includes("n")) {
+    y = bottom - height;
+  } else {
+    y = cy - height / 2;
+  }
+
   return { x, y, width, height };
+}
+
+export function applyTextHandleResize(item, handle, dx, dy) {
+  const start = { x: item.x, y: item.y, width: item.width, height: item.height };
+  const box = applyHandleResize(start, handle, dx, dy, MIN_ELEMENT_SIZE, true);
+  const width = Math.min(TEXT_BOX_MAX_RESIZE, box.width);
+  const scale = start.width > 0 ? width / start.width : 1;
+  const fontSize = Math.max(8, Math.round((item.fontSize || 16) * scale));
+  const fitted = fitTextBox({ ...item, width, fontSize, autoWidth: false });
+  return {
+    x: box.x,
+    y: box.y,
+    width,
+    height: fitted.height,
+    fontSize,
+    autoWidth: false,
+  };
 }
 
 export const MIN_CANVAS_ZOOM = 0.05;

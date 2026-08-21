@@ -28,24 +28,31 @@ import {
   addRectElement,
   addTextElement,
   applyHandleResize,
+  applyTextHandleResize,
+  applyTextStyle,
   duplicateElement,
-  fitTextBox,
-  formatTextContent,
+  getSelectionRects,
+  getTextGlyphs,
+  hitTestTextOffset,
   isBlankText,
+  isSpanStylePatch,
+  isTextAutoWidth,
+  itemForStylePanel,
+  SPAN_STYLE_KEYS,
   moveElementLayer,
   parseCanvas,
   patchTextElement,
   removeElement,
   stringifyCanvas,
-  TEXT_BOX_MAX_WIDTH,
-  textPaintStyle,
   textElementStyle,
   TRANSFORM_HANDLES,
   updateElement,
   zoomByWheelDelta,
 } from "../canvas.js";
 import EditorAddPanel from "../components/EditorAddPanel.jsx";
+import EditorColorPicker from "../components/EditorColorPicker.jsx";
 import EditorTextPanel from "../components/EditorTextPanel.jsx";
+import CanvasTextCopy from "../components/CanvasTextCopy.jsx";
 
 const LEFT_TOOLS = [
   { id: "add", label: "添加", icon: PlusCircleOutlined },
@@ -83,6 +90,15 @@ function BackgroundToolIcon() {
   );
 }
 
+function isEditorChrome(target, propsEl) {
+  if (!target) return false;
+  if (propsEl?.contains(target)) return true;
+  return Boolean(
+    typeof target.closest === "function" &&
+      target.closest(".ant-color-picker, .ant-popover, .ant-select-dropdown, .ant-dropdown, .ant-slider-tooltip"),
+  );
+}
+
 function parseSize(value) {
   const number = Number(String(value).replace(/[^\d]/g, ""));
   return Number.isInteger(number) && number > 0 ? number : 0;
@@ -98,6 +114,8 @@ export default function WorkEditorPage() {
   const [canvas, setCanvas] = useState(() => parseCanvas(null));
   const [selectedId, setSelectedId] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [textRange, setTextRange] = useState(null);
+  const textRangeRef = useRef(null);
   const [activeTool, setActiveTool] = useState("");
   const [addPanelOpen, setAddPanelOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -112,6 +130,7 @@ export default function WorkEditorPage() {
   const [resizeHeight, setResizeHeight] = useState("");
   const dragRef = useRef(null);
   const canvasRef = useRef(canvas);
+  const propsRef = useRef(null);
   const loading = loadedId !== String(id);
 
   useEffect(() => {
@@ -124,6 +143,7 @@ export default function WorkEditorPage() {
         setCanvas(parseCanvas(data.canvasJson));
         setSelectedId(null);
         setEditingId(null);
+        setTextRange(null);
         setDirty(false);
         setPast([]);
         setFuture([]);
@@ -191,6 +211,21 @@ export default function WorkEditorPage() {
   }, [canvas]);
 
   useEffect(() => {
+    textRangeRef.current = textRange;
+  }, [textRange]);
+
+  useEffect(() => {
+    if (!editingId) return undefined;
+    const handleMouseDown = (event) => {
+      if (!isEditorChrome(event.target, propsRef.current)) return;
+      if (event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+    };
+    window.addEventListener("mousedown", handleMouseDown, true);
+    return () => window.removeEventListener("mousedown", handleMouseDown, true);
+  }, [editingId]);
+
+  useEffect(() => {
     const handlePointerMove = (event) => {
       const drag = dragRef.current;
       if (!drag) return;
@@ -206,23 +241,22 @@ export default function WorkEditorPage() {
         );
         return;
       }
+      if (drag.type === "select-text") {
+        const item = canvasRef.current.elements.find((entry) => entry.id === drag.id);
+        if (!item || !drag.bounds) return;
+        const localX = ((event.clientX - drag.bounds.left) / Math.max(1, drag.bounds.width)) * drag.boxWidth;
+        const localY = ((event.clientY - drag.bounds.top) / Math.max(1, drag.bounds.height)) * drag.boxHeight;
+        const offset = hitTestTextOffset(item, localX, localY);
+        const start = Math.min(drag.anchor, offset);
+        const end = Math.max(drag.anchor, offset);
+        setTextRange(end > start ? { start, end } : null);
+        return;
+      }
       const box = applyHandleResize(drag.start, drag.handle, dx, dy);
       if (drag.kind === "text") {
         const live = canvasRef.current.elements.find((item) => item.id === drag.id) || drag.start;
-        const width = Math.min(TEXT_BOX_MAX_WIDTH, box.width);
-        const fontSize = drag.start.height
-          ? Math.max(8, Math.round((drag.start.fontSize || 16) * (box.height / drag.start.height)))
-          : live.fontSize;
-        const fitted = fitTextBox({ ...live, width, fontSize, autoWidth: false });
         setCanvas((current) =>
-          updateElement(current, drag.id, {
-            x: box.x,
-            y: box.y,
-            width,
-            height: fitted.height,
-            fontSize,
-            autoWidth: false,
-          }),
+          updateElement(current, drag.id, applyTextHandleResize({ ...live, ...drag.start }, drag.handle, dx, dy)),
         );
         return;
       }
@@ -232,6 +266,7 @@ export default function WorkEditorPage() {
       const drag = dragRef.current;
       if (!drag) return;
       dragRef.current = null;
+      if (drag.type === "select-text") return;
       const current = canvasRef.current.elements.find((item) => item.id === drag.id);
       const origin = drag.snapshot.elements.find((item) => item.id === drag.id);
       if (
@@ -279,7 +314,16 @@ export default function WorkEditorPage() {
     if (!selectedId) return;
     setCanvas((current) => {
       const item = current.elements.find((entry) => entry.id === selectedId);
-      const nextPatch = item?.type === "text" ? patchTextElement(item, patch) : patch;
+      if (item?.type !== "text") return updateElement(current, selectedId, patch);
+      if (isSpanStylePatch(patch)) {
+        const stylePatch = applyTextStyle(item, textRangeRef.current, patch);
+        const rest = { ...patch };
+        for (const key of SPAN_STYLE_KEYS) {
+          if (!Object.prototype.hasOwnProperty.call(stylePatch, key)) delete rest[key];
+        }
+        return updateElement(current, selectedId, patchTextElement(item, { ...rest, ...stylePatch }));
+      }
+      const nextPatch = patchTextElement(item, patch);
       return updateElement(current, selectedId, nextPatch);
     });
     setDirty(true);
@@ -290,9 +334,11 @@ export default function WorkEditorPage() {
     mutateCanvas(removeElement(canvas, selectedId));
     setSelectedId(null);
     setEditingId(null);
+    setTextRange(null);
   };
 
-  const finishTextEdit = () => {
+  const finishTextEdit = (event) => {
+    if (isEditorChrome(event?.relatedTarget, propsRef.current)) return;
     if (selected?.type === "text" && isBlankText(selected.text)) {
       deleteSelected();
       return;
@@ -307,15 +353,51 @@ export default function WorkEditorPage() {
     mutateCanvas(next);
     setSelectedId(created.id);
     setEditingId(null);
+    setTextRange(null);
+  };
+
+  const localPoint = (event, item, target) => {
+    const bounds = target.getBoundingClientRect();
+    return {
+      bounds,
+      x: ((event.clientX - bounds.left) / Math.max(1, bounds.width)) * item.width,
+      y: ((event.clientY - bounds.top) / Math.max(1, bounds.height)) * item.height,
+    };
   };
 
   const beginMove = (event, item) => {
     if (event.button !== 0 || editingId === item.id) return;
     event.preventDefault();
     event.stopPropagation();
+    const alreadySelected = selectedId === item.id;
     setSelectedId(item.id);
     setEditingId(null);
+    if (!alreadySelected) setTextRange(null);
     if (item.locked) return;
+    if (alreadySelected && item.type === "text") {
+      const local = localPoint(event, item, event.currentTarget);
+      const hit = getTextGlyphs(item).some(
+        (glyph) =>
+          local.x >= glyph.x &&
+          local.x <= glyph.x + glyph.width &&
+          local.y >= glyph.y &&
+          local.y <= glyph.y + glyph.height,
+      );
+      if (hit) {
+        dragRef.current = {
+          type: "select-text",
+          id: item.id,
+          anchor: hitTestTextOffset(item, local.x, local.y),
+          bounds: local.bounds,
+          boxWidth: item.width,
+          boxHeight: item.height,
+          start: { px: event.clientX, py: event.clientY },
+          snapshot: canvasRef.current,
+        };
+        setTextRange(null);
+        return;
+      }
+    }
     dragRef.current = {
       type: "move",
       id: item.id,
@@ -361,6 +443,7 @@ export default function WorkEditorPage() {
     setSelectedId(created.id);
     setAddPanelOpen(false);
     setEditingId(null);
+    setTextRange(null);
   };
 
   useEffect(() => {
@@ -375,6 +458,7 @@ export default function WorkEditorPage() {
       setDirty(true);
       setSelectedId(null);
       setEditingId(null);
+      setTextRange(null);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -430,6 +514,7 @@ export default function WorkEditorPage() {
     }
     if (toolId === "background") {
       setSelectedId(null);
+      setTextRange(null);
       return;
     }
     message.info("功能开发中");
@@ -565,7 +650,7 @@ export default function WorkEditorPage() {
 
         <Spin spinning={loading} wrapperClassName="editor-stage-spin">
           <div className="editor-stage-wrap">
-            <div className="editor-canvas-area" ref={stageRef} onClick={() => { setSelectedId(null); setEditingId(null); }}>
+            <div className="editor-canvas-area" ref={stageRef} onClick={() => { setSelectedId(null); setEditingId(null); setTextRange(null); }}>
               <div
                 className="editor-stage-frame"
                 style={{
@@ -584,6 +669,7 @@ export default function WorkEditorPage() {
                   onClick={() => {
                     setSelectedId(null);
                     setEditingId(null);
+                    setTextRange(null);
                   }}
                 >
                   <div
@@ -596,7 +682,7 @@ export default function WorkEditorPage() {
                   {canvas.elements.map((item) => (
                     <div
                       key={item.id}
-                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
+                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
                       style={{
                         left: item.x,
                         top: item.y,
@@ -609,6 +695,7 @@ export default function WorkEditorPage() {
                       onPointerDown={(event) => beginMove(event, item)}
                       onClick={(event) => {
                         event.stopPropagation();
+                        if (item.id !== selectedId) setTextRange(null);
                         setSelectedId(item.id);
                       }}
                       onDoubleClick={(event) => {
@@ -617,49 +704,39 @@ export default function WorkEditorPage() {
                         if (item.type === "text" && !item.locked) setEditingId(item.id);
                       }}
                     >
-                      {item.type === "text" && editingId !== item.id ? (
-                        <span className="editor-el-copy">{formatTextContent(item)}</span>
+                      {item.type === "text" ? (
+                        <span className="editor-el-text-host">
+                          <CanvasTextCopy item={item} />
+                          {editingId === item.id ? (
+                            <textarea
+                              className="editor-inline-text"
+                              aria-label="编辑文字"
+                              name="canvas-text"
+                              autoComplete="off"
+                              value={item.text}
+                              autoFocus
+                              onSelect={(event) => {
+                                if (event.target !== document.activeElement) return;
+                                const el = event.target;
+                                setTextRange(
+                                  el.selectionEnd > el.selectionStart
+                                    ? { start: el.selectionStart, end: el.selectionEnd }
+                                    : null,
+                                );
+                              }}
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => patchSelected({ text: event.target.value })}
+                              onBlur={finishTextEdit}
+                            />
+                          ) : null}
+                        </span>
                       ) : null}
                     </div>
                   ))}
                 </div>
-                {selected?.type === "text" && editingId === selected.id ? (
-                  <textarea
-                    className="editor-inline-text"
-                    aria-label="编辑文字"
-                    name="canvas-text"
-                    autoComplete="off"
-                    value={selected.text}
-                    autoFocus
-                    style={{
-                      left: selected.x * zoom,
-                      top: selected.y * zoom,
-                      minWidth: Math.max(80, (selected.fontSize || 16) * zoom + 16),
-                      maxWidth: TEXT_BOX_MAX_WIDTH * zoom,
-                      width:
-                        selected.autoWidth === false
-                          ? Math.max(80, selected.width * zoom)
-                          : "max-content",
-                      minHeight: Math.max(
-                        36,
-                        (selected.fontSize || 16) * (Number(selected.lineHeight) || 1.4) * zoom + 16,
-                        selected.height * zoom,
-                      ),
-                      height: "auto",
-                      ...textPaintStyle(selected),
-                      fontSize: Math.max(12, (selected.fontSize || 16) * zoom),
-                      letterSpacing: `${(Number(selected.letterSpacing) || 0) * zoom}px`,
-                      overflow: "visible",
-                      transform: "none",
-                    }}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={(event) => patchSelected({ text: event.target.value })}
-                    onBlur={finishTextEdit}
-                  />
-                ) : null}
                 {selected && editingId !== selected.id ? (
                   <div
-                    className="editor-transform"
+                    className={`editor-transform ${selected.type === "text" && selectedId ? "is-text" : ""}`}
                     role="group"
                     aria-label="拖拽图层"
                     style={{
@@ -667,6 +744,7 @@ export default function WorkEditorPage() {
                       top: selected.y * zoom,
                       width: selected.width * zoom,
                       height: selected.height * zoom,
+                      cursor: selected.type === "text" ? "text" : undefined,
                     }}
                     onPointerDown={(event) => beginMove(event, selected)}
                     onDoubleClick={(event) => {
@@ -674,6 +752,20 @@ export default function WorkEditorPage() {
                       if (selected.type === "text" && !selected.locked) setEditingId(selected.id);
                     }}
                   >
+                    {selected.type === "text" && textRange
+                      ? getSelectionRects(selected, textRange.start, textRange.end).map((rect, index) => (
+                          <i
+                            key={`${rect.x}-${rect.y}-${index}`}
+                            className="editor-text-sel"
+                            style={{
+                              left: rect.x * zoom,
+                              top: rect.y * zoom,
+                              width: rect.width * zoom,
+                              height: rect.height * zoom,
+                            }}
+                          />
+                        ))
+                      : null}
                     {selected.locked
                       ? null
                       : TRANSFORM_HANDLES.map((handle) => (
@@ -738,10 +830,16 @@ export default function WorkEditorPage() {
           </div>
         </Spin>
 
-        <aside className="editor-props">
+        <aside
+          className="editor-props"
+          ref={propsRef}
+          onMouseDown={(event) => {
+            if (editingId && !event.target.closest("input, textarea, select")) event.preventDefault();
+          }}
+        >
           {selected?.type === "text" ? (
             <EditorTextPanel
-              item={selected}
+              item={itemForStylePanel(selected, textRange)}
               onChange={patchSelected}
               onDelete={deleteSelected}
               onDuplicate={duplicateSelected}
@@ -760,14 +858,7 @@ export default function WorkEditorPage() {
               </div>
               <div className="editor-prop-label">
                 <h3>填充色</h3>
-                <label className="editor-color">
-                  <input
-                    type="color"
-                    aria-label="填充色"
-                    value={selected.fill}
-                    onChange={(event) => patchSelected({ fill: event.target.value })}
-                  />
-                </label>
+                <EditorColorPicker label="填充色" value={selected.fill} onChange={(fill) => patchSelected({ fill })} />
               </div>
             </>
           ) : (
@@ -855,14 +946,12 @@ export default function WorkEditorPage() {
               <section className="editor-prop-block">
                 <div className="editor-prop-label">
                   <h3>背景色</h3>
-                  <label className="editor-color">
-                    <input
-                      type="color"
-                      aria-label="背景色"
-                      value={canvas.background}
-                      onChange={(event) => mutateCanvas({ ...canvas, background: event.target.value })}
-                    />
-                  </label>
+                  <EditorColorPicker
+                    label="背景色"
+                    value={canvas.background}
+                    fallback="#ffffff"
+                    onChange={(background) => mutateCanvas({ ...canvas, background })}
+                  />
                 </div>
                 <div className="editor-opacity">
                   <span>不透明度</span>

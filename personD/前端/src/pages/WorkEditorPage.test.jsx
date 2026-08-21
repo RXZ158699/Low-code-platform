@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { App as AntdApp } from "antd";
@@ -146,6 +146,10 @@ describe("WorkEditorPage", () => {
     await user.type(copy, "你好");
     expect(copy).toHaveValue("你好");
     expect(document.querySelector(".editor-el-copy")).toHaveTextContent("你好");
+    const afterHello = Number.parseFloat(document.querySelector(".editor-el.is-text").style.width);
+
+    await user.type(copy, "世界世界世界世界");
+    expect(Number.parseFloat(document.querySelector(".editor-el.is-text").style.width)).toBeGreaterThan(afterHello);
 
     await user.click(screen.getByRole("button", { name: "删除图层" }));
 
@@ -194,7 +198,9 @@ describe("WorkEditorPage", () => {
     expect(screen.getByRole("button", { name: "缩放 左上" })).toBeInTheDocument();
   });
 
-  it("formats selected text from the properties panel", async () => {
+  it(
+    "formats selected text from the properties panel",
+    async () => {
     const user = userEvent.setup();
     renderEditor();
     await screen.findByDisplayValue("未命名作品");
@@ -205,8 +211,19 @@ describe("WorkEditorPage", () => {
     expect(screen.getByLabelText("字号")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "字体" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "填充" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "添加填充" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "删除填充" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "填充" }));
+    expect(screen.queryByLabelText("填充文字颜色")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("渐变左侧颜色")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "添加填充" }));
+    expect(screen.getByLabelText("渐变左侧颜色")).toBeInTheDocument();
+    expect(screen.getByLabelText("渐变右侧颜色")).toBeInTheDocument();
+    expect(screen.queryByLabelText("填充色")).not.toBeInTheDocument();
     expect(screen.queryByText("变形")).not.toBeInTheDocument();
     expect(screen.queryByText("特效")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "删除填充" }));
+    expect(screen.queryByLabelText("渐变左侧颜色")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "加粗" }));
     expect(screen.getByRole("button", { name: "加粗" })).toHaveAttribute("aria-pressed", "true");
@@ -215,5 +232,54 @@ describe("WorkEditorPage", () => {
     expect(screen.getByRole("button", { name: "居中对齐" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("button", { name: "变形" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "特效" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "描边" }));
+    expect(screen.queryByRole("slider", { name: "描边粗细" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "添加描边" }));
+    expect(screen.getByRole("slider", { name: "描边粗细" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "删除描边" }));
+    expect(screen.queryByRole("slider", { name: "描边粗细" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "投影" }));
+    expect(screen.queryByRole("slider", { name: "模糊" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "添加投影" }));
+    expect(screen.getByRole("slider", { name: "模糊" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "删除投影" }));
+    expect(screen.queryByRole("slider", { name: "模糊" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "背景", expanded: false }));
+    expect(screen.queryByLabelText("文字背景")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "添加背景" }));
+    expect(screen.getByLabelText("文字背景")).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "背景透明度" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "删除背景" }));
+    expect(screen.queryByLabelText("文字背景")).not.toBeInTheDocument();
+    },
+    15000,
+  );
+
+  it("previews selected text color on the canvas while the picker is still open", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "文字" }));
+    await user.dblClick(document.querySelector(".editor-el.is-text"));
+
+    const editor = await screen.findByLabelText("编辑文字");
+    editor.setSelectionRange(0, 2);
+    fireEvent.select(editor);
+
+    expect(document.querySelector(".editor-el-copy")).toHaveTextContent("双击编辑文字");
+
+    await user.click(screen.getByLabelText("文字色"));
+    const hexInput = document.querySelector(".ant-color-picker-hex-input input");
+    expect(hexInput).toBeTruthy();
+    fireEvent.change(hexInput, { target: { value: "FF0000" } });
+
+    const fills = [...document.querySelectorAll(".editor-el-copy-svg text")].map((node) =>
+      String(node.getAttribute("fill") || "").toLowerCase(),
+    );
+    expect(fills).toContain("#ff0000");
+    expect(fills.some((fill) => fill !== "#ff0000")).toBe(true);
+    expect(screen.getByLabelText("编辑文字")).toBeInTheDocument();
   });
 });

@@ -3432,6 +3432,10 @@ body {
   font-size: 13px;
 }
 
+.editor-opacity > span {
+  white-space: nowrap;
+}
+
 .editor-opacity .ant-slider {
   margin: 0;
 }
@@ -3509,10 +3513,42 @@ body {
 
 .editor-el-copy {
   display: block;
-  max-width: 100%;
+  width: fit-content;
+  max-width: 1000px;
   overflow-wrap: inherit;
   word-break: inherit;
   white-space: inherit;
+}
+
+.editor-el-copy-stack {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 1000px;
+  overflow-wrap: inherit;
+  word-break: inherit;
+  white-space: inherit;
+}
+
+.editor-el-copy.is-metrics {
+  visibility: hidden;
+}
+
+.editor-el-copy-svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.editor-el-text-host {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 1000px;
 }
 
 .editor-el.is-selected {
@@ -3523,6 +3559,13 @@ body {
   cursor: default;
 }
 
+.editor-text-sel {
+  position: absolute;
+  z-index: 0;
+  background: rgba(37, 99, 235, 0.28);
+  pointer-events: none;
+}
+
 .editor-transform {
   position: absolute;
   z-index: 4;
@@ -3530,6 +3573,10 @@ body {
   border: 1px solid #2563eb;
   cursor: move;
   touch-action: none;
+}
+
+.editor-transform.is-text {
+  cursor: text;
 }
 
 .editor-handle {
@@ -3562,28 +3609,67 @@ body {
 
 .editor-inline-text {
   position: absolute;
+  inset: 0;
   z-index: 5;
   box-sizing: border-box;
+  width: max-content;
+  min-width: 100%;
+  max-width: 1000px;
+  height: auto;
+  min-height: 100%;
   margin: 0;
-  padding: 4px;
-  border: 2px solid #2563eb;
-  border-radius: 2px;
-  outline: 2px solid transparent;
-  outline-offset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
   resize: none;
   overflow: visible;
   field-sizing: content;
-  background: rgba(255, 255, 255, 0.96);
-  font-family: inherit;
+  background: transparent;
+  color: transparent;
+  caret-color: #111827;
+  -webkit-text-fill-color: transparent;
+  font: inherit;
+  font-size: inherit;
   font-weight: inherit;
-  line-height: 1.4;
+  font-style: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
   white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-break: normal;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  user-select: text;
 }
 
-.editor-inline-text:focus-visible {
-  outline-color: #93c5fd;
+.editor-el.is-text.is-editing {
+  outline: 2px solid #2563eb;
+}
+
+.editor-el.is-text:not(.is-auto-width) .editor-el-copy,
+.editor-el.is-text:not(.is-auto-width) .editor-el-copy-stack,
+.editor-el.is-text:not(.is-auto-width) .editor-el-text-host {
+  max-width: 100%;
+}
+
+.editor-el.is-text:not(.is-auto-width) .editor-inline-text {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.editor-color-picker.ant-color-picker-trigger {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 3px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
 }
 
 .editor-el-delete {
@@ -3693,8 +3779,7 @@ body {
 
 .editor-text-actions button.is-on,
 .editor-text-lock.is-on,
-.editor-text-group button.is-on,
-.editor-text-highlight button.is-on {
+.editor-text-group button.is-on {
   background: #fff;
   color: #111827;
   box-shadow: 0 0 0 1px #e5e7eb;
@@ -3869,42 +3954,38 @@ body {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  gap: 8px;
+}
+
+.editor-text-gradient-stops {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
   gap: 6px;
 }
 
-.editor-text-highlight button {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: #111827;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.editor-text-highlight button:hover {
-  background: #e5e7eb;
-}
-
-.editor-text-highlight button:focus {
-  outline: none;
-}
-
-.editor-text-highlight button:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 1px;
+.editor-text-gradient-preview {
+  display: block;
+  width: 28px;
+  height: 8px;
+  border-radius: 999px;
 }
 
 .editor-text-fold {
   border-top: 1px solid #f3f4f6;
 }
 
-.editor-text-fold > button {
+.editor-text-fold-head {
   display: flex;
-  width: 100%;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+}
+
+.editor-text-fold-title {
+  display: flex;
+  flex: 1;
+  min-width: 0;
   height: 40px;
   align-items: center;
   justify-content: space-between;
@@ -3916,14 +3997,51 @@ body {
   cursor: pointer;
 }
 
-.editor-text-fold > button .anticon {
+.editor-text-fold-title .anticon {
   color: #9ca3af;
   font-size: 10px;
   transition: transform 0.16s ease;
 }
 
-.editor-text-fold > button .anticon.is-open {
+.editor-text-fold-title .anticon.is-open {
   transform: rotate(-180deg);
+}
+
+.editor-text-fold-ops {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.editor-text-fold-ops button {
+  display: flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.editor-text-fold-ops button:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.editor-text-fold-ops button:focus {
+  outline: none;
+}
+
+.editor-text-fold-ops button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
 }
 
 .editor-text-fold-body {

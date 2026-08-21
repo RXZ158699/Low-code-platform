@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Dropdown, Input, Select, Slider, App as AntdApp } from "antd";
+import { Dropdown, Input, Select, Slider, Switch, App as AntdApp } from "antd";
+import EditorColorPicker, { hexColor } from "./EditorColorPicker.jsx";
 import {
   AlignCenterOutlined,
   AlignLeftOutlined,
@@ -18,7 +19,7 @@ import {
   VerticalAlignMiddleOutlined,
   VerticalLeftOutlined,
 } from "@ant-design/icons";
-import { MIN_ELEMENT_SIZE, TEXT_FONTS, getTextProps, isBlankText } from "../canvas.js";
+import { MIN_ELEMENT_SIZE, TEXT_BOX_MAX_RESIZE, TEXT_FONTS, getTextProps, isBlankText } from "../canvas.js";
 
 const LAYER_ITEMS = [
   { key: "up", label: "上移一层" },
@@ -37,10 +38,6 @@ const LIST_ITEMS = [
   { key: "disc", label: "圆点列表" },
   { key: "decimal", label: "数字列表" },
 ];
-
-function hexColor(value, fallback = "#111827") {
-  return /^#([0-9a-fA-F]{6})$/.test(value) ? value : fallback;
-}
 
 function readNumber(value, fallback, min, max) {
   const number = Number(value);
@@ -62,31 +59,78 @@ function ToolButton({ pressed, label, onClick, children }) {
   );
 }
 
-function FoldRow({ title, open, onToggle, children }) {
+function FoldRow({ title, open, onToggle, onAdd, onRemove, children }) {
   return (
     <div className="editor-text-fold">
-      <button type="button" aria-expanded={open} onClick={onToggle}>
-        {title}
-        <DownOutlined aria-hidden className={open ? "is-open" : undefined} />
-      </button>
+      <div className="editor-text-fold-head">
+        <button type="button" className="editor-text-fold-title" aria-expanded={open} onClick={onToggle}>
+          {title}
+          <DownOutlined aria-hidden className={open ? "is-open" : undefined} />
+        </button>
+        <div className="editor-text-fold-ops">
+          <button type="button" aria-label={`添加${title}`} onClick={onAdd}>
+            +
+          </button>
+          <button type="button" aria-label={`删除${title}`} onClick={onRemove}>
+            -
+          </button>
+        </div>
+      </div>
       {open ? <div className="editor-text-fold-body">{children}</div> : null}
+    </div>
+  );
+}
+
+function ValueSlider({ label, value, min, max, onChange, className }) {
+  return (
+    <div className={className ? `editor-opacity ${className}` : "editor-opacity"}>
+      <span>{label}</span>
+      <Slider
+        min={min}
+        max={max}
+        value={value}
+        ariaLabelForHandle={label}
+        onChange={onChange}
+      />
+      <em>{value}</em>
     </div>
   );
 }
 
 function ColorField({ label, value, fallback, onChange }) {
   return (
-    <label className="editor-text-color">
+    <div className="editor-text-color">
       <span>{label}</span>
-      <span className="editor-color">
-        <input
-          type="color"
-          aria-label={label}
-          value={hexColor(value, fallback)}
-          onChange={(event) => onChange(event.target.value)}
+      <EditorColorPicker label={label} value={value} fallback={fallback} onChange={onChange} />
+    </div>
+  );
+}
+
+function GradientField({ from, to, onChange }) {
+  const left = hexColor(from, "#111827");
+  const right = hexColor(to, "#2563eb");
+  return (
+    <div className="editor-text-color" role="group" aria-label="文字渐变">
+      <span>文字渐变</span>
+      <span className="editor-text-gradient-stops">
+        <EditorColorPicker
+          label="渐变左侧颜色"
+          value={left}
+          onChange={(gradientFrom) => onChange({ gradientEnabled: true, gradientFrom })}
+        />
+        <i
+          className="editor-text-gradient-preview"
+          aria-hidden
+          style={{ backgroundImage: `linear-gradient(90deg, ${left}, ${right})` }}
+        />
+        <EditorColorPicker
+          label="渐变右侧颜色"
+          value={right}
+          fallback="#2563eb"
+          onChange={(gradientTo) => onChange({ gradientEnabled: true, gradientTo })}
         />
       </span>
-    </label>
+    </div>
   );
 }
 
@@ -115,10 +159,28 @@ export default function EditorTextPanel({ item, onChange, onDelete, onDuplicate,
   const [tab, setTab] = useState("text");
   const [openFold, setOpenFold] = useState("");
 
-  const toggleFold = (id) => setOpenFold((current) => (current === id ? "" : id));
+  const fillOn = Boolean(text.gradientEnabled);
+  const strokeOn = Boolean(text.strokeEnabled);
+  const shadowOn = Boolean(text.shadowEnabled);
+  const bgOn = Boolean(text.boxBackground);
+
+  const toggleFold = (id, enabled) => {
+    if (!enabled) return;
+    setOpenFold((current) => (current === id ? "" : id));
+  };
+
+  const addEffect = (id, patch) => {
+    onChange(patch);
+    setOpenFold(id);
+  };
+
+  const removeEffect = (id, patch) => {
+    onChange(patch);
+    setOpenFold((current) => (current === id ? "" : current));
+  };
 
   const patchSize = (key, raw) => {
-    const next = readNumber(raw, text[key], MIN_ELEMENT_SIZE, 8000);
+    const next = readNumber(raw, text[key], MIN_ELEMENT_SIZE, TEXT_BOX_MAX_RESIZE);
     if (!text.aspectLocked || !text.width || !text.height) {
       onChange({ [key]: next });
       return;
@@ -349,87 +411,124 @@ export default function EditorTextPanel({ item, onChange, onDelete, onDuplicate,
           </div>
 
           <div className="editor-text-colors">
-            <ColorField label="文字色" value={text.color} onChange={(color) => onChange({ color })} />
-            <label className="editor-text-color">
+            <ColorField
+              label="文字色"
+              value={text.color}
+              onChange={(color) => onChange({ color, gradientEnabled: false })}
+            />
+            <div className="editor-text-color">
               <span>划重点</span>
               <span className="editor-text-highlight">
-                <button
-                  type="button"
+                <Switch
+                  size="small"
                   aria-label="划重点"
-                  aria-pressed={Boolean(text.highlight)}
-                  className={text.highlight ? "is-on" : undefined}
-                  onClick={() => onChange({ highlight: text.highlight ? "" : "#fde047" })}
-                >
-                  A
-                </button>
-                <span className="editor-color">
-                  <input
-                    type="color"
-                    aria-label="划重点颜色"
-                    value={hexColor(text.highlight, "#fde047")}
-                    onChange={(event) => onChange({ highlight: event.target.value })}
-                  />
-                </span>
+                  checked={Boolean(text.highlight)}
+                  onChange={(checked) => onChange({ highlight: checked ? hexColor(text.highlight, "#fde047") : "" })}
+                />
+                <EditorColorPicker
+                  label="划重点颜色"
+                  value={text.highlight}
+                  fallback="#fde047"
+                  onChange={(highlight) => onChange({ highlight })}
+                />
               </span>
-            </label>
+            </div>
           </div>
 
-          <FoldRow title="填充" open={openFold === "fill"} onToggle={() => toggleFold("fill")}>
-            <ColorField
-              label="填充色"
-              value={text.fillColor}
-              fallback="#ffffff"
-              onChange={(fillColor) => onChange({ fillEnabled: true, fillColor })}
+          <FoldRow
+            title="填充"
+            open={fillOn && openFold === "fill"}
+            onToggle={() => toggleFold("fill", fillOn)}
+            onAdd={() => addEffect("fill", { gradientEnabled: true })}
+            onRemove={() => removeEffect("fill", { gradientEnabled: false })}
+          >
+            <GradientField
+              from={text.gradientFrom}
+              to={text.gradientTo}
+              onChange={onChange}
             />
           </FoldRow>
-          <FoldRow title="描边" open={openFold === "stroke"} onToggle={() => toggleFold("stroke")}>
+          <FoldRow
+            title="描边"
+            open={strokeOn && openFold === "stroke"}
+            onToggle={() => toggleFold("stroke", strokeOn)}
+            onAdd={() =>
+              addEffect("stroke", {
+                strokeEnabled: true,
+                strokeWidth: text.strokeWidth > 0 ? text.strokeWidth : 2,
+              })
+            }
+            onRemove={() => removeEffect("stroke", { strokeEnabled: false })}
+          >
             <ColorField
               label="描边色"
               value={text.strokeColor}
-              onChange={(strokeColor) => onChange({ strokeEnabled: true, strokeColor })}
+              onChange={(strokeColor) => onChange({ strokeColor })}
             />
-            <NumberChip
+            <ValueSlider
               label="描边粗细"
               value={text.strokeWidth}
               min={0}
               max={20}
-              onChange={(strokeWidth) => onChange({ strokeEnabled: strokeWidth > 0, strokeWidth })}
+              onChange={(strokeWidth) => onChange({ strokeWidth })}
             />
           </FoldRow>
-          <FoldRow title="投影" open={openFold === "shadow"} onToggle={() => toggleFold("shadow")}>
+          <FoldRow
+            title="投影"
+            open={shadowOn && openFold === "shadow"}
+            onToggle={() => toggleFold("shadow", shadowOn)}
+            onAdd={() => addEffect("shadow", { shadowEnabled: true })}
+            onRemove={() => removeEffect("shadow", { shadowEnabled: false })}
+          >
             <ColorField
               label="投影色"
               value={text.shadowColor}
               fallback="#000000"
-              onChange={(shadowColor) => onChange({ shadowEnabled: true, shadowColor })}
+              onChange={(shadowColor) => onChange({ shadowColor })}
             />
-            <NumberChip
+            <ValueSlider
               label="模糊"
               value={text.shadowBlur}
               min={0}
               max={40}
-              onChange={(shadowBlur) => onChange({ shadowEnabled: true, shadowBlur })}
+              onChange={(shadowBlur) => onChange({ shadowBlur })}
             />
           </FoldRow>
-          <FoldRow title="背景" open={openFold === "bg"} onToggle={() => toggleFold("bg")}>
+          <FoldRow
+            title="背景"
+            open={bgOn && openFold === "bg"}
+            onToggle={() => toggleFold("bg", bgOn)}
+            onAdd={() => addEffect("bg", { boxBackground: text.boxBackground || "#ffffff" })}
+            onRemove={() => removeEffect("bg", { boxBackground: "" })}
+          >
             <ColorField
               label="文字背景"
               value={text.boxBackground}
               fallback="#ffffff"
               onChange={(boxBackground) => onChange({ boxBackground })}
             />
+            <ValueSlider
+              label="背景透明度"
+              value={text.boxBackgroundOpacity}
+              min={0}
+              max={100}
+              onChange={(boxBackgroundOpacity) => onChange({ boxBackgroundOpacity })}
+            />
           </FoldRow>
 
-          <div className="editor-opacity editor-text-opacity">
-            <span>不透明度</span>
-            <Slider min={0} max={100} value={text.opacity} onChange={(opacity) => onChange({ opacity })} />
-            <em>{text.opacity}</em>
-          </div>
+          <ValueSlider
+            className="editor-text-opacity"
+            label="不透明度"
+            value={text.opacity}
+            min={0}
+            max={100}
+            onChange={(opacity) => onChange({ opacity })}
+          />
 
           <section className="editor-text-geo">
             <h3>尺寸</h3>
             <div className="editor-text-box">
-              <NumberChip label="宽" value={Math.round(text.width)} min={MIN_ELEMENT_SIZE} max={8000} onChange={(width) => patchSize("width", width)} />
+              <NumberChip label="宽" value={Math.round(text.width)} min={MIN_ELEMENT_SIZE} max={TEXT_BOX_MAX_RESIZE} onChange={(width) => patchSize("width", width)} />
               <button
                 type="button"
                 className={`editor-text-lock ${text.aspectLocked ? "is-on" : ""}`}
@@ -439,7 +538,7 @@ export default function EditorTextPanel({ item, onChange, onDelete, onDuplicate,
               >
                 <LinkOutlined aria-hidden />
               </button>
-              <NumberChip label="高" value={Math.round(text.height)} min={MIN_ELEMENT_SIZE} max={8000} onChange={(height) => patchSize("height", height)} />
+              <NumberChip label="高" value={Math.round(text.height)} min={MIN_ELEMENT_SIZE} max={TEXT_BOX_MAX_RESIZE} onChange={(height) => patchSize("height", height)} />
             </div>
           </section>
 
