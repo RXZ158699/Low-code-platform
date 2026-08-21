@@ -52,6 +52,7 @@ import {
   hitTestTextOffset,
   isBlankText,
   isCollageElement,
+  isCornerHandle,
   isLineKind,
   isMediaElement,
   isShapeElement,
@@ -463,7 +464,14 @@ export default function WorkEditorPage({ shareToken } = {}) {
       );
       if (isLineKind(shapeKind(liveItem || drag.start))) return;
       const minSize = MIN_ELEMENT_SIZE;
-      const box = applyHandleResize(drag.start, drag.handle, dx, dy, minSize);
+      const box = applyHandleResize(
+        drag.start,
+        drag.handle,
+        dx,
+        dy,
+        minSize,
+        isCornerHandle(drag.handle),
+      );
       if (drag.kind === "text") {
         const live =
           canvasRef.current.elements.find((item) => item.id === drag.id) ||

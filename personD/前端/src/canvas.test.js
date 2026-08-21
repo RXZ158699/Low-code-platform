@@ -23,6 +23,7 @@ import {
   getTextGlyphs,
   getTextProps,
   isBlankText,
+  isCornerHandle,
   isLineKind,
   isShapeElement,
   lineStrokeProps,
@@ -228,6 +229,20 @@ describe("canvas helpers", () => {
     expect(applyHandleResize(box, "n", 0, 10).height).toBe(70);
   });
 
+  it("locks aspect ratio on corner handles and stretches from side handles", () => {
+    expect(isCornerHandle("se")).toBe(true);
+    expect(isCornerHandle("nw")).toBe(true);
+    expect(isCornerHandle("e")).toBe(false);
+    expect(isCornerHandle("n")).toBe(false);
+    const box = { x: 10, y: 20, width: 100, height: 50 };
+    expect(
+      applyHandleResize(box, "se", 50, 10, MIN_ELEMENT_SIZE, isCornerHandle("se")),
+    ).toEqual({ x: 10, y: 20, width: 150, height: 75 });
+    expect(
+      applyHandleResize(box, "e", 50, 80, MIN_ELEMENT_SIZE, isCornerHandle("e")),
+    ).toEqual({ x: 10, y: 20, width: 150, height: 50 });
+  });
+
   it("keeps aspect ratio when lockAspect is on", () => {
     const box = { x: 10, y: 20, width: 100, height: 50 };
     expect(applyHandleResize(box, "se", 50, 0, MIN_ELEMENT_SIZE, true)).toEqual(
@@ -256,8 +271,11 @@ describe("canvas helpers", () => {
     };
     const next = applyTextHandleResize(item, "e", 50, 0);
     expect(next.width).toBe(150);
-    expect(next.fontSize).toBe(30);
+    expect(next.fontSize).toBe(20);
     expect(next.autoWidth).toBe(false);
+    const corner = applyTextHandleResize(item, "se", 50, 0);
+    expect(corner.width).toBe(150);
+    expect(corner.fontSize).toBe(30);
   });
 
   it("resizes the artboard from a handle and shifts elements when the origin moves", () => {

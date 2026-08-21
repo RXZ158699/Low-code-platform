@@ -381,3 +381,21 @@
   font-size: 13px;
   text-align: center;
 }
+
+.editor-text-panel {
+  overflow-x: hidden;
+}
+
+.editor-field textarea.ant-input,
+.editor-text-panel textarea.ant-input {
+  overflow-x: hidden !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.editor-field textarea.ant-input::-webkit-scrollbar,
+.editor-text-panel textarea.ant-input::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

@@ -1365,6 +1365,10 @@ export const TRANSFORM_HANDLES = [
   { id: "w", label: "左" },
 ];
 
+export function isCornerHandle(handle) {
+  return handle === "nw" || handle === "ne" || handle === "se" || handle === "sw";
+}
+
 export function applyHandleResize(
   box,
   handle,
@@ -1488,8 +1492,27 @@ export function applyTextHandleResize(item, handle, dx, dy) {
     width: item.width,
     height: item.height,
   };
-  const box = applyHandleResize(start, handle, dx, dy, MIN_ELEMENT_SIZE, true);
+  const lockAspect = isCornerHandle(handle);
+  const box = applyHandleResize(
+    start,
+    handle,
+    dx,
+    dy,
+    MIN_ELEMENT_SIZE,
+    lockAspect,
+  );
   const width = Math.min(TEXT_BOX_MAX_RESIZE, box.width);
+  if (!lockAspect) {
+    const fitted = fitTextBox({ ...item, width, autoWidth: false });
+    return {
+      x: box.x,
+      y: box.y,
+      width,
+      height: handle.includes("n") || handle.includes("s") ? box.height : fitted.height,
+      fontSize: item.fontSize,
+      autoWidth: false,
+    };
+  }
   const scale = start.width > 0 ? width / start.width : 1;
   const fontSize = Math.max(8, Math.round((item.fontSize || 16) * scale));
   const fitted = fitTextBox({ ...item, width, fontSize, autoWidth: false });

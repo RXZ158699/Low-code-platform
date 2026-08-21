@@ -708,6 +708,59 @@ describe("WorkEditorPage", () => {
     expect(Number.parseFloat(shape.style.height)).toBeGreaterThan(100);
   });
 
+  it("scales a selected element proportionally from a corner handle", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: "五边形" }));
+
+    const layer = screen.getByLabelText("在画布上绘制五边形");
+    layer.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
+    fireEvent.pointerDown(layer, {
+      button: 0,
+      clientX: 40,
+      clientY: 40,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(window, { clientX: 240, clientY: 140, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 240, clientY: 140, pointerId: 1 });
+
+    const shape = await waitFor(() => {
+      const node = document.querySelector(
+        ".editor-artboard .editor-el.is-shape",
+      );
+      expect(node).toBeTruthy();
+      return node;
+    });
+    expect(shape).toHaveStyle({ width: "200px", height: "100px" });
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "缩放 右下" }), {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(window, { clientX: 100, clientY: 10, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 100, clientY: 10, pointerId: 1 });
+
+    const width = Number.parseFloat(shape.style.width);
+    const height = Number.parseFloat(shape.style.height);
+    expect(width).toBeGreaterThan(200);
+    expect(height / width).toBeCloseTo(0.5, 5);
+  });
+
   it("draws a dashed line by dragging on the canvas instead of placing it immediately", async () => {
     const user = userEvent.setup();
     renderEditor();
