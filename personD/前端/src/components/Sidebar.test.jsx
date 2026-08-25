@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import Sidebar from "./Sidebar.jsx";
 import { CreatePopoverProvider } from "./CreatePopover.jsx";
 import { AuthProvider } from "../auth/AuthContext.jsx";
-import { openLoginTab } from "../auth/openLoginTab.js";
 
 vi.mock("../auth/openLoginTab.js", () => ({
   openLoginTab: vi.fn(),
@@ -28,6 +27,15 @@ vi.mock("../api/works.js", () => ({
   createWork: vi.fn(),
 }));
 
+function seedUser(user) {
+  if (user) {
+    localStorage.setItem("dp.token", "token");
+    localStorage.setItem("dp.user", JSON.stringify(user));
+  } else {
+    localStorage.clear();
+  }
+}
+
 function renderSidebar(props = {}) {
   return render(
     <MemoryRouter>
@@ -48,25 +56,34 @@ describe("Sidebar", () => {
     vi.clearAllMocks();
   });
 
-  it("opens the login page when 我的 is clicked while logged out", async () => {
-    const user = userEvent.setup();
+  it("未登录仅显示 创作 和 登录按钮", () => {
     renderSidebar();
-
-    await user.click(screen.getByRole("button", { name: "我的" }));
-
-    expect(openLoginTab).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "创作" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "发现" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "我的" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "创建" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "登录" })).toBeInTheDocument();
   });
 
-  it("does not open login when other nav items are clicked while logged out", async () => {
-    const user = userEvent.setup();
+  it("普通用户显示 创作 和 我的，隐藏 发现 和 创建", () => {
+    seedUser({ id: 2, role: 2 });
     renderSidebar();
-
-    await user.click(screen.getByRole("button", { name: "发现" }));
-
-    expect(openLoginTab).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "创作" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "我的" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "发现" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "创建" })).not.toBeInTheDocument();
   });
 
-  it("notifies parent when 发现 is clicked", async () => {
+  it("管理员显示全部导航", () => {
+    seedUser({ id: 1, role: 1 });
+    renderSidebar();
+    for (const name of ["创作", "发现", "我的", "创建"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("管理员点击 发现 通知父组件", async () => {
+    seedUser({ id: 1, role: 1 });
     const onNavigate = vi.fn();
     const user = userEvent.setup();
     renderSidebar({ active: "create", onNavigate });
@@ -76,19 +93,14 @@ describe("Sidebar", () => {
     expect(onNavigate).toHaveBeenCalledWith("discover");
   });
 
-  it("notifies parent when 我的 is clicked while logged in", async () => {
-    localStorage.setItem("dp.token", "token");
-    localStorage.setItem(
-      "dp.user",
-      JSON.stringify({ id: 2, username: "demo", nickname: "演示用户" }),
-    );
+  it("登录用户点击 我的 通知父组件", async () => {
+    seedUser({ id: 2, role: 2 });
     const onNavigate = vi.fn();
     const user = userEvent.setup();
     renderSidebar({ active: "create", onNavigate });
 
     await user.click(screen.getByRole("button", { name: "我的" }));
 
-    expect(openLoginTab).not.toHaveBeenCalled();
     expect(onNavigate).toHaveBeenCalledWith("mine");
   });
 });

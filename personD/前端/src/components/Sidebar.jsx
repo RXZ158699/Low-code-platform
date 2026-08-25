@@ -7,6 +7,7 @@ import plusCircleIcon from "../assets/icons/plus-circle.svg";
 import awardIcon from "../assets/icons/award.svg";
 import CreatePopover, { useCreatePopover } from "./CreatePopover.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { canAccess, isAdmin } from "../auth/access.js";
 import { openLoginTab } from "../auth/openLoginTab.js";
 import { updateMe, uploadAvatar } from "../api/users.js";
 
@@ -17,6 +18,8 @@ const NAV_ITEMS = [
   { key: "new", label: "创建", icon: plusCircleIcon },
 ];
 
+const NAV_PAGE = { create: "home", discover: "discover", mine: "mine" };
+
 export default function Sidebar({ active: activeProp, onNavigate }) {
   const [internalActive, setInternalActive] = useState("create");
   const [profileOpen, setProfileOpen] = useState(false);
@@ -26,6 +29,11 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
   const { open } = useCreatePopover();
   const { user, logout, updateUser } = useAuth();
   const { message } = AntdApp.useApp();
+
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.key === "new") return isAdmin(user);
+    return canAccess(NAV_PAGE[item.key], user);
+  });
 
   const handleNavClick = (key) => {
     if (key === "mine" && !user) {
@@ -86,7 +94,7 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
       <div className="sidebar-top">
         <div className="brand-logo">一稿</div>
         <nav className="sidebar-nav" aria-label="主导航">
-          {NAV_ITEMS.map((item) => (
+          {visibleItems.map((item) => (
             <div
               key={item.key}
               className={`sidebar-nav-wrap ${item.key === "new" ? "has-popover" : ""} ${item.key === "new" && open ? "popover-open" : ""}`}
@@ -139,7 +147,12 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
             </button>
           </Dropdown>
         ) : (
-          <Button type="primary" className="sidebar-login-btn" onClick={openLoginTab}>
+          <Button
+            type="primary"
+            className="sidebar-login-btn"
+            onClick={openLoginTab}
+            autoInsertSpace={false}
+          >
             登录
           </Button>
         )}
