@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import Sidebar from "./Sidebar.jsx";
 import { CreatePopoverProvider } from "./CreatePopover.jsx";
 import { AuthProvider } from "../auth/AuthContext.jsx";
-import { openLoginTab } from "../auth/openLoginTab.js";
 import { createWork } from "../api/works.js";
 
 vi.mock("../auth/openLoginTab.js", () => ({

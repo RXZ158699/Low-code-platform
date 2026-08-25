@@ -1576,7 +1576,9 @@ export default function MinePage() {
               onChange={(event) => setShareAccessCode(event.target.value)}
             />
           </label>
-          <Button onClick={() => handleCreateShare("VIEW")}>创建只读链接</Button>
+          {!readOnly && (
+            <Button onClick={() => handleCreateShare("VIEW")}>创建只读链接</Button>
+          )}
           {!readOnly && (
             <Button onClick={() => handleCreateShare("EDIT")}>创建可编辑链接</Button>
           )}

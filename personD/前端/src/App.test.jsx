@@ -32,7 +32,7 @@ vi.mock("./api/auth.js", () => ({
 
 // jsdom 未实现 ResizeObserver / scrollTo，App 的 effects 依赖它们
 beforeAll(() => {
-  global.ResizeObserver = class {
+  globalThis.ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}

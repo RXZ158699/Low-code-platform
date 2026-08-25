@@ -109,7 +109,7 @@ function App() {
     <CreatePopoverProvider>
       <AppPageProvider
         page={page}
-        setPage={setPage}
+        setPage={navigatePage}
         scale={scale}
         sidebarVisualWidth={sidebarVisualWidth}
         stickyBarWidth={stickyBarWidth}
