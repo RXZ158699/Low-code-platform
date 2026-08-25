@@ -73,3 +73,37 @@ describe("AuthProvider", () => {
     await waitFor(() => expect(screen.getByText("guest")).toBeInTheDocument());
   });
 });
+
+function RoleProbe() {
+  const { isAdmin, isLoggedIn } = useAuth();
+  return <div>{isAdmin ? "admin" : "not-admin"}|{isLoggedIn ? "in" : "out"}</div>;
+}
+
+function renderRole(role) {
+  if (role !== undefined) {
+    localStorage.setItem("dp.token", "token");
+    localStorage.setItem("dp.user", JSON.stringify({ id: 1, username: "u", role }));
+  } else {
+    localStorage.clear();
+  }
+  return render(
+    <AuthProvider>
+      <RoleProbe />
+    </AuthProvider>,
+  );
+}
+
+it("导出 isAdmin / isLoggedIn（role=1）", async () => {
+  renderRole(1);
+  expect(await screen.findByText("admin|in")).toBeInTheDocument();
+});
+
+it("导出 isAdmin / isLoggedIn（role=2）", async () => {
+  renderRole(2);
+  expect(await screen.findByText("not-admin|in")).toBeInTheDocument();
+});
+
+it("导出 isAdmin / isLoggedIn（未登录）", async () => {
+  renderRole(undefined);
+  expect(await screen.findByText("not-admin|out")).toBeInTheDocument();
+});

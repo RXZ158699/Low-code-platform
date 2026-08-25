@@ -3,6 +3,7 @@ import { login as apiLogin, logout as apiLogout, fetchMe } from "../api/auth.js"
 import { getCachedUser, getToken, saveUser, clearTokens } from "../api/tokenStore.js";
 import { notifyAuthSync, subscribeAuthSync } from "./authSync.js";
 import { isUnauthorized } from "../api/client.js";
+import { isAdmin, isLoggedIn } from "./access.js";
 
 const AuthContext = createContext(null);
 
@@ -17,7 +18,8 @@ function sameUser(left, right) {
     left.id === right.id &&
     left.username === right.username &&
     left.nickname === right.nickname &&
-    left.avatar === right.avatar
+    left.avatar === right.avatar &&
+    left.role === right.role
   );
 }
 
@@ -114,7 +116,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, ready, login, logout, updateUser }),
+    () => ({ user, ready, login, logout, updateUser, isAdmin: isAdmin(user), isLoggedIn: isLoggedIn(user) }),
     [user, ready, login, logout, updateUser],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
