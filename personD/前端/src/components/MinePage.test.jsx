@@ -75,6 +75,15 @@ vi.mock("../api/auth.js", () => ({
   fetchMe: vi.fn(() => Promise.resolve(null)),
 }));
 
+function seedUser(user) {
+  if (user) {
+    localStorage.setItem("dp.token", "token");
+    localStorage.setItem("dp.user", JSON.stringify(user));
+  } else {
+    localStorage.clear();
+  }
+}
+
 function renderMine(setPage = vi.fn()) {
   return render(
     <MemoryRouter>
@@ -132,6 +141,7 @@ describe("MinePage", () => {
   });
 
   it("renders the my-space chrome and empty state", async () => {
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
 
     renderMine();
@@ -177,7 +187,7 @@ describe("MinePage", () => {
   });
 
   it("shows hover actions on a work card", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({
       total: 1,
       page: 1,
@@ -204,7 +214,7 @@ describe("MinePage", () => {
   });
 
   it("enters selection mode from the card checkbox", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({
       total: 1,
       page: 1,
@@ -288,7 +298,7 @@ describe("MinePage", () => {
   });
 
   it("archives a work from the card menu", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({
       total: 1,
       page: 1,
@@ -309,7 +319,7 @@ describe("MinePage", () => {
   });
 
   it("unarchives a work from the archived tab", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({
       total: 1,
       page: 1,
@@ -331,7 +341,7 @@ describe("MinePage", () => {
   });
 
   it("creates a work from the add button", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     createWork.mockResolvedValue({
       id: 3,
@@ -417,7 +427,7 @@ describe("MinePage", () => {
   });
 
   it("lists existing share links and revokes one", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({
       total: 1,
       page: 1,
@@ -442,7 +452,7 @@ describe("MinePage", () => {
   });
 
   it("creates a share link with an access code", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({
       total: 1,
       page: 1,
@@ -491,7 +501,7 @@ describe("MinePage", () => {
   });
 
   it("shows team members and removes one", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listTeams.mockResolvedValue([{ id: 1, name: "设计组", myRole: "OWNER" }]);
     listMembers.mockResolvedValue([
@@ -512,7 +522,7 @@ describe("MinePage", () => {
   });
 
   it("invites a member with the selected role", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listTeams.mockResolvedValue([{ id: 1, name: "设计组", myRole: "OWNER" }]);
     listMembers.mockResolvedValue([]);
@@ -531,7 +541,7 @@ describe("MinePage", () => {
   });
 
   it("changes a member role from the member list", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listTeams.mockResolvedValue([{ id: 1, name: "设计组", myRole: "OWNER" }]);
     listMembers.mockResolvedValue([
@@ -557,7 +567,7 @@ describe("MinePage", () => {
   });
 
   it("loads team works after viewing a team", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listTeams.mockResolvedValue([{ id: 1, name: "设计组", myRole: "OWNER" }]);
     listMembers.mockResolvedValue([]);
@@ -583,7 +593,7 @@ describe("MinePage", () => {
   });
 
   it("renames the selected team", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listTeams.mockResolvedValue([{ id: 1, name: "设计组", myRole: "OWNER" }]);
     listMembers.mockResolvedValue([]);
@@ -602,7 +612,7 @@ describe("MinePage", () => {
   });
 
   it("saves asset visibility from 素材设置", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listAssets.mockResolvedValue({
       total: 1,
@@ -713,7 +723,7 @@ describe("MinePage", () => {
   });
 
   it("opens the editor from the card create-design button", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({
       total: 1,
       page: 1,
@@ -750,7 +760,7 @@ describe("MinePage", () => {
   });
 
   it("lists trashed works in 回收站 and restores them", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listTrashedWorks.mockResolvedValue({
       total: 1,
@@ -800,7 +810,7 @@ describe("MinePage", () => {
   });
 
   it("permanently deletes a trashed work", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listTrashedWorks.mockResolvedValue({
       total: 1,
@@ -840,7 +850,7 @@ describe("MinePage", () => {
   });
 
   it("lists favorites in 收藏夹 and unfavorites them", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listFavoriteWorks.mockResolvedValue({
       total: 1,
@@ -893,7 +903,7 @@ describe("MinePage", () => {
   });
 
   it("favorites a work from the card menu", async () => {
-    seedLogin();
+    seedUser({ id: 1, role: 1 });
     listWorks.mockResolvedValue({
       total: 1,
       page: 1,
@@ -916,5 +926,38 @@ describe("MinePage", () => {
     await waitFor(() => expect(favoriteWork).toHaveBeenCalledWith(9));
     expect(screen.queryByRole("region", { name: "作品详情" })).not.toBeInTheDocument();
     expect(getWork).not.toHaveBeenCalled();
+  });
+
+  it("普通用户看不到 添加/邀请成员/更多操作", async () => {
+    seedUser({ id: 2, role: 2 });
+    listWorks.mockResolvedValue({
+      total: 1,
+      page: 1,
+      size: 24,
+      records: [
+        { id: 9, title: "夏日海报作品", status: "DRAFT", updatedAt: "2026-08-19T10:00:00" },
+      ],
+    });
+    renderMine();
+    await screen.findByText("已全部加载完成");
+    expect(screen.queryByRole("button", { name: "添加" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "邀请成员" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /更多操作/ })).not.toBeInTheDocument();
+  });
+
+  it("管理员能看到 添加/邀请成员", async () => {
+    seedUser({ id: 1, role: 1 });
+    listWorks.mockResolvedValue({
+      total: 1,
+      page: 1,
+      size: 24,
+      records: [
+        { id: 9, title: "夏日海报作品", status: "DRAFT", updatedAt: "2026-08-19T10:00:00" },
+      ],
+    });
+    renderMine();
+    await screen.findByText("已全部加载完成");
+    expect(screen.getByRole("button", { name: "添加" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "邀请成员" })).toBeInTheDocument();
   });
 });

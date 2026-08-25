@@ -41,6 +41,7 @@ import { useAppPage } from "../AppPageContext.jsx";
 import { useCreatePopover } from "./CreatePopover.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { openLoginTab } from "../auth/openLoginTab.js";
+import { isAdmin } from "../auth/access.js";
 import { useNavigate } from "react-router-dom";
 import { canvasPreviewBlob } from "../canvasPreview.js";
 
@@ -188,6 +189,7 @@ export default function MinePage() {
   const pageScale = scale || 1;
   const { setOpen } = useCreatePopover();
   const { user, ready } = useAuth();
+  const readOnly = !isAdmin(user);
   const { message, modal } = AntdApp.useApp();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -1018,16 +1020,18 @@ export default function MinePage() {
               </button>
             ))}
           </nav>
-          <div className="mine-space-actions">
-            <button type="button" className="mine-invite" onClick={openInvite}>
-              <UserAddOutlined aria-hidden />
-              邀请成员
-            </button>
-            <button type="button" className="mine-add" onClick={handleCreate}>
-              <PlusOutlined aria-hidden />
-              添加
-            </button>
-          </div>
+          {!readOnly && (
+            <div className="mine-space-actions">
+              <button type="button" className="mine-invite" onClick={openInvite}>
+                <UserAddOutlined aria-hidden />
+                邀请成员
+              </button>
+              <button type="button" className="mine-add" onClick={handleCreate}>
+                <PlusOutlined aria-hidden />
+                添加
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="mine-toolbar">
@@ -1221,18 +1225,20 @@ export default function MinePage() {
                             message.info("图片已上传，可在编辑器中继续使用");
                           }}
                         >
-                          <button
-                            type="button"
-                            className={`mine-card-check ${selected ? "is-checked" : ""}`}
-                            aria-label={`选择 ${item.title}`}
-                            aria-pressed={selected}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleSelected(item);
-                            }}
-                          >
-                            {selected ? <CheckOutlined /> : null}
-                          </button>
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              className={`mine-card-check ${selected ? "is-checked" : ""}`}
+                              aria-label={`选择 ${item.title}`}
+                              aria-pressed={selected}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleSelected(item);
+                              }}
+                            >
+                              {selected ? <CheckOutlined /> : null}
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="mine-card-download"
@@ -1244,6 +1250,7 @@ export default function MinePage() {
                           >
                             <img src={downloadIcon} alt="" />
                           </button>
+                          {!readOnly && (
                           <div className="mine-card-hover-bar">
                             {trashSpace ? (
                               <button
@@ -1345,6 +1352,7 @@ export default function MinePage() {
                               </button>
                             </Dropdown>
                           </div>
+                          )}
                         </div>
                       </div>
                       <div className="mine-card-meta">
@@ -1435,15 +1443,19 @@ export default function MinePage() {
         footer={null}
       >
         <div className="profile-form">
-          <label>
-            创建团队
-            <Input
-              value={teamName}
-              placeholder="团队名称"
-              onChange={(event) => setTeamName(event.target.value)}
-            />
-          </label>
-          <Button onClick={handleCreateTeam}>创建</Button>
+          {!readOnly && (
+            <>
+              <label>
+                创建团队
+                <Input
+                  value={teamName}
+                  placeholder="团队名称"
+                  onChange={(event) => setTeamName(event.target.value)}
+                />
+              </label>
+              <Button onClick={handleCreateTeam}>创建</Button>
+            </>
+          )}
           <label>
             邀请到团队
             <Select
