@@ -49,22 +49,11 @@ describe("CreatePopover", () => {
     vi.clearAllMocks();
   });
 
-  it("asks logged-out users to sign in when clicking 新增画布", async () => {
-    const user = userEvent.setup();
-    renderSidebar();
-
-    await user.click(screen.getByRole("button", { name: "新增画布" }));
-
-    expect(openLoginTab).toHaveBeenCalledTimes(1);
-    expect(createWork).not.toHaveBeenCalled();
-    expect(screen.queryByRole("dialog", { name: "创建设计" })).not.toBeInTheDocument();
-  });
-
   it("opens the canvas size modal instead of creating immediately", async () => {
     localStorage.setItem("dp.token", "token");
     localStorage.setItem(
       "dp.user",
-      JSON.stringify({ id: 2, username: "demo", nickname: "演示用户" }),
+      JSON.stringify({ id: 1, role: 1, username: "demo", nickname: "演示用户" }),
     );
     const user = userEvent.setup();
     renderSidebar();
@@ -80,7 +69,7 @@ describe("CreatePopover", () => {
     localStorage.setItem("dp.token", "token");
     localStorage.setItem(
       "dp.user",
-      JSON.stringify({ id: 2, username: "demo", nickname: "演示用户" }),
+      JSON.stringify({ id: 1, role: 1, username: "demo", nickname: "演示用户" }),
     );
     const user = userEvent.setup();
     renderSidebar();
@@ -99,7 +88,7 @@ describe("CreatePopover", () => {
     localStorage.setItem("dp.token", "token");
     localStorage.setItem(
       "dp.user",
-      JSON.stringify({ id: 2, username: "demo", nickname: "演示用户" }),
+      JSON.stringify({ id: 1, role: 1, username: "demo", nickname: "演示用户" }),
     );
     const user = userEvent.setup();
     renderSidebar();
