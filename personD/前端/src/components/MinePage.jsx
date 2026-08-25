@@ -988,6 +988,7 @@ export default function MinePage() {
             work={detailWork}
             locationLabel={spaceTab}
             loading={detailLoading}
+            readOnly={readOnly}
             onBack={() => setDetailWork(null)}
             onEdit={() => navigate(`/works/${detailWork.id}`)}
             onShare={() => openShare(detailWork.id)}
@@ -1148,19 +1149,23 @@ export default function MinePage() {
                     <p className="mine-empty-title">拖放文件到这里，开始云端作图</p>
                     <p className="mine-empty-sub">点击上传文件，支持上传本地文件</p>
                     <div className="mine-empty-actions">
-                      <button type="button" className="mine-empty-btn" onClick={openFilePicker}>
-                        上传文件
-                      </button>
-                      <button
-                        type="button"
-                        className="mine-empty-btn"
-                        onClick={() => {
-                          setOpen(false);
-                          setPage("create");
-                        }}
-                      >
-                        从「一稿设计」导入
-                      </button>
+                      {!readOnly && (
+                        <button type="button" className="mine-empty-btn" onClick={openFilePicker}>
+                          上传文件
+                        </button>
+                      )}
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          className="mine-empty-btn"
+                          onClick={() => {
+                            setOpen(false);
+                            setPage("create");
+                          }}
+                        >
+                          从「一稿设计」导入
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -1175,16 +1180,18 @@ export default function MinePage() {
                       <span>{permissionLabel(link.permission)}</span>
                     </div>
                     <Input readOnly value={sharePageUrl(link.token)} />
-                    <Button danger aria-label={`撤销链接 ${link.token}`} onClick={() => handleRevokeShare(link)}>
-                      撤销
-                    </Button>
+                    {!readOnly && (
+                      <Button danger aria-label={`撤销链接 ${link.token}`} onClick={() => handleRevokeShare(link)}>
+                        撤销
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
             ) : null}
             {!showEmpty && !listError && !showShareList ? (
               <div className="mine-grid">
-                {showUploadTile ? (
+                {!readOnly && showUploadTile ? (
                   <article className="mine-card">
                     <button type="button" className="mine-card-cover mine-card-upload" onClick={openFilePicker}>
                       上传图片
@@ -1570,7 +1577,9 @@ export default function MinePage() {
             />
           </label>
           <Button onClick={() => handleCreateShare("VIEW")}>创建只读链接</Button>
-          <Button onClick={() => handleCreateShare("EDIT")}>创建可编辑链接</Button>
+          {!readOnly && (
+            <Button onClick={() => handleCreateShare("EDIT")}>创建可编辑链接</Button>
+          )}
           {shareLinks.map((link) => (
             <div className="mine-share-row" key={link.id}>
               <span>{permissionLabel(link.permission)}</span>

@@ -159,6 +159,7 @@ export default function MineWorkDetail({
   onShare,
   onDelete,
   onSoon,
+  readOnly = false,
 }) {
   const stageRef = useRef(null);
   const [stageBox, setStageBox] = useState({ width: 720, height: 520 });
@@ -262,43 +263,49 @@ export default function MineWorkDetail({
       </div>
       <aside className="mine-detail-side">
         <div className="mine-detail-side-tools">
-          <button type="button" aria-label="分享" onClick={onShare}>
-            <ShareAltOutlined />
-          </button>
+          {!readOnly && (
+            <button type="button" aria-label="分享" onClick={onShare}>
+              <ShareAltOutlined />
+            </button>
+          )}
           <button type="button" aria-label="评论" onClick={onSoon}>
             <MessageOutlined />
           </button>
-          <Dropdown
-            menu={{
-              items: [
-                { key: "share", label: "分享" },
-                { key: "delete", label: "删除", danger: true },
-              ],
-              onClick: ({ key }) => {
-                if (key === "share") onShare();
-                if (key === "delete") onDelete();
-              },
-            }}
-            trigger={["click"]}
-          >
-            <button type="button" aria-label="更多操作">
-              <EllipsisOutlined />
-            </button>
-          </Dropdown>
+          {!readOnly && (
+            <Dropdown
+              menu={{
+                items: [
+                  { key: "share", label: "分享" },
+                  { key: "delete", label: "删除", danger: true },
+                ],
+                onClick: ({ key }) => {
+                  if (key === "share") onShare();
+                  if (key === "delete") onDelete();
+                },
+              }}
+              trigger={["click"]}
+            >
+              <button type="button" aria-label="更多操作">
+                <EllipsisOutlined />
+              </button>
+            </Dropdown>
+          )}
         </div>
         <h1 className="mine-detail-title">{work?.title || "未命名作品"}</h1>
         <div className="mine-detail-actions">
-          <button
-            type="button"
-            className="mine-detail-edit"
-            aria-label="编辑"
-            onClick={onEdit}
-          >
-            <span aria-hidden="true">
-              <EditOutlined />
-            </span>
-            编辑
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className="mine-detail-edit"
+              aria-label="编辑"
+              onClick={onEdit}
+            >
+              <span aria-hidden="true">
+                <EditOutlined />
+              </span>
+              编辑
+            </button>
+          )}
           <button type="button" className="mine-detail-ai" onClick={onSoon}>
             <SparkleIcon />
             AI 编辑
