@@ -13,5 +13,7 @@
 @import "./editor.css";
 @import "./editor-text.css";
 @import "./editor-line.css";
+@import "./editor-shape.css";
 @import "./editor-collage.css";
 @import "./create-canvas.css";
+@import "./select-resource.css";

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Spin } from "antd";
+import { Button, Input, Spin } from "antd";
 import { Link, useParams } from "react-router-dom";
 import { getShare, probeShareEdit } from "../api/shares.js";
 import {
@@ -25,7 +25,9 @@ export default function ShareViewPage() {
     work: null,
     error: null,
     canEdit: false,
+    codeRequired: false,
   });
+  const [accessCode, setAccessCode] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -36,11 +38,22 @@ export default function ShareViewPage() {
       })
       .catch((err) => {
         if (!cancelled) {
+          if (err.message === "提取码错误") {
+            setState({
+              loading: false,
+              work: null,
+              error: null,
+              canEdit: false,
+              codeRequired: true,
+            });
+            return;
+          }
           setState({
             loading: false,
             work: null,
             error: err.message || "链接无效",
             canEdit: false,
+            codeRequired: false,
           });
         }
       });
@@ -49,8 +62,33 @@ export default function ShareViewPage() {
     };
   }, [token]);
 
+  const openWithCode = async () => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const [work, canEdit] = await Promise.all([
+        getShare(token, accessCode.trim()),
+        probeShareEdit(token, accessCode.trim()),
+      ]);
+      setState({
+        loading: false,
+        work,
+        error: null,
+        canEdit,
+        codeRequired: false,
+      });
+    } catch (err) {
+      setState({
+        loading: false,
+        work: null,
+        error: err.message || "链接无效",
+        canEdit: false,
+        codeRequired: err.message === "提取码错误",
+      });
+    }
+  };
+
   if (!state.loading && state.canEdit) {
-    return <WorkEditorPage shareToken={token} />;
+    return <WorkEditorPage shareToken={token} shareCode={accessCode.trim()} />;
   }
 
   const canvas = parseCanvas(state.work?.canvasJson);
@@ -62,6 +100,21 @@ export default function ShareViewPage() {
         <strong>{state.work?.title || "分享作品"}</strong>
       </header>
       <Spin spinning={state.loading}>
+        {state.codeRequired ? (
+          <div className="share-code-prompt">
+            <label htmlFor="share-access-code">请输入提取码</label>
+            <Input
+              id="share-access-code"
+              value={accessCode}
+              maxLength={8}
+              onChange={(event) => setAccessCode(event.target.value)}
+              onPressEnter={openWithCode}
+            />
+            <Button type="primary" loading={state.loading} onClick={openWithCode}>
+              打开
+            </Button>
+          </div>
+        ) : null}
         {state.error ? (
           <div className="template-status">{state.error}</div>
         ) : null}

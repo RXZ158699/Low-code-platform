@@ -14,6 +14,10 @@ export function listHotTemplates(limit = 8) {
   return apiFetch(`/templates/hot?limit=${limit}`, { auth: false });
 }
 
+export function getTemplate(id) {
+  return apiFetch(`/templates/${id}`, { auth: false });
+}
+
 export function createWorkFromTemplate(id) {
   return apiFetch(`/templates/${id}/use`, { method: "POST" });
 }

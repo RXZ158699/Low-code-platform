@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addCollageElement,
   addMediaElement,
+  appendElements,
   addRectElement,
   addShapeElement,
   addTextElement,
@@ -13,12 +14,18 @@ import {
   createEmptyCanvas,
   duplicateElement,
   fillCollageCells,
+  collageCellOffset,
+  localDragDelta,
+  panCollageCell,
+  setCollageCellOffset,
   fitCollageToCanvas,
   fitTextBox,
   flipLine,
+  flipShape,
   formatTextContent,
   getCollageProps,
   getLineProps,
+  getShapeProps,
   getHighlightEllipses,
   getTextGlyphs,
   getTextProps,
@@ -37,12 +44,14 @@ import {
   resizeCanvas,
   rotateFromDrag,
   scaledShapePoints,
+  setCollageCellSrc,
   setCollageSize,
   setLineEndpoint,
   setLineLength,
   setLineOrigin,
   setLineStrokeWidth,
   shapeKind,
+  shapePathD,
   stringifyCanvas,
   TEXT_BOX_MAX_WIDTH,
   textElementStyle,
@@ -164,6 +173,37 @@ describe("canvas helpers", () => {
     });
     const filled = fillCollageCells(item, ["one.png", "two.png"]);
     expect(filled.cells.map((cell) => cell.src)).toEqual(["one.png", "two.png"]);
+  });
+
+  it("writes an image onto one collage cell", () => {
+    const item = addCollageElement(createEmptyCanvas(800, 600), "2-v")
+      .elements[0];
+    const patched = setCollageCellSrc(item, 1, "http://cdn/b.png");
+    expect(patched.cells.map((cell) => cell.src)).toEqual([
+      undefined,
+      "http://cdn/b.png",
+    ]);
+  });
+
+  it("pans a collage cell image inside its frame", () => {
+    const item = {
+      ...addCollageElement(createEmptyCanvas(800, 600), "2-v").elements[0],
+      cells: [
+        { r: 1, c: 1, rs: 1, cs: 1, src: "a.png", ox: 50, oy: 50 },
+        { r: 1, c: 2, rs: 1, cs: 1 },
+      ],
+    };
+    expect(collageCellOffset(item.cells[0])).toEqual({ ox: 50, oy: 50 });
+    expect(localDragDelta(10, 0, 0)).toEqual({ dx: 10, dy: 0 });
+    const panned = panCollageCell(item, 0, item.cells[0], 40, 0, {
+      width: 200,
+      height: 100,
+    });
+    expect(panned.cells[0].ox).toBe(30);
+    expect(panned.cells[0].oy).toBe(50);
+    expect(panned.cells[1].src).toBeUndefined();
+    const clamped = setCollageCellOffset(item, 0, { ox: 200, oy: -20 });
+    expect(clamped.cells[0]).toMatchObject({ ox: 100, oy: 0 });
   });
 
   it("keeps collage aspect ratio when resizing one side", () => {
@@ -674,6 +714,28 @@ describe("canvas helpers", () => {
     expect(boxFromDrag(10, 10, 11, 11)).toBeNull();
   });
 
+  it("builds a proportional square draw box from the origin", () => {
+    expect(boxFromDrag(100, 80, 260, 140, 3, true)).toEqual({
+      x: 100,
+      y: 80,
+      width: 160,
+      height: 160,
+    });
+    expect(boxFromDrag(260, 140, 100, 80, 3, true)).toEqual({
+      x: 100,
+      y: -20,
+      width: 160,
+      height: 160,
+    });
+    expect(boxFromDrag(100, 80, 140, 200, 3, true)).toEqual({
+      x: 100,
+      y: 80,
+      width: 120,
+      height: 120,
+    });
+    expect(boxFromDrag(10, 10, 11, 11, 3, true)).toBeNull();
+  });
+
   it("adds polygon shapes that stretch independently with the box", () => {
     const canvas = addShapeElement(createEmptyCanvas(800, 600), "triangle", {
       x: 20,
@@ -695,6 +757,29 @@ describe("canvas helpers", () => {
       [200, 80],
       [0, 80],
     ]);
+  });
+
+  it("reads filled shape style defaults and flip patches", () => {
+    expect(getShapeProps({ type: "rect", width: 120, height: 80 })).toMatchObject({
+      kind: "square",
+      fill: "#2563eb",
+      fillVisible: true,
+      stroke: "#6b7280",
+      strokeVisible: true,
+      strokeWidth: 0,
+      strokeAlign: "center",
+      strokeStyle: "solid",
+      cornerRadius: 0,
+      opacity: 100,
+      aspectLocked: false,
+      flippedX: false,
+      flippedY: false,
+    });
+    expect(flipShape({ flippedX: false }, "x")).toEqual({ flippedX: true });
+    expect(flipShape({ flippedY: true }, "y")).toEqual({ flippedY: false });
+    expect(shapePathD("square", 20, 10, 0)).toContain("H 20");
+    expect(shapePathD("circle", 20, 10)).toContain("A 10 5");
+    expect(shapePathD("triangle", 20, 20, 4)).toContain("Q");
   });
 
   it("treats legacy rect elements as independently scalable squares", () => {
@@ -778,5 +863,18 @@ describe("canvas helpers", () => {
       x2: 110,
       y2: 20,
     });
+  });
+});
+
+describe("appendElements", () => {
+  it("clones incoming elements onto the canvas with new ids", () => {
+    const canvas = createEmptyCanvas(200, 200);
+    const next = appendElements(canvas, [
+      { id: "text-old", type: "text", text: "标题", x: 10, y: 20 },
+    ]);
+
+    expect(next.elements).toHaveLength(1);
+    expect(next.elements[0].id).not.toBe("text-old");
+    expect(next.elements[0]).toMatchObject({ type: "text", text: "标题", x: 10, y: 20 });
   });
 });

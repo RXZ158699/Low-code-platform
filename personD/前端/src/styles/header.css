@@ -5,27 +5,6 @@
   justify-content: space-between;
 }
 
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.pro-badge {
-  margin: 0 !important;
-  padding: 2px 6px !important;
-  border: 0 !important;
-  border-radius: 4px !important;
-  background: #eff6ff !important;
-  color: #2563eb !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  line-height: 1 !important;
-}
-
 .login-register-btn {
   height: 37px !important;
   padding: 0 20px !important;

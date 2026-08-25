@@ -2,10 +2,14 @@ import { apiFetch, ApiError } from "./client.js";
 
 const FORBIDDEN = 40300;
 
-export function createShare(workId, { permission = "VIEW", expireAt } = {}) {
+function shareQuery(code) {
+  return code ? `?code=${encodeURIComponent(code)}` : "";
+}
+
+export function createShare(workId, { permission = "VIEW", expireAt, accessCode } = {}) {
   return apiFetch(`/works/${workId}/shares`, {
     method: "POST",
-    body: { permission, expireAt },
+    body: { permission, expireAt, accessCode },
   });
 }
 
@@ -13,17 +17,21 @@ export function listWorkShares(workId) {
   return apiFetch(`/works/${workId}/shares`);
 }
 
-export function getShare(token) {
-  return apiFetch(`/shares/${token}`, { auth: false });
+export function getShare(token, code) {
+  return apiFetch(`/shares/${token}${shareQuery(code)}`, { auth: false });
 }
 
-export function updateShare(token, payload = {}) {
-  return apiFetch(`/shares/${token}`, { method: "PUT", body: payload, auth: false });
+export function updateShare(token, payload = {}, code) {
+  return apiFetch(`/shares/${token}${shareQuery(code)}`, {
+    method: "PUT",
+    body: payload,
+    auth: false,
+  });
 }
 
-export async function probeShareEdit(token) {
+export async function probeShareEdit(token, code) {
   try {
-    await updateShare(token, {});
+    await updateShare(token, {}, code);
     return true;
   } catch (error) {
     if (error instanceof ApiError && error.code === FORBIDDEN) {

@@ -50,7 +50,7 @@ describe("LoginPage", () => {
   it("renders the wechat and phone login layout", () => {
     renderLogin();
 
-    expect(screen.getByText("欢迎使用稿定")).toBeInTheDocument();
+    expect(screen.getByText("欢迎使用一稿")).toBeInTheDocument();
     expect(screen.getByText("微信扫码登录")).toBeInTheDocument();
     expect(screen.getByText("手机号登录")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("输入手机号码")).toBeInTheDocument();

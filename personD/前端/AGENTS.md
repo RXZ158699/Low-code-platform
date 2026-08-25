@@ -4,11 +4,11 @@
 
 ## 项目概览
 
-这是一个**低代码/在线设计平台的前端首页**（对标「稿定设计」营销物料平台），已接入后端 API（登录/注册、模板广场、基于模板创建作品）。
+这是一个**低代码/在线设计平台的前端首页**（对标「一稿设计」营销物料平台），已接入后端 API（登录/注册、模板广场、基于模板创建作品）。
 
 - 技术栈：React 19 + Vite 7 + Ant Design 5 + react-router-dom 7 + JavaScript（JSX，**未使用 TypeScript**）
 - 目录：`personD/前端/`
-- 页面标题：稿定设计 - 营销物料平台
+- 页面标题：一稿设计 - 营销物料平台
 - 设计稿宽度固定为 **1440px**，通过 CSS transform 整体缩放适配不同屏幕
 - 后端联调：`vite.config.js` 已配置 `/api` → `http://localhost:8080` 代理；后端需先启动（见 `personD/后端/README.md`）
 
@@ -143,7 +143,7 @@ npm test           # Vitest 单元测试（jsdom 环境）
 | 改分类弹框样式 | `src/styles/hero.css` 的 `.category-popover-*` |
 | 改创建弹框内容 | `CreatePopover.jsx` 的 `CREATE_ACTIONS` / `CREATE_TOOLS` |
 | 改功能入口（AI画布等） | `FeaturesRow.jsx` 的 `FEATURES` |
-| 改模板卡片/Tab | `TemplateShowcase.jsx`（`TEMPLATE_TABS`；卡片数据来自 `GET /api/templates`，无封面时用 `FALLBACK_COVERS` 兜底） |
+| 改模板卡片/分类/瀑布流 | `TemplateShowcase.jsx`（4 列瀑布流）；内置示例模板在 `src/data/templateCatalog.js`，分类配置在 `src/config/templateCategories.js`；卡片数据优先来自 `GET /api/templates`，不足时用内置目录补足，无封面时用 `TemplateCover.jsx` 的 CSS 预览 |
 | 改全局主题色 | `main.jsx` 的 `ConfigProvider` theme token |
 | 改侧边栏导航 | `Sidebar.jsx` 的 `NAV_ITEMS` |
 | 新增后端接口调用 | `src/api/` 下加模块，统一走 `client.js` 的 `apiFetch` |

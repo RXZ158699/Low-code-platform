@@ -35,11 +35,14 @@ const CREATE_TOOLS = [
   { label: "视频剪辑", icon: scissorsIcon },
 ];
 
+const CANVAS_TOOL_LABELS = new Set(["图片创作", "图文创作", "拼图", "图片编辑", "在线PS"]);
+
 const CreatePopoverContext = createContext(null);
 
 export function CreatePopoverProvider({ children }) {
   const [open, setOpen] = useState(false);
   const [canvasModalOpen, setCanvasModalOpen] = useState(false);
+  const [canvasModalTab, setCanvasModalTab] = useState("canvas");
 
   useEffect(() => {
     if (!open) return undefined;
@@ -62,15 +65,27 @@ export function CreatePopoverProvider({ children }) {
   }, [open]);
 
   const value = useMemo(
-    () => ({ open, setOpen, canvasModalOpen, setCanvasModalOpen }),
-    [open, canvasModalOpen],
+    () => ({
+      open,
+      setOpen,
+      canvasModalOpen,
+      setCanvasModalOpen,
+      canvasModalTab,
+      setCanvasModalTab,
+    }),
+    [open, canvasModalOpen, canvasModalTab],
   );
 
   return (
     <CreatePopoverContext.Provider value={value}>
       {children}
       {canvasModalOpen ? (
-        <CreateCanvasModal open onClose={() => setCanvasModalOpen(false)} />
+        <CreateCanvasModal
+          key={canvasModalTab}
+          open
+          initialTab={canvasModalTab}
+          onClose={() => setCanvasModalOpen(false)}
+        />
       ) : null}
     </CreatePopoverContext.Provider>
   );
@@ -84,6 +99,8 @@ export function useCreatePopover() {
       setOpen: () => {},
       canvasModalOpen: false,
       setCanvasModalOpen: () => {},
+      canvasModalTab: "canvas",
+      setCanvasModalTab: () => {},
     };
   }
   return context;
@@ -91,20 +108,46 @@ export function useCreatePopover() {
 
 export default function CreatePopover() {
   const { user } = useAuth();
-  const { setOpen, setCanvasModalOpen } = useCreatePopover();
+  const { setOpen, setCanvasModalOpen, setCanvasModalTab } = useCreatePopover();
   const { message } = AntdApp.useApp();
 
-  const handleAction = (label) => {
-    if (label !== "新增画布") {
-      message.info("功能开发中");
-      return;
-    }
+  const requireUser = () => {
     if (!user) {
       openLoginTab();
+      return false;
+    }
+    return true;
+  };
+
+  const openCanvasModal = (tab = "canvas") => {
+    if (!requireUser()) return;
+    setOpen(false);
+    setCanvasModalTab(tab);
+    setCanvasModalOpen(true);
+  };
+
+  const handleAction = (label) => {
+    if (label === "新增画布") {
+      openCanvasModal("canvas");
       return;
     }
-    setOpen(false);
-    setCanvasModalOpen(true);
+    if (label === "导入图片") {
+      openCanvasModal("import");
+      return;
+    }
+    if (label === "打开本地") {
+      openCanvasModal("local");
+      return;
+    }
+    message.info("功能开发中");
+  };
+
+  const handleTool = (label) => {
+    if (CANVAS_TOOL_LABELS.has(label)) {
+      openCanvasModal("canvas");
+      return;
+    }
+    message.info("功能开发中");
   };
 
   return (
@@ -130,7 +173,7 @@ export default function CreatePopover() {
           <h3 className="create-popover-title">应用场景/工具</h3>
           <div className="create-tools">
             {CREATE_TOOLS.map((item) => (
-              <button type="button" className="create-tool" key={item.label}>
+              <button type="button" className="create-tool" key={item.label} onClick={() => handleTool(item.label)}>
                 <span className="create-tool-icon">
                   <img src={item.icon} alt="" />
                 </span>

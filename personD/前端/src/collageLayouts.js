@@ -12,7 +12,7 @@ function occupied(merges, r, c) {
   );
 }
 
-export function buildLayout(
+function buildLayout(
   id,
   rowCount,
   colCount,

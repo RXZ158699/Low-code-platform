@@ -84,7 +84,7 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-top">
-        <div className="brand-logo">稿定</div>
+        <div className="brand-logo">一稿</div>
         <nav className="sidebar-nav" aria-label="主导航">
           {NAV_ITEMS.map((item) => (
             <div

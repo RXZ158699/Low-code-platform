@@ -6,15 +6,24 @@ import TemplateShowcase from "./TemplateShowcase.jsx";
 
 export default function DesignHomepage() {
   const [keyword, setKeyword] = useState("");
+  const [category, setCategory] = useState("all");
 
   return (
     <div className="homepage">
       <div className="homepage-glow" aria-hidden="true" />
       <main className="homepage-main">
         <HeaderBar />
-        <HeroSection onSearch={setKeyword} />
+        <HeroSection
+          onSearch={setKeyword}
+          activeCategory={category}
+          onCategoryChange={setCategory}
+        />
         <FeaturesRow />
-        <TemplateShowcase keyword={keyword} />
+        <TemplateShowcase
+          keyword={keyword}
+          category={category}
+          onCategoryChange={setCategory}
+        />
         <div className="homepage-tail" aria-hidden="true" />
       </main>
     </div>

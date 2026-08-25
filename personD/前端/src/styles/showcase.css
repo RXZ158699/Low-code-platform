@@ -49,19 +49,36 @@
   color: #7f8792 !important;
 }
 
-.template-cards {
-  display: flex;
+.template-notice {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.template-waterfall {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
+  align-items: start;
+}
+
+.template-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
 }
 
 .template-card {
   position: relative;
-  flex: 1;
-  min-width: 0;
-  height: 450px;
+  width: 100%;
   overflow: hidden;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
+  background: #f8fafc;
   cursor: pointer;
   transition:
     box-shadow 0.2s ease,
@@ -73,13 +90,84 @@
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
 }
 
-.template-card img.cover {
+.template-card .cover {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
   display: block;
+  object-fit: cover;
+}
+
+/* 内置示例模板的 CSS 海报封面 */
+.cover-demo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 18px;
+  overflow: hidden;
+  text-align: center;
+  background: linear-gradient(135deg, var(--tc1) 0%, var(--tc2) 100%);
+}
+
+.cover-demo-shape {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.cover-demo .shape-circle {
+  top: -38px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--tc-accent);
+  opacity: 0.35;
+}
+
+.cover-demo .shape-rect {
+  bottom: 44px;
+  left: -24px;
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  background: var(--tc-accent);
+  opacity: 0.22;
+  transform: rotate(24deg);
+}
+
+.cover-demo-kicker {
+  position: relative;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.cover-demo-title {
+  position: relative;
+  max-width: 90%;
+  font-size: 23px;
+  font-weight: 900;
+  line-height: 1.18;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.cover-demo-tags {
+  position: relative;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .template-overlay {

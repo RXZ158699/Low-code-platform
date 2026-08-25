@@ -1,0 +1,113 @@
+.editor-shape-panel .editor-shape-slider,
+.editor-shape-panel .editor-line-section,
+.editor-shape-panel .editor-text-geo {
+  padding: 14px 0 4px;
+  border-top: 1px solid #f0f1f4;
+}
+
+.editor-shape-panel .editor-shape-slider > span {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.editor-shape-flip {
+  width: 16px;
+  height: 16px;
+}
+
+.editor-shape-size,
+.editor-shape-pos {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+}
+
+.editor-shape-size {
+  grid-template-columns: auto 28px 1fr 1fr;
+}
+
+.editor-shape-pos {
+  grid-template-columns: auto 1fr 1fr;
+}
+
+.editor-shape-size h3,
+.editor-shape-pos h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.editor-shape-panel .editor-text-chip {
+  height: 34px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+}
+
+.editor-shape-panel .editor-text-lock {
+  background: transparent;
+}
+
+.editor-shape-panel .editor-text-lock.is-on {
+  background: #f3f4f6;
+}
+
+.editor-shape-swatch .editor-color-picker,
+.editor-shape-swatch .ant-color-picker-trigger {
+  width: 40px;
+  height: 24px;
+  min-width: 40px;
+  padding: 2px;
+  border-radius: 6px;
+  border-color: #e5e7eb;
+}
+
+.editor-shape-seg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.editor-shape-seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.editor-shape-seg button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid #e5e7eb;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.editor-shape-seg button:last-child {
+  border-right: 0;
+}
+
+.editor-shape-seg button.is-on {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.editor-shape-seg button:focus {
+  outline: none;
+}
+
+.editor-shape-seg button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}

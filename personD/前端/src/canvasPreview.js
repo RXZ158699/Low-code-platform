@@ -4,6 +4,7 @@ import {
   getHighlightEllipses,
   getTextPaintRuns,
   getLineProps,
+  getShapeProps,
   getTextProps,
   isCollageElement,
   isLineKind,
@@ -12,6 +13,8 @@ import {
   parseCanvas,
   scaledShapePoints,
   shapeKind,
+  shapePathD,
+  shapeStrokeLine,
   textBackgroundPaint,
   textFillPaint,
 } from "./canvas.js";
@@ -32,6 +35,11 @@ function colorWithOpacity(hex, opacity) {
 function paintFill(style) {
   const paint = textFillPaint(style);
   return paint.type === "gradient" ? paint.from : paint.color || "#111827";
+}
+
+function applyDash(ctx, dash) {
+  if (typeof ctx.setLineDash !== "function") return;
+  ctx.setLineDash(dash ? dash.split(" ").map(Number) : []);
 }
 
 function paintShape(ctx, item) {
@@ -60,21 +68,70 @@ function paintShape(ctx, item) {
     ctx.strokeStyle = item.fill || "#000000";
     ctx.lineWidth = stroke.width;
     ctx.lineCap = stroke.cap;
-    if (typeof ctx.setLineDash === "function") {
-      ctx.setLineDash(stroke.dash ? stroke.dash.split(" ").map(Number) : []);
-    }
+    applyDash(ctx, stroke.dash);
     ctx.stroke();
-    if (typeof ctx.setLineDash === "function") ctx.setLineDash([]);
+    applyDash(ctx, null);
     ctx.globalAlpha = 1;
     return;
   }
-  ctx.fillStyle = item.fill || "#d1d5db";
-  if (kind === "square") {
-    ctx.fillRect(x, y, width, height);
+  const shape = getShapeProps(item);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, Math.max(0, shape.opacity / 100));
+  ctx.translate(x + width / 2, y + height / 2);
+  ctx.scale(shape.flippedX ? -1 : 1, shape.flippedY ? -1 : 1);
+  ctx.translate(-(x + width / 2), -(y + height / 2));
+  const radius = Math.min(shape.cornerRadius, Math.min(width, height) / 2);
+  const showStroke = shape.strokeVisible && shape.strokeWidth > 0;
+  const simpleSquare =
+    shape.kind === "square" &&
+    !(radius > 0) &&
+    !showStroke &&
+    !shape.flippedX &&
+    !shape.flippedY;
+  if (simpleSquare) {
+    if (shape.fillVisible) {
+      ctx.fillStyle = shape.fill;
+      ctx.fillRect(x, y, width, height);
+    }
+    ctx.restore();
+    return;
+  }
+  if (typeof globalThis.Path2D === "function" && typeof ctx.fill === "function") {
+    const path = new globalThis.Path2D(shapePathD(shape.kind, width, height, radius));
+    ctx.translate(x, y);
+    if (shape.fillVisible) {
+      ctx.fillStyle = shape.fill;
+      ctx.fill(path);
+    }
+    if (showStroke) {
+      const stroke = shapeStrokeLine(shape.strokeStyle, shape.strokeWidth);
+      ctx.strokeStyle = shape.stroke;
+      ctx.lineWidth =
+        shape.strokeAlign === "center" ? shape.strokeWidth : shape.strokeWidth * 2;
+      ctx.lineCap = stroke.cap;
+      ctx.lineJoin = "round";
+      applyDash(ctx, stroke.dash);
+      if (shape.strokeAlign === "inner" && typeof ctx.clip === "function") {
+        ctx.save();
+        ctx.clip(path);
+        ctx.stroke(path);
+        ctx.restore();
+      } else {
+        ctx.stroke(path);
+      }
+      applyDash(ctx, null);
+    }
+    ctx.restore();
+    return;
+  }
+  ctx.fillStyle = shape.fill;
+  if (shape.kind === "square") {
+    if (shape.fillVisible) ctx.fillRect(x, y, width, height);
+    ctx.restore();
     return;
   }
   ctx.beginPath();
-  if (kind === "circle") {
+  if (shape.kind === "circle") {
     ctx.ellipse(
       x + width / 2,
       y + height / 2,
@@ -85,13 +142,14 @@ function paintShape(ctx, item) {
       Math.PI * 2,
     );
   } else {
-    scaledShapePoints(kind, width, height).forEach(([px, py], index) => {
+    scaledShapePoints(shape.kind, width, height).forEach(([px, py], index) => {
       if (index === 0) ctx.moveTo(x + px, y + py);
       else ctx.lineTo(x + px, y + py);
     });
     ctx.closePath();
   }
-  ctx.fill();
+  if (shape.fillVisible) ctx.fill();
+  ctx.restore();
 }
 
 function paintText(ctx, item) {

@@ -51,7 +51,7 @@ export function useDiscoverNav() {
   return context;
 }
 
-export function DiscoverSearchTabs() {
+function DiscoverSearchTabs() {
   const { category, setCategory, setKeyword } = useDiscoverNav();
 
   return (

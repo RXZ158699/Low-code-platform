@@ -12,8 +12,13 @@ import {
 } from "@ant-design/icons";
 import searchIcon from "../assets/icons/search.svg";
 import { createWork } from "../api/works.js";
-import { createEmptyCanvas, stringifyCanvas } from "../canvas.js";
+import { uploadAsset } from "../api/assets.js";
+import { addMediaElement, createEmptyCanvas, stringifyCanvas } from "../canvas.js";
 import { CANVAS_PRESETS, filterCanvasPresets, presetLabel } from "../canvasPresets.js";
+import { MEDIA_ACCEPT, mediaKind, readMediaSize } from "../mediaFile.js";
+
+const IMAGE_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif";
 
 const NAV_TABS = [
   { id: "canvas", label: "新建画布", icon: FileAddOutlined },
@@ -103,10 +108,10 @@ function PresetIcon({ type }) {
   );
 }
 
-export default function CreateCanvasModal({ open, onClose }) {
+export default function CreateCanvasModal({ open, onClose, initialTab = "canvas" }) {
   const navigate = useNavigate();
   const { message } = AntdApp.useApp();
-  const [tab, setTab] = useState("canvas");
+  const [tab, setTab] = useState(initialTab);
   const [search, setSearch] = useState("");
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
@@ -114,6 +119,7 @@ export default function CreateCanvasModal({ open, onClose }) {
   const [ratioLocked, setRatioLocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const ratioRef = useRef(1);
+  const fileInputRef = useRef(null);
 
   const presets = useMemo(() => filterCanvasPresets(CANVAS_PRESETS, search), [search]);
 
@@ -139,6 +145,56 @@ export default function CreateCanvasModal({ open, onClose }) {
       const work = await createWork({
         title,
         canvasJson: stringifyCanvas(createEmptyCanvas(nextWidth, nextHeight)),
+      });
+      message.success(`已创建「${work.title}」`);
+      onClose();
+      navigate(`/works/${work.id}`);
+    } catch (err) {
+      message.error(err.message || "创建失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const createFromFiles = async (fileList, { imagesOnly } = {}) => {
+    if (submitting) return;
+    const picked = Array.from(fileList || []);
+    const media = picked.filter((file) => {
+      const kind = mediaKind(file);
+      if (!kind) return false;
+      if (imagesOnly) return kind === "image";
+      return true;
+    });
+    if (media.length === 0) {
+      message.error(imagesOnly ? "请选择 jpg / png / webp / gif 图片" : "请选择 jpg / png / webp / gif / mp4 / webm 文件");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const uploaded = await Promise.all(
+        media.map(async (file) => {
+          const kind = mediaKind(file);
+          const [asset, size] = await Promise.all([
+            uploadAsset(file, { fileType: kind }),
+            readMediaSize(file),
+          ]);
+          return {
+            type: kind,
+            src: asset.url,
+            name: asset.fileName || file.name,
+            width: size.width,
+            height: size.height,
+          };
+        }),
+      );
+      const first = uploaded[0];
+      let canvas = createEmptyCanvas(first.width, first.height);
+      for (const item of uploaded) {
+        canvas = addMediaElement(canvas, item);
+      }
+      const work = await createWork({
+        title: first.name || "未命名作品",
+        canvasJson: stringifyCanvas(canvas),
       });
       message.success(`已创建「${work.title}」`);
       onClose();
@@ -219,8 +275,43 @@ export default function CreateCanvasModal({ open, onClose }) {
             <CloseOutlined />
           </button>
 
-          {tab !== "canvas" ? (
-            <div className="create-canvas-placeholder">功能开发中</div>
+          {tab === "import" || tab === "local" ? (
+            <div className="create-canvas-import">
+              <input
+                ref={fileInputRef}
+                className="editor-add-file-input"
+                type="file"
+                accept={tab === "import" ? IMAGE_ACCEPT : MEDIA_ACCEPT}
+                multiple
+                aria-label={tab === "import" ? "选择要导入的图片" : "选择本地图片或视频"}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files || []);
+                  event.target.value = "";
+                  createFromFiles(files, { imagesOnly: tab === "import" });
+                }}
+              />
+              <button
+                type="button"
+                className="create-canvas-dropzone"
+                disabled={submitting}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  createFromFiles(event.dataTransfer.files, { imagesOnly: tab === "import" });
+                }}
+              >
+                <PictureOutlined aria-hidden />
+                <strong>
+                  {tab === "import" ? "点击或拖拽图片到这里" : "点击或拖拽图片、视频到这里"}
+                </strong>
+                <span>
+                  {tab === "import"
+                    ? "支持 jpg / png / webp / gif"
+                    : "支持 jpg / png / webp / gif / mp4 / webm"}
+                </span>
+              </button>
+            </div>
           ) : (
             <div className="create-canvas-body">
               <label className="create-canvas-search">

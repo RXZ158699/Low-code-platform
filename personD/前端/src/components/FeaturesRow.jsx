@@ -10,17 +10,36 @@ const FEATURES = [
   { title: "AI 画布", icon: paintbrushIcon },
   { title: "AI 电商", icon: shoppingBagIcon },
   { title: "视频创作", icon: videoIcon },
-  { title: "图片创作", icon: imageIcon },
+  { title: "图片创作", icon: imageIcon, opensCanvas: true },
   { title: "SKILL HUB", icon: graduationCapIcon },
   { title: "更多", icon: layoutDashboardIcon, hasPopover: true },
 ];
 
 export default function FeaturesRow() {
-  const { open, setOpen } = useCreatePopover();
+  const { open, setOpen, setCanvasModalOpen, setCanvasModalTab } = useCreatePopover();
 
   return (
     <section className="features-row" aria-label="功能入口">
       {FEATURES.map((feature) => {
+        if (feature.opensCanvas) {
+          return (
+            <button
+              type="button"
+              className="feature-item feature-canvas-btn"
+              key={feature.title}
+              onClick={() => {
+                setCanvasModalTab("canvas");
+                setCanvasModalOpen(true);
+              }}
+            >
+              <div className="feature-icon">
+                <img src={feature.icon} alt="" />
+              </div>
+              <p className="feature-title">{feature.title}</p>
+            </button>
+          );
+        }
+
         if (!feature.hasPopover) {
           return (
             <div className="feature-item" key={feature.title}>

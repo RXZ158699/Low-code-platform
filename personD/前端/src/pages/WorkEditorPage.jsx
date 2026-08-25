@@ -28,6 +28,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getWork,
   publishWork,
+  saveDraft,
   updateWork,
   uploadWorkThumbnail,
 } from "../api/works.js";
@@ -36,8 +37,10 @@ import { getShare, updateShare } from "../api/shares.js";
 import {
   addCollageElement,
   fillCollageCells,
+  setCollageCellSrc,
+  collageCellOffset,
+  panCollageCell,
   addMediaElement,
-  addRectElement,
   addShapeElement,
   addTextElement,
   applyHandleResize,
@@ -88,15 +91,23 @@ import CanvasCollage from "../components/CanvasCollage.jsx";
 import CanvasMedia from "../components/CanvasMedia.jsx";
 import CanvasShape from "../components/CanvasShape.jsx";
 import EditorAddPanel from "../components/EditorAddPanel.jsx";
+import EditorLibraryPanel from "../components/EditorLibraryPanel.jsx";
+import { applyCatalogCanvas } from "../components/TemplateShowcase.jsx";
+import EditorMaterialPanel from "../components/EditorMaterialPanel.jsx";
 import EditorCollagePanel from "../components/EditorCollagePanel.jsx";
 import EditorColorPicker from "../components/EditorColorPicker.jsx";
 import EditorLinePanel from "../components/EditorLinePanel.jsx";
+import EditorShapePanel from "../components/EditorShapePanel.jsx";
 import EditorTextPanel from "../components/EditorTextPanel.jsx";
+import EditorTextPickerPanel from "../components/EditorTextPickerPanel.jsx";
+import SelectResourceModal from "../components/SelectResourceModal.jsx";
 import CanvasTextCopy from "../components/CanvasTextCopy.jsx";
 import { canvasPreviewBlob } from "../canvasPreview.js";
 import { mediaKind, readMediaSize } from "../mediaFile.js";
+import { collageCellBoxes } from "../collageLayouts.js";
 
 const LINE_SELECT_GAP = 8;
+const LIBRARY_TOOLS = new Set(["template", "image", "mine", "team"]);
 
 const LEFT_TOOLS = [
   { id: "add", label: "添加", icon: PlusCircleOutlined },
@@ -174,7 +185,7 @@ function parseSize(value) {
   return Number.isInteger(number) && number > 0 ? number : 0;
 }
 
-export default function WorkEditorPage({ shareToken } = {}) {
+export default function WorkEditorPage({ shareToken, shareCode } = {}) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { message } = AntdApp.useApp();
@@ -203,6 +214,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
   const [resizeHeight, setResizeHeight] = useState("");
   const [drawTool, setDrawTool] = useState(null);
   const [drawDraft, setDrawDraft] = useState(null);
+  const [resourceTarget, setResourceTarget] = useState(null);
   const dragRef = useRef(null);
   const canvasRef = useRef(canvas);
   const propsRef = useRef(null);
@@ -210,7 +222,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
 
   useEffect(() => {
     let cancelled = false;
-    const request = shareToken ? getShare(shareToken) : getWork(id);
+    const request = shareToken ? getShare(shareToken, shareCode) : getWork(id);
     request
       .then((data) => {
         if (cancelled) return;
@@ -246,7 +258,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [id, shareToken, sourceKey, message]);
+  }, [id, shareToken, shareCode, sourceKey, message]);
 
   useEffect(() => {
     if (!dirty || !sourceKey) return undefined;
@@ -255,8 +267,8 @@ export default function WorkEditorPage({ shareToken } = {}) {
       const payload = { title, canvasJson: stringifyCanvas(canvas) };
       try {
         const saved = shareToken
-          ? await updateShare(shareToken, payload)
-          : await updateWork(id, payload);
+          ? await updateShare(shareToken, payload, shareCode)
+          : await saveDraft(id, payload);
         setWork(saved);
         setDirty(false);
       } catch (err) {
@@ -282,7 +294,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
       }
     }, 800);
     return () => window.clearTimeout(timer);
-  }, [canvas, title, dirty, id, shareToken, sourceKey, message]);
+  }, [canvas, title, dirty, id, shareToken, shareCode, sourceKey, message]);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -371,7 +383,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
               x2: drag.origin.x,
               y2: drag.origin.y,
             }
-          : boxFromDrag(drag.origin.x, drag.origin.y, x, y, 0) || {
+          : boxFromDrag(drag.origin.x, drag.origin.y, x, y, 0, true) || {
               x: drag.origin.x,
               y: drag.origin.y,
               width: 0,
@@ -379,7 +391,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
             };
         drag.box = isLineKind(drag.kind)
           ? lineFromPoints(drag.origin.x, drag.origin.y, x, y)
-          : boxFromDrag(drag.origin.x, drag.origin.y, x, y);
+          : boxFromDrag(drag.origin.x, drag.origin.y, x, y, 3, true);
         setDrawDraft({
           id: "draw-draft",
           type: "shape",
@@ -429,6 +441,21 @@ export default function WorkEditorPage({ shareToken } = {}) {
         setCanvas((current) => updateElement(current, drag.id, patch));
         return;
       }
+      if (drag.type === "collage-pan") {
+        setCanvas((current) => {
+          const live = current.elements.find((entry) => entry.id === drag.id);
+          if (!isCollageElement(live)) return current;
+          return updateElement(
+            current,
+            drag.id,
+            panCollageCell(live, drag.cellIndex, drag.start, dx, dy, {
+              width: drag.start.boxWidth,
+              height: drag.start.boxHeight,
+            }),
+          );
+        });
+        return;
+      }
       if (drag.type === "line-endpoint") {
         const which = drag.which;
         const nextX =
@@ -470,7 +497,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
         dx,
         dy,
         minSize,
-        isCornerHandle(drag.handle),
+        isCornerHandle(drag.handle) || Boolean(drag.start.aspectLocked),
       );
       if (drag.kind === "text") {
         const live =
@@ -540,6 +567,17 @@ export default function WorkEditorPage({ shareToken } = {}) {
         (item) => item.id === drag.id,
       );
       const origin = drag.snapshot.elements.find((item) => item.id === drag.id);
+      if (drag.type === "collage-pan") {
+        const currentCell = current?.cells?.[drag.cellIndex];
+        const originCell = origin?.cells?.[drag.cellIndex];
+        const now = collageCellOffset(currentCell);
+        const before = collageCellOffset(originCell);
+        if (now.ox === before.ox && now.oy === before.oy) return;
+        setPast((value) => [...value, drag.snapshot].slice(-40));
+        setFuture([]);
+        setDirty(true);
+        return;
+      }
       if (
         current &&
         origin &&
@@ -674,6 +712,33 @@ export default function WorkEditorPage({ shareToken } = {}) {
     };
   };
 
+  const beginCollagePan = (event, item, cellIndex) => {
+    if (event.button !== 0 || item.locked) return;
+    const cell = item.cells?.[cellIndex];
+    if (!cell?.src) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedId(item.id);
+    setBoardSelected(false);
+    setEditingId(null);
+    const offset = collageCellOffset(cell);
+    const box = collageCellBoxes(item)[cellIndex] || {};
+    dragRef.current = {
+      type: "collage-pan",
+      id: item.id,
+      cellIndex,
+      start: {
+        ox: offset.ox,
+        oy: offset.oy,
+        px: event.clientX,
+        py: event.clientY,
+        boxWidth: box.width || item.width,
+        boxHeight: box.height || item.height,
+      },
+      snapshot: canvasRef.current,
+    };
+  };
+
   const beginMove = (event, item) => {
     if (event.button !== 0 || editingId === item.id) return;
     event.preventDefault();
@@ -775,6 +840,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
         width: selected.width,
         height: selected.height,
         fontSize: selected.fontSize,
+        aspectLocked: selected.aspectLocked,
         px: event.clientX,
         py: event.clientY,
       },
@@ -873,6 +939,16 @@ export default function WorkEditorPage({ shareToken } = {}) {
     setTextRange(null);
   };
 
+  const placeTextPreset = (next) => {
+    const created = next.elements[next.elements.length - 1];
+    mutateCanvas(next);
+    setSelectedId(created.id);
+    setBoardSelected(false);
+    setEditingId(null);
+    setTextRange(null);
+    setActiveTool("");
+  };
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Escape" && (drawTool || drawDraft)) {
@@ -921,7 +997,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
   const handlePublish = async () => {
     try {
       if (dirty) {
-        await updateWork(id, { title, canvasJson: stringifyCanvas(canvas) });
+        await saveDraft(id, { title, canvasJson: stringifyCanvas(canvas) });
         setDirty(false);
       }
       try {
@@ -950,15 +1026,19 @@ export default function WorkEditorPage({ shareToken } = {}) {
     setDrawTool(null);
     setDrawDraft(null);
     setAddPanelOpen(false);
-    setActiveTool(toolId);
     if (toolId === "text") {
-      placeElement(addTextElement(canvas));
+      setActiveTool((current) => (current === "text" ? "" : "text"));
+      return;
+    }
+    if (LIBRARY_TOOLS.has(toolId)) {
+      setActiveTool((current) => (current === toolId ? "" : toolId));
       return;
     }
     if (toolId === "material") {
-      placeElement(addRectElement(canvas));
+      setActiveTool((current) => (current === "material" ? "" : "material"));
       return;
     }
+    setActiveTool(toolId);
     if (toolId === "background") {
       setSelectedId(null);
       setBoardSelected(true);
@@ -966,6 +1046,72 @@ export default function WorkEditorPage({ shareToken } = {}) {
       return;
     }
     message.info("功能开发中");
+  };
+
+  const handleLibraryPick = (payload) => {
+    if (payload?.kind === "template") {
+      const prepared = applyCatalogCanvas(payload.item || {});
+      const template = prepared.template;
+      let next = parseCanvas(template.jsonData);
+      if (next.elements.length === 0 && template.coverImageUrl) {
+        next = addMediaElement(next, {
+          type: "image",
+          src: template.coverImageUrl,
+          name: template.title || "模板",
+        });
+      }
+      mutateCanvas(next);
+      setSelectedId(null);
+      setBoardSelected(true);
+      setEditingId(null);
+      setTextRange(null);
+      return;
+    }
+    const asset = payload?.item;
+    if (!asset?.url) return;
+    placeElement(
+      addMediaElement(canvas, {
+        type: asset.fileType === "video" ? "video" : "image",
+        src: asset.url,
+        name: asset.fileName || asset.title || "素材",
+      }),
+    );
+  };
+
+  const handleMaterialPick = (payload) => {
+    const pattern = payload?.item;
+    if (!pattern?.src) return;
+    placeElement(
+      addMediaElement(canvas, {
+        type: "image",
+        src: pattern.src,
+        name: pattern.name || "图案素材",
+        width: pattern.width,
+        height: pattern.height,
+      }),
+    );
+    setActiveTool("");
+  };
+
+  const handleExport = async () => {
+    try {
+      const blob = await canvasPreviewBlob(canvas);
+      if (!blob) {
+        message.error("导出失败");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${title || "未命名作品"}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      message.success("已导出图片");
+    } catch (err) {
+      message.error(err.message || "导出失败");
+    }
   };
 
   const handleAddSelect = (action) => {
@@ -985,17 +1131,17 @@ export default function WorkEditorPage({ shareToken } = {}) {
     setDrawTool(null);
     setDrawDraft(null);
     if (action === "text-h1") {
-      placeElement(
+      placeTextPreset(
         addTextElement(canvas, { text: "标题", fontSize: 72, fontWeight: 700 }),
       );
       return;
     }
     if (action === "text-h2") {
-      placeElement(addTextElement(canvas, { text: "副标题", fontSize: 48 }));
+      placeTextPreset(addTextElement(canvas, { text: "副标题", fontSize: 48 }));
       return;
     }
     if (action === "text-body") {
-      placeElement(addTextElement(canvas, { text: "正文", fontSize: 28 }));
+      placeTextPreset(addTextElement(canvas, { text: "正文", fontSize: 28 }));
       return;
     }
     if (typeof action === "string" && action.startsWith("collage:")) {
@@ -1033,6 +1179,33 @@ export default function WorkEditorPage({ shareToken } = {}) {
     } catch (err) {
       message.error(err.message || "上传失败");
     }
+  };
+
+  const openResourcePicker = (collageId, cellIndex) => {
+    if (shareMode) return;
+    const current = canvasRef.current.elements.find(
+      (entry) => entry.id === collageId,
+    );
+    if (!isCollageElement(current) || current.locked) return;
+    setSelectedId(collageId);
+    setBoardSelected(false);
+    setEditingId(null);
+    setResourceTarget({ collageId, cellIndex });
+  };
+
+  const applyResourceImage = (src) => {
+    if (!resourceTarget?.collageId || !src) return;
+    const current = canvasRef.current.elements.find(
+      (entry) => entry.id === resourceTarget.collageId,
+    );
+    if (!isCollageElement(current)) return;
+    mutateCanvas(
+      updateElement(
+        canvasRef.current,
+        resourceTarget.collageId,
+        setCollageCellSrc(current, resourceTarget.cellIndex, src),
+      ),
+    );
   };
 
   const handleLocalFiles = async (files) => {
@@ -1106,6 +1279,8 @@ export default function WorkEditorPage({ shareToken } = {}) {
       ? "未保存"
       : work?.status === "PUBLISHED"
         ? "已发布"
+        : work?.status === "ARCHIVED"
+          ? "已归档"
         : "已保存至云端";
 
   return (
@@ -1192,7 +1367,7 @@ export default function WorkEditorPage({ shareToken } = {}) {
           <Button
             type="primary"
             className="editor-export"
-            onClick={() => message.info("导出功能开发中")}
+            onClick={handleExport}
           >
             导出
           </Button>
@@ -1237,6 +1412,25 @@ export default function WorkEditorPage({ shareToken } = {}) {
           onClose={() => setAddPanelOpen(false)}
           onSelect={handleAddSelect}
           onLocalFiles={handleLocalFiles}
+        />
+
+        <EditorTextPickerPanel
+          open={activeTool === "text"}
+          onClose={() => setActiveTool("")}
+          onPick={handleAddSelect}
+        />
+
+        <EditorLibraryPanel
+          open={LIBRARY_TOOLS.has(activeTool)}
+          kind={LIBRARY_TOOLS.has(activeTool) ? activeTool : "template"}
+          onClose={() => setActiveTool("")}
+          onPick={handleLibraryPick}
+        />
+
+        <EditorMaterialPanel
+          open={activeTool === "material"}
+          onClose={() => setActiveTool("")}
+          onPick={handleMaterialPick}
         />
 
         <Spin spinning={loading} wrapperClassName="editor-stage-spin">
@@ -1352,7 +1546,20 @@ export default function WorkEditorPage({ shareToken } = {}) {
                       ) : isShapeElement(item) ? (
                         <CanvasShape item={item} />
                       ) : isCollageElement(item) ? (
-                        <CanvasCollage item={item} />
+                        <CanvasCollage
+                          item={item}
+                          onCellDoubleClick={
+                            shareMode || item.locked
+                              ? undefined
+                              : (index) => openResourcePicker(item.id, index)
+                          }
+                          onCellPanStart={
+                            shareMode || item.locked
+                              ? undefined
+                              : (index, event) =>
+                                  beginCollagePan(event, item, index)
+                          }
+                        />
                       ) : isMediaElement(item) ? (
                         <CanvasMedia item={item} />
                       ) : null}
@@ -1530,6 +1737,17 @@ export default function WorkEditorPage({ shareToken } = {}) {
                             }
                           />
                         ))}
+                    {isCollageElement(selected) && !selected.locked
+                      ? ["n", "s", "e", "w"].map((edge) => (
+                          <span
+                            key={edge}
+                            className={`editor-collage-move-edge is-${edge}`}
+                            onPointerDown={(event) =>
+                              beginMove(event, selected)
+                            }
+                          />
+                        ))
+                      : null}
                     {selected.locked ? null : (
                       <>
                         {isCollageElement(selected) ? (
@@ -1662,28 +1880,15 @@ export default function WorkEditorPage({ shareToken } = {}) {
               }
             />
           ) : isShapeElement(selected) ? (
-            <>
-              <div className="editor-props-head">
-                <h2>图形</h2>
-                <div className="editor-props-actions">
-                  <button
-                    type="button"
-                    aria-label="删除图层"
-                    onClick={deleteSelected}
-                  >
-                    <DeleteOutlined aria-hidden />
-                  </button>
-                </div>
-              </div>
-              <div className="editor-prop-label">
-                <h3>填充色</h3>
-                <EditorColorPicker
-                  label="填充色"
-                  value={selected.fill}
-                  onChange={(fill) => patchSelected({ fill })}
-                />
-              </div>
-            </>
+            <EditorShapePanel
+              item={selected}
+              onChange={patchSelected}
+              onDelete={deleteSelected}
+              onDuplicate={duplicateSelected}
+              onLayer={(direction) =>
+                mutateCanvas(moveElementLayer(canvas, selected.id, direction))
+              }
+            />
           ) : (
             <>
               <div className="editor-props-head">
@@ -1842,6 +2047,13 @@ export default function WorkEditorPage({ shareToken } = {}) {
           )}
         </aside>
       </div>
+      {shareMode ? null : (
+        <SelectResourceModal
+          open={Boolean(resourceTarget)}
+          onClose={() => setResourceTarget(null)}
+          onSelectImage={applyResourceImage}
+        />
+      )}
     </div>
   );
 }

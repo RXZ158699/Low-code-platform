@@ -7,9 +7,11 @@ import flameIcon from "../assets/icons/flame.svg";
 import mailboxIcon from "../assets/icons/category-mailbox.svg";
 import scrollIcon from "../assets/icons/category-scroll.svg";
 import envelopeIcon from "../assets/icons/category-envelope.svg";
-import leavesIcon from "../assets/icons/category-leaves.svg";
 import chartIcon from "../assets/icons/category-chart.svg";
-import phoneIcon from "../assets/icons/category-phone.svg";
+import layoutDashboardIcon from "../assets/icons/layout-dashboard.svg";
+import shoppingBagIcon from "../assets/icons/shopping-bag.svg";
+import lightbulbIcon from "../assets/icons/lightbulb.svg";
+import { TEMPLATE_CATEGORIES } from "../config/templateCategories.js";
 
 const CATEGORY_MENU = [
   {
@@ -140,18 +142,22 @@ const CATEGORY_MENU = [
   },
 ];
 
-const CATEGORIES = [
-  { label: "全部分类" },
-  { label: "小红书", icon: mailboxIcon },
-  { label: "海报", icon: scrollIcon },
-  { label: "公众号首图", icon: envelopeIcon },
-  { label: "处暑", icon: leavesIcon },
-  { label: "邀请函", icon: chartIcon },
-  { label: "社媒封面", icon: phoneIcon },
-];
+const CATEGORY_ICONS = {
+  hot: flameIcon,
+  all: layoutDashboardIcon,
+  poster: scrollIcon,
+  xiaohongshu: mailboxIcon,
+  gzh: envelopeIcon,
+  ecommerce: shoppingBagIcon,
+  invite: chartIcon,
+  festival: lightbulbIcon,
+};
 
-export default function HeroSection({ onSearch }) {
-  const [active, setActive] = useState("全部分类");
+export default function HeroSection({
+  onSearch,
+  activeCategory = "hot",
+  onCategoryChange,
+}) {
   const [mode, setMode] = useState("search");
   const switchRef = useRef(null);
   const [thumb, setThumb] = useState({ width: 0, x: 0 });
@@ -184,7 +190,7 @@ export default function HeroSection({ onSearch }) {
     <section className="hero">
       <div className="hero-title-group">
         <h1 className="hero-heading">
-          营销物料 <span className="accent">稿定</span>搞定
+          设计需求，<span className="accent">一稿</span>就好
         </h1>
         <div
           className="mode-switch"
@@ -230,33 +236,14 @@ export default function HeroSection({ onSearch }) {
 
       <div className="category-area">
         <div className="category-row" role="group" aria-label="分类筛选">
-          {CATEGORIES.map((category) => {
-            const tag = (
-              <Tag
-                key={category.label}
-                className={`category-tag ${active === category.label ? "active" : ""}`}
-                onClick={() => setActive(category.label)}
-                role="button"
-                aria-pressed={active === category.label}
-              >
-                {category.label === "全部分类" ? (
-                  <MenuOutlined className="category-menu-icon" aria-hidden />
-                ) : (
-                  <img className="category-icon" src={category.icon} alt="" />
-                )}
-                {category.label}
-              </Tag>
-            );
-
-            if (category.label !== "全部分类") return tag;
-
-            return (
-              <div
-                className="category-all-wrap"
-                key={category.label}
-                onMouseLeave={() => setExpandedGroup(null)}
-              >
-                {tag}
+          <div
+            className="category-all-wrap"
+            onMouseLeave={() => setExpandedGroup(null)}
+          >
+            <Tag className="category-tag" role="button">
+              <MenuOutlined className="category-menu-icon" aria-hidden />
+              全部分类
+            </Tag>
                 <div className="category-popover" aria-label="全部分类">
                   <div className="category-popover-inner">
                     {CATEGORY_MENU.map((group) => {
@@ -294,12 +281,25 @@ export default function HeroSection({ onSearch }) {
                       );
                     })}
                   </div>
-                </div>
               </div>
-            );
-          })}
+            </div>
+            {TEMPLATE_CATEGORIES.map((category) => {
+              const Icon = CATEGORY_ICONS[category.key];
+              return (
+                <Tag
+                  key={category.key}
+                  className={`category-tag ${activeCategory === category.key ? "active" : ""}`}
+                  onClick={() => onCategoryChange?.(category.key)}
+                  role="button"
+                  aria-pressed={activeCategory === category.key}
+                >
+                  {Icon ? <img className="category-icon" src={Icon} alt="" /> : null}
+                  {category.label}
+                </Tag>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
   );
 }

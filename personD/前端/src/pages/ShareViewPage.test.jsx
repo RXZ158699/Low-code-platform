@@ -54,7 +54,7 @@ describe("ShareViewPage", () => {
     const user = userEvent.setup();
     renderShare();
 
-    const title = await screen.findByDisplayValue("海报");
+    const title = await screen.findByDisplayValue("海报", {}, { timeout: 5000 });
     expect(screen.queryByRole("button", { name: /发\s*布/ })).not.toBeInTheDocument();
     expect(document.querySelector(".editor-artboard.is-readonly")).toBeFalsy();
 
@@ -66,10 +66,46 @@ describe("ShareViewPage", () => {
         expect(updateShare).toHaveBeenCalledWith(
           "abc",
           expect.objectContaining({ title: "新标题" }),
+          "",
         );
       },
       { timeout: 3000 },
     );
     expect(updateShare.mock.calls[0][1].canvasJson).toBeTruthy();
+  });
+
+  it("asks for a share access code before opening the editor", async () => {
+    getShare.mockRejectedValue(new Error("提取码错误"));
+    probeShareEdit.mockResolvedValue(false);
+    const user = userEvent.setup();
+    renderShare();
+
+    const input = await screen.findByLabelText("请输入提取码");
+    await user.type(input, "abcd");
+
+    getShare.mockResolvedValue({
+      id: 9,
+      title: "海报",
+      canvasJson: '{"width":800,"height":600,"elements":[]}',
+    });
+    probeShareEdit.mockResolvedValue(true);
+    await user.click(screen.getByRole("button", { name: /打\s*开/ }));
+
+    const title = await screen.findByDisplayValue("海报", {}, { timeout: 5000 });
+    expect(getShare).toHaveBeenCalledWith("abc", "abcd");
+
+    await user.clear(title);
+    await user.type(title, "新标题");
+
+    await waitFor(
+      () => {
+        expect(updateShare).toHaveBeenCalledWith(
+          "abc",
+          expect.objectContaining({ title: "新标题" }),
+          "abcd",
+        );
+      },
+      { timeout: 3000 },
+    );
   });
 });

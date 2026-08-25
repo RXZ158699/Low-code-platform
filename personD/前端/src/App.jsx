@@ -15,6 +15,7 @@ const MINE_HEIGHT = 1020;
 
 function App() {
   const shellRef = useRef(null);
+  const innerRef = useRef(null);
   const [page, setPage] = useState("create");
   const [shellWidth, setShellWidth] = useState(
     () => document.documentElement.clientWidth,
@@ -23,11 +24,21 @@ function App() {
     () => window.innerHeight,
   );
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [homeContentHeight, setHomeContentHeight] = useState(0);
 
   const isDiscover = page === "discover";
   const isMine = page === "mine";
   const isHome = page === "create";
   const designHeight = isDiscover ? DISCOVER_HEIGHT : isMine ? MINE_HEIGHT : HOME_HEIGHT;
+
+  useEffect(() => {
+    if (!isHome) return undefined;
+    const el = innerRef.current;
+    if (!el) return undefined;
+    const observer = new ResizeObserver(() => setHomeContentHeight(el.offsetHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isHome]);
 
   useEffect(() => {
     shellRef.current?.scrollTo(0, 0);
@@ -79,9 +90,10 @@ function App() {
   }, [isDiscover, isMine]);
 
   const scale = useMemo(() => shellWidth / DESIGN_WIDTH, [shellWidth]);
+  const measuredHeight = isHome ? homeContentHeight : 0;
   const canvasHeight = useMemo(
-    () => Math.max(designHeight, viewportHeight / scale),
-    [designHeight, viewportHeight, scale],
+    () => Math.max(designHeight, measuredHeight, viewportHeight / scale),
+    [designHeight, measuredHeight, viewportHeight, scale],
   );
   const sidebarVisualWidth = 80 * scale;
   const stickyBarWidth = Math.max(shellWidth - sidebarVisualWidth, 0);
@@ -130,9 +142,10 @@ function App() {
         >
           <div
             className="scale-inner"
+            ref={innerRef}
             style={{
               width: DESIGN_WIDTH,
-              height: canvasHeight,
+              height: isHome ? undefined : canvasHeight,
               transform: `scale(${scale})`,
               "--page-scale": scale,
             }}

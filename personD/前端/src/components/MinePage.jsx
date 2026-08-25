@@ -21,8 +21,8 @@ import card1 from "../assets/templates/card-1.png";
 import card2 from "../assets/templates/card-2.png";
 import card3 from "../assets/templates/card-3.png";
 import card4 from "../assets/templates/card-4.png";
-import { createWork, deleteWork, getWork, listWorks } from "../api/works.js";
-import { deleteAsset, getAsset, listAssets, updateAsset, uploadAsset } from "../api/assets.js";
+import { archiveWork, createWork, deleteWork, favoriteWork, getWork, listFavoriteWorks, listTrashedWorks, listWorks, purgeWork, restoreWork, unarchiveWork, unfavoriteWork } from "../api/works.js";
+import { deleteAsset, favoriteAsset, getAsset, listAssetCategories, listAssets, listFavoriteAssets, listTrashedAssets, purgeAsset, restoreAsset, unfavoriteAsset, updateAsset, uploadAsset } from "../api/assets.js";
 import {
   createTeam,
   deleteTeam,
@@ -33,6 +33,7 @@ import {
   listTeams,
   listTeamWorks,
   removeMember,
+  updateMemberRole,
   updateTeam,
 } from "../api/teams.js";
 import { createShare, deleteShare, listWorkShares, sharePageUrl } from "../api/shares.js";
@@ -43,7 +44,7 @@ import { openLoginTab } from "../auth/openLoginTab.js";
 import { useNavigate } from "react-router-dom";
 import { canvasPreviewBlob } from "../canvasPreview.js";
 
-const SPACE_TABS = ["我的空间", "最近", "收藏夹", "草稿箱", "回收站", "分享管理", "发布"];
+const SPACE_TABS = ["我的空间", "最近", "收藏夹", "草稿箱", "已归档", "回收站", "分享管理", "发布"];
 const TYPE_TABS = [
   { key: "all", label: "全部" },
   { key: "works", label: "作品" },
@@ -52,14 +53,18 @@ const TYPE_TABS = [
 const FILTERS = ["颜色", "类别", "类型", "标签", "添加时间"];
 const FILTER_OPTIONS = [{ key: "all", label: "不限" }];
 const FALLBACK_COVERS = [card1, card2, card3, card4];
-const PLACEHOLDER_SPACES = new Set(["收藏夹", "回收站"]);
+const PLACEHOLDER_SPACES = new Set();
 const ASSET_SPACES = new Set(["我的空间", "最近"]);
 const SHARE_TAB = "分享管理";
+const TRASH_TAB = "回收站";
+const FAVORITE_TAB = "收藏夹";
+const ARCHIVED_TAB = "已归档";
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif";
 const IMAGE_NAME = /\.(jpe?g|png|webp|gif)$/i;
 
 function statusLabel(status) {
   if (status === "PUBLISHED") return "已发布";
+  if (status === "ARCHIVED") return "已归档";
   return "草稿";
 }
 
@@ -70,6 +75,7 @@ function formatTime(value) {
 
 function queryStatus(spaceTab) {
   if (spaceTab === "草稿箱") return "DRAFT";
+  if (spaceTab === "已归档") return "ARCHIVED";
   if (spaceTab === "发布") return "PUBLISHED";
   return undefined;
 }
@@ -87,6 +93,7 @@ function canDissolveTeam(role) {
 }
 
 function toWorkItem(work) {
+  const deletedAt = work.deletedAt;
   return {
     kind: "work",
     id: work.id,
@@ -95,13 +102,17 @@ function toWorkItem(work) {
     canvasJson: work.canvasJson,
     createdAt: work.createdAt,
     updatedAt: work.updatedAt,
+    deletedAt,
     status: work.status,
-    subtitle: `${statusLabel(work.status)} · ${formatTime(work.updatedAt)}`,
-    sortAt: work.updatedAt || work.createdAt || "",
+    subtitle: deletedAt
+      ? `已删除 · ${formatTime(deletedAt)}`
+      : `${statusLabel(work.status)} · ${formatTime(work.updatedAt)}`,
+    sortAt: deletedAt || work.updatedAt || work.createdAt || "",
   };
 }
 
 function toAssetItem(asset) {
+  const deletedAt = asset.deletedAt;
   return {
     kind: "asset",
     id: asset.id,
@@ -110,8 +121,9 @@ function toAssetItem(asset) {
     isPublic: Boolean(asset.isPublic),
     teamId: asset.teamId ?? null,
     category: asset.category || "",
-    subtitle: `图片 · ${formatTime(asset.createdAt)}`,
-    sortAt: asset.createdAt || "",
+    deletedAt,
+    subtitle: deletedAt ? `已删除 · ${formatTime(deletedAt)}` : `图片 · ${formatTime(asset.createdAt)}`,
+    sortAt: deletedAt || asset.createdAt || "",
   };
 }
 
@@ -179,6 +191,7 @@ export default function MinePage() {
   const { message, modal } = AntdApp.useApp();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const skipCardOpenRef = useRef(false);
   const [spaceTab, setSpaceTab] = useState("我的空间");
   const [typeTab, setTypeTab] = useState("all");
   const [showFolders, setShowFolders] = useState(true);
@@ -187,12 +200,14 @@ export default function MinePage() {
   const [teams, setTeams] = useState([]);
   const [teamName, setTeamName] = useState("");
   const [inviteUsername, setInviteUsername] = useState("");
+  const [inviteRole, setInviteRole] = useState("MEMBER");
   const [inviteTeamId, setInviteTeamId] = useState();
   const [members, setMembers] = useState([]);
   const [renameName, setRenameName] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
   const [shareWorkId, setShareWorkId] = useState(null);
   const [shareUrl, setShareUrl] = useState("");
+  const [shareAccessCode, setShareAccessCode] = useState("");
   const [shareLinks, setShareLinks] = useState([]);
   const [shareRows, setShareRows] = useState([]);
   const [activeTeamId, setActiveTeamId] = useState(null);
@@ -204,6 +219,8 @@ export default function MinePage() {
     teamId: null,
     category: "",
   });
+  const [categoryOptions, setCategoryOptions] = useState(FILTER_OPTIONS);
+  const [assetCategory, setAssetCategory] = useState("all");
   const [detailWork, setDetailWork] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [state, setState] = useState({
@@ -218,6 +235,9 @@ export default function MinePage() {
 
   const skipList = PLACEHOLDER_SPACES.has(spaceTab);
   const shareManage = spaceTab === SHARE_TAB;
+  const trashSpace = spaceTab === TRASH_TAB;
+  const favoriteSpace = spaceTab === FAVORITE_TAB;
+  const archivedSpace = spaceTab === ARCHIVED_TAB;
   const selectedTeam = teams.find((team) => team.id === inviteTeamId);
   const selectedTeamRole = selectedTeam?.myRole;
 
@@ -258,6 +278,42 @@ export default function MinePage() {
         return;
       }
 
+      if (trashSpace) {
+        const [worksPage, assetsPage] = await Promise.all([
+          listTrashedWorks({ page: 1, size: 24 }),
+          listTrashedAssets({ page: 1, size: 24 }),
+        ]);
+        if (cancelled) return;
+        setShareRows([]);
+        setState({
+          loading: false,
+          works: (worksPage.records || []).map(toWorkItem),
+          assets: (assetsPage.records || []).map(toAssetItem),
+          workTotal: worksPage.total || 0,
+          assetTotal: assetsPage.total || 0,
+          error: null,
+        });
+        return;
+      }
+
+      if (favoriteSpace) {
+        const [worksPage, assetsPage] = await Promise.all([
+          listFavoriteWorks({ page: 1, size: 24 }),
+          listFavoriteAssets({ page: 1, size: 24 }),
+        ]);
+        if (cancelled) return;
+        setShareRows([]);
+        setState({
+          loading: false,
+          works: (worksPage.records || []).map(toWorkItem),
+          assets: (assetsPage.records || []).map(toAssetItem),
+          workTotal: worksPage.total || 0,
+          assetTotal: assetsPage.total || 0,
+          error: null,
+        });
+        return;
+      }
+
       if (activeTeamId) {
         const [team, worksPage, assetsPage] = await Promise.all([
           getTeam(activeTeamId),
@@ -280,7 +336,13 @@ export default function MinePage() {
       const [worksPage, assetsPage] = await Promise.all([
         listWorks({ status: queryStatus(spaceTab), page: 1, size: 24 }),
         includeAssets
-          ? listAssets({ scope: "mine", fileType: "image", page: 1, size: 24 })
+          ? listAssets({
+              scope: "mine",
+              fileType: "image",
+              category: assetCategory === "all" ? undefined : assetCategory,
+              page: 1,
+              size: 24,
+            })
           : Promise.resolve({ total: 0, records: [] }),
       ]);
       if (cancelled) return;
@@ -310,7 +372,29 @@ export default function MinePage() {
     return () => {
       cancelled = true;
     };
-  }, [spaceTab, skipList, shareManage, ready, user, activeTeamId]);
+  }, [spaceTab, skipList, shareManage, trashSpace, favoriteSpace, ready, user, activeTeamId, assetCategory]);
+
+  useEffect(() => {
+    if (!ready || !user || skipList || shareManage || trashSpace || favoriteSpace || activeTeamId) {
+      return undefined;
+    }
+    let cancelled = false;
+    listAssetCategories({ scope: "mine" })
+      .then((items) => {
+        if (cancelled) return;
+        const rows = Array.isArray(items) ? items : [];
+        setCategoryOptions([
+          { key: "all", label: "不限" },
+          ...rows.map((item) => ({ key: item.name, label: item.name })),
+        ]);
+      })
+      .catch(() => {
+        if (!cancelled) setCategoryOptions(FILTER_OPTIONS);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, user, skipList, shareManage, trashSpace, favoriteSpace, activeTeamId]);
 
   useEffect(() => {
     if (!inviteOpen || !inviteTeamId) {
@@ -431,6 +515,13 @@ export default function MinePage() {
       .finally(() => setDetailLoading(false));
   };
 
+  const suppressCardOpen = () => {
+    skipCardOpenRef.current = true;
+    window.setTimeout(() => {
+      skipCardOpenRef.current = false;
+    }, 400);
+  };
+
   const handleCreateDesign = (item) => {
     if (item.kind === "work") {
       navigate(`/works/${item.id}`);
@@ -451,6 +542,7 @@ export default function MinePage() {
       const firstId = nextTeams[0]?.id;
       setInviteTeamId(firstId);
       setRenameName(nextTeams[0]?.name || "");
+      setInviteRole("MEMBER");
       setInviteOpen(true);
     } catch (err) {
       message.error(err.message || "加载团队失败");
@@ -480,9 +572,10 @@ export default function MinePage() {
       return;
     }
     try {
-      await inviteMember(inviteTeamId, inviteUsername.trim());
+      await inviteMember(inviteTeamId, inviteUsername.trim(), inviteRole);
       message.success("已发送邀请");
       setInviteUsername("");
+      setInviteRole("MEMBER");
       const rows = await listMembers(inviteTeamId);
       setMembers(Array.isArray(rows) ? rows : []);
     } catch (err) {
@@ -561,6 +654,7 @@ export default function MinePage() {
     }
     setShareWorkId(workId);
     setShareUrl("");
+    setShareAccessCode("");
     setShareLinks([]);
     setShareOpen(true);
     try {
@@ -572,7 +666,10 @@ export default function MinePage() {
 
   const handleCreateShare = async (permission = "VIEW") => {
     try {
-      const share = await createShare(shareWorkId, { permission });
+      const share = await createShare(shareWorkId, {
+        permission,
+        accessCode: shareAccessCode.trim() || undefined,
+      });
       const url = sharePageUrl(share.token);
       setShareUrl(url);
       await navigator.clipboard?.writeText(url);
@@ -661,30 +758,122 @@ export default function MinePage() {
     }
   };
 
+  const removeRecord = (item) => {
+    setState((prev) => ({
+      ...prev,
+      works: item.kind === "work" ? prev.works.filter((row) => row.id !== item.id) : prev.works,
+      assets: item.kind === "asset" ? prev.assets.filter((row) => row.id !== item.id) : prev.assets,
+      workTotal: item.kind === "work" ? Math.max(0, prev.workTotal - 1) : prev.workTotal,
+      assetTotal: item.kind === "asset" ? Math.max(0, prev.assetTotal - 1) : prev.assetTotal,
+    }));
+    if (item.kind === "work" && detailWork?.id === item.id) {
+      setDetailWork(null);
+    }
+  };
+
+  const handleRestore = async (item) => {
+    try {
+      if (item.kind === "asset") {
+        await restoreAsset(item.id);
+      } else {
+        await restoreWork(item.id);
+      }
+      message.success("已还原");
+      removeRecord(item);
+    } catch (err) {
+      message.error(err.message || "还原失败");
+    }
+  };
+
+  const handleFavorite = async (item) => {
+    try {
+      if (item.kind === "asset") {
+        await favoriteAsset(item.id);
+      } else {
+        await favoriteWork(item.id);
+      }
+      message.success("已收藏");
+    } catch (err) {
+      message.error(err.message || "收藏失败");
+    }
+  };
+
+  const handleUnfavorite = async (item) => {
+    try {
+      if (item.kind === "asset") {
+        await unfavoriteAsset(item.id);
+      } else {
+        await unfavoriteWork(item.id);
+      }
+      message.success("已取消收藏");
+      if (favoriteSpace) {
+        removeRecord(item);
+      }
+    } catch (err) {
+      message.error(err.message || "取消收藏失败");
+    }
+  };
+
+  const handleChangeRole = async (member, role) => {
+    try {
+      await updateMemberRole(inviteTeamId, member.userId, role);
+      setMembers((prev) =>
+        prev.map((row) => (row.userId === member.userId ? { ...row, role } : row)),
+      );
+      message.success(role === "ADMIN" ? "已设为管理员" : "已设为成员");
+    } catch (err) {
+      message.error(err.message || "角色变更失败");
+    }
+  };
+
+  const handleArchive = async (item) => {
+    if (item.kind !== "work") return;
+    try {
+      await archiveWork(item.id);
+      message.success("已归档");
+      removeRecord(item);
+    } catch (err) {
+      message.error(err.message || "归档失败");
+    }
+  };
+
+  const handleUnarchive = async (item) => {
+    if (item.kind !== "work") return;
+    try {
+      await unarchiveWork(item.id);
+      message.success("已取消归档");
+      removeRecord(item);
+    } catch (err) {
+      message.error(err.message || "取消归档失败");
+    }
+  };
+
   const handleDelete = (item) => {
+    const permanent = trashSpace;
     modal.confirm({
-      title: item.kind === "asset" ? "删除图片" : "删除作品",
-      content: `确定删除「${item.title}」吗？`,
-      okText: "删除",
+      title: permanent ? "彻底删除" : item.kind === "asset" ? "删除图片" : "删除作品",
+      content: permanent
+        ? `确定彻底删除「${item.title}」吗？此操作不可恢复。`
+        : `确定删除「${item.title}」吗？删除后可在回收站还原。`,
+      okText: permanent ? "彻底删除" : "删除",
       okButtonProps: { danger: true },
       cancelText: "取消",
       onOk: async () => {
-        if (item.kind === "asset") {
+        if (permanent) {
+          if (item.kind === "asset") {
+            await purgeAsset(item.id);
+          } else {
+            await purgeWork(item.id);
+          }
+          message.success("已彻底删除");
+        } else if (item.kind === "asset") {
           await deleteAsset(item.id);
+          message.success("已删除");
         } else {
           await deleteWork(item.id);
+          message.success("已删除");
         }
-        message.success("已删除");
-        setState((prev) => ({
-          ...prev,
-          works: item.kind === "work" ? prev.works.filter((row) => row.id !== item.id) : prev.works,
-          assets: item.kind === "asset" ? prev.assets.filter((row) => row.id !== item.id) : prev.assets,
-          workTotal: item.kind === "work" ? Math.max(0, prev.workTotal - 1) : prev.workTotal,
-          assetTotal: item.kind === "asset" ? Math.max(0, prev.assetTotal - 1) : prev.assetTotal,
-        }));
-        if (item.kind === "work" && detailWork?.id === item.id) {
-          setDetailWork(null);
-        }
+        removeRecord(item);
       },
     });
   };
@@ -718,7 +907,7 @@ export default function MinePage() {
   const listLoading = !ready || (Boolean(user) && !skipList && loading);
   const showShareList = Boolean(user) && shareManage && !skipList;
   const showEmpty = !listLoading && !listError && (showShareList ? shareRows.length === 0 : visibleRecords.length === 0);
-  const showUploadTile = !showEmpty && !listError && !showShareList && typeTab === "uploads";
+  const showUploadTile = !showEmpty && !listError && !showShareList && !trashSpace && !favoriteSpace && typeTab === "uploads";
   const toolbarFilters = selecting ? FILTERS.slice(0, 3) : FILTERS;
 
   const clearSelection = () => setSelectedKeys(new Set());
@@ -737,15 +926,23 @@ export default function MinePage() {
   };
 
   const deleteSelected = () => {
+    const permanent = trashSpace;
     modal.confirm({
-      title: "删除所选内容",
-      content: `确定删除选中的 ${selectedCount} 项吗？`,
-      okText: "删除",
+      title: permanent ? "彻底删除所选内容" : "删除所选内容",
+      content: permanent
+        ? `确定彻底删除选中的 ${selectedCount} 项吗？此操作不可恢复。`
+        : `确定删除选中的 ${selectedCount} 项吗？删除后可在回收站还原。`,
+      okText: permanent ? "彻底删除" : "删除",
       okButtonProps: { danger: true },
       cancelText: "取消",
       onOk: async () => {
         await Promise.all(
-          selectedItems.map((item) => (item.kind === "asset" ? deleteAsset(item.id) : deleteWork(item.id))),
+          selectedItems.map((item) => {
+            if (permanent) {
+              return item.kind === "asset" ? purgeAsset(item.id) : purgeWork(item.id);
+            }
+            return item.kind === "asset" ? deleteAsset(item.id) : deleteWork(item.id);
+          }),
         );
         const removed = new Set(selectedItems.map(itemKey));
         setState((prev) => ({
@@ -756,7 +953,7 @@ export default function MinePage() {
           assetTotal: Math.max(0, prev.assetTotal - selectedItems.filter((item) => item.kind === "asset").length),
         }));
         clearSelection();
-        message.success("已删除");
+        message.success(permanent ? "已彻底删除" : "已删除");
       },
     });
   };
@@ -859,15 +1056,30 @@ export default function MinePage() {
             </div>
           )}
           <div className="mine-filters">
-            {toolbarFilters.map((label, index) => (
-              <Dropdown key={label} menu={{ items: FILTER_OPTIONS }} trigger={["click"]}>
-                <button type="button" className="mine-filter">
-                  {index === 0 ? <i className="mine-color-dot" aria-hidden="true" /> : null}
-                  {label}
-                  <DownOutlined aria-hidden="true" />
-                </button>
-              </Dropdown>
-            ))}
+            {toolbarFilters.map((label, index) => {
+              const isCategory = label === "类别";
+              return (
+                <Dropdown
+                  key={label}
+                  menu={{
+                    items: isCategory ? categoryOptions : FILTER_OPTIONS,
+                    onClick: isCategory
+                      ? ({ key }) => {
+                          setAssetCategory(key);
+                          clearSelection();
+                        }
+                      : undefined,
+                  }}
+                  trigger={["click"]}
+                >
+                  <button type="button" className="mine-filter">
+                    {index === 0 ? <i className="mine-color-dot" aria-hidden="true" /> : null}
+                    {isCategory && assetCategory !== "all" ? `类别 · ${assetCategory}` : label}
+                    <DownOutlined aria-hidden="true" />
+                  </button>
+                </Dropdown>
+              );
+            })}
             {selecting ? null : (
               <>
                 <label className="mine-folder-toggle">
@@ -908,7 +1120,19 @@ export default function MinePage() {
             {listError ? <div className="mine-status">加载失败：{listError}</div> : null}
             {showEmpty ? (
               <div className="mine-empty">
-                {showShareList ? (
+                {favoriteSpace ? (
+                  <>
+                    <img src={mineEmptyIcon} alt="" />
+                    <p className="mine-empty-title">收藏夹是空的</p>
+                    <p className="mine-empty-sub">在作品或图片菜单中选择「收藏」，即可在这里查看</p>
+                  </>
+                ) : trashSpace ? (
+                  <>
+                    <img src={mineEmptyIcon} alt="" />
+                    <p className="mine-empty-title">回收站是空的</p>
+                    <p className="mine-empty-sub">删除的作品和图片会保留在这里，可还原或彻底删除</p>
+                  </>
+                ) : showShareList ? (
                   <>
                     <img src={mineEmptyIcon} alt="" />
                     <p className="mine-empty-title">还没有分享链接</p>
@@ -931,7 +1155,7 @@ export default function MinePage() {
                           setPage("create");
                         }}
                       >
-                        从「稿定设计」导入
+                        从「一稿设计」导入
                       </button>
                     </div>
                   </>
@@ -979,8 +1203,15 @@ export default function MinePage() {
                         <div
                           className="mine-card-hover"
                           onClick={() => {
+                            if (skipCardOpenRef.current) return;
                             if (selecting) {
                               toggleSelected(item);
+                              return;
+                            }
+                            if (trashSpace) {
+                              return;
+                            }
+                            if (favoriteSpace && item.kind !== "work") {
                               return;
                             }
                             if (item.kind === "work") {
@@ -1014,31 +1245,95 @@ export default function MinePage() {
                             <img src={downloadIcon} alt="" />
                           </button>
                           <div className="mine-card-hover-bar">
-                            <button
-                              type="button"
-                              className="mine-card-create"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleCreateDesign(item);
-                              }}
-                            >
-                              创建设计
-                            </button>
+                            {trashSpace ? (
+                              <button
+                                type="button"
+                                className="mine-card-create"
+                                aria-label={`还原 ${item.title}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleRestore(item);
+                                }}
+                              >
+                                还原
+                              </button>
+                            ) : archivedSpace ? (
+                              <button
+                                type="button"
+                                className="mine-card-create"
+                                aria-label={`取消归档 ${item.title}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleUnarchive(item);
+                                }}
+                              >
+                                取消归档
+                              </button>
+                            ) : favoriteSpace ? (
+                              <button
+                                type="button"
+                                className="mine-card-create"
+                                aria-label={`取消收藏 ${item.title}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleUnfavorite(item);
+                                }}
+                              >
+                                取消收藏
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="mine-card-create"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleCreateDesign(item);
+                                }}
+                              >
+                                创建设计
+                              </button>
+                            )}
                             <Dropdown
                               menu={{
-                                items: [
-                                  ...(item.kind === "work"
-                                    ? [{ key: "share", label: "分享" }]
-                                    : [{ key: "asset", label: "素材设置" }]),
-                                  { key: "delete", label: "删除", danger: true },
-                                ],
-                                onClick: ({ key: action }) => {
-                                  if (action === "delete") handleDelete(item);
+                                items: trashSpace
+                                  ? [
+                                      { key: "restore", label: "还原" },
+                                      { key: "purge", label: "彻底删除", danger: true },
+                                    ]
+                                  : archivedSpace
+                                    ? [
+                                        { key: "unarchive", label: "取消归档" },
+                                        { key: "delete", label: "删除", danger: true },
+                                      ]
+                                  : [
+                                      favoriteSpace
+                                        ? { key: "unfavorite", label: "取消收藏" }
+                                        : { key: "favorite", label: "收藏" },
+                                      ...(item.kind === "work"
+                                        ? [
+                                            { key: "share", label: "分享" },
+                                            { key: "archive", label: "归档" },
+                                          ]
+                                        : [{ key: "asset", label: "素材设置" }]),
+                                      { key: "delete", label: "删除", danger: true },
+                                    ],
+                                onClick: ({ key: action, domEvent }) => {
+                                  domEvent?.stopPropagation();
+                                  suppressCardOpen();
+                                  if (action === "delete" || action === "purge") handleDelete(item);
+                                  if (action === "restore") handleRestore(item);
+                                  if (action === "favorite") handleFavorite(item);
+                                  if (action === "unfavorite") handleUnfavorite(item);
+                                  if (action === "archive") handleArchive(item);
+                                  if (action === "unarchive") handleUnarchive(item);
                                   if (action === "share") openShare(item.id);
                                   if (action === "asset") openAssetSettings(item);
                                 },
                               }}
                               trigger={["click"]}
+                              onOpenChange={(open) => {
+                                if (!open) suppressCardOpen();
+                              }}
                             >
                               <button
                                 type="button"
@@ -1188,14 +1483,33 @@ export default function MinePage() {
                       <em>{member.role === "OWNER" ? "所有者" : member.role === "ADMIN" ? "管理员" : "成员"}</em>
                     </span>
                     {canManageTeam(selectedTeamRole) && member.role !== "OWNER" ? (
-                      <Button
-                        size="small"
-                        danger
-                        aria-label={`移除 ${member.nickname || member.username}`}
-                        onClick={() => handleRemoveMember(member)}
-                      >
-                        移除
-                      </Button>
+                      <>
+                        {member.role === "MEMBER" ? (
+                          <Button
+                            size="small"
+                            aria-label={`设为管理员 ${member.nickname || member.username}`}
+                            onClick={() => handleChangeRole(member, "ADMIN")}
+                          >
+                            设为管理员
+                          </Button>
+                        ) : (
+                          <Button
+                            size="small"
+                            aria-label={`设为成员 ${member.nickname || member.username}`}
+                            onClick={() => handleChangeRole(member, "MEMBER")}
+                          >
+                            设为成员
+                          </Button>
+                        )}
+                        <Button
+                          size="small"
+                          danger
+                          aria-label={`移除 ${member.nickname || member.username}`}
+                          onClick={() => handleRemoveMember(member)}
+                        >
+                          移除
+                        </Button>
+                      </>
                     ) : null}
                   </div>
                 ))}
@@ -1210,6 +1524,18 @@ export default function MinePage() {
               onChange={(event) => setInviteUsername(event.target.value)}
             />
           </label>
+          <label>
+            角色
+            <Select
+              aria-label="邀请角色"
+              value={inviteRole}
+              options={[
+                { value: "MEMBER", label: "成员" },
+                { value: "ADMIN", label: "管理员" },
+              ]}
+              onChange={setInviteRole}
+            />
+          </label>
           <Button type="primary" onClick={handleInviteMember}>
             邀请
           </Button>
@@ -1222,6 +1548,15 @@ export default function MinePage() {
         footer={null}
       >
         <div className="profile-form">
+          <label>
+            提取码（选填）
+            <Input
+              value={shareAccessCode}
+              maxLength={8}
+              placeholder="4-8 位字母数字"
+              onChange={(event) => setShareAccessCode(event.target.value)}
+            />
+          </label>
           <Button onClick={() => handleCreateShare("VIEW")}>创建只读链接</Button>
           <Button onClick={() => handleCreateShare("EDIT")}>创建可编辑链接</Button>
           {shareLinks.map((link) => (

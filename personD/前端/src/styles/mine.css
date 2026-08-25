@@ -524,16 +524,6 @@
   color: #9ca3af;
 }
 
-.mine-card-more {
-  border: 0;
-  background: transparent;
-  color: #9ca3af;
-  font-size: 16px;
-  line-height: 1;
-  letter-spacing: 1px;
-  cursor: pointer;
-}
-
 .mine-loaded {
   margin: 28px 0 8px;
   text-align: center;

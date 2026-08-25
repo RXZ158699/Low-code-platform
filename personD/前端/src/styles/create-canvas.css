@@ -278,8 +278,7 @@
   cursor: pointer;
 }
 
-.create-canvas-empty,
-.create-canvas-placeholder {
+.create-canvas-empty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -290,9 +289,51 @@
   font-size: 13px;
 }
 
-.create-canvas-placeholder {
+.create-canvas-import {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 32px 40px;
+}
+
+.create-canvas-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
   height: 100%;
-  min-height: 280px;
+  min-height: 360px;
+  padding: 32px;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 18px;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.create-canvas-dropzone .anticon {
+  font-size: 36px;
+  color: #94a3b8;
+}
+
+.create-canvas-dropzone strong {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.create-canvas-dropzone span {
+  font-size: 13px;
+}
+
+.create-canvas-dropzone:hover,
+.create-canvas-dropzone:focus-visible {
+  border-color: #2563eb;
+  background: #f8fbff;
 }
 
 .create-canvas-presets {

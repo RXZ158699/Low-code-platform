@@ -98,8 +98,8 @@ export function addTextElement(canvas, patch = {}) {
   };
 }
 
-export const LINE_KINDS = ["line", "dash", "dot"];
-export const SHAPE_KINDS = [
+const LINE_KINDS = ["line", "dash", "dot"];
+const SHAPE_KINDS = [
   "square",
   "triangle",
   "circle",
@@ -115,10 +115,14 @@ export const SHAPE_LABELS = {
   dash: "虚线",
   dot: "点线",
 };
+export const FILL_SHAPE_KINDS = ["square", "triangle", "circle", "pentagon"];
 export const DEFAULT_SHAPE_FILL = "#2563eb";
+const DEFAULT_SHAPE_STROKE = "#6b7280";
 export const DEFAULT_LINE_FILL = "#000000";
-export const LINE_STROKE_WIDTH = 1;
-export const LINE_HIT_PAD = 8;
+const LINE_STROKE_WIDTH = 1;
+const LINE_HIT_PAD = 8;
+const SHAPE_STROKE_ALIGNS = ["inner", "center", "outer"];
+const SHAPE_STROKE_STYLES = ["solid", "dash", "dot"];
 
 export function isLineKind(value) {
   return LINE_KINDS.includes(value);
@@ -221,7 +225,7 @@ export function getLineProps(item = {}) {
   };
 }
 
-export function lineGeometryPatch(
+function lineGeometryPatch(
   x1,
   y1,
   x2,
@@ -341,24 +345,34 @@ export function flipLine(item, axis) {
   );
 }
 
-export function boxFromDrag(x1, y1, x2, y2, minSpan = 3) {
-  const left = Number(x1);
-  const top = Number(y1);
-  const right = Number(x2);
-  const bottom = Number(y2);
-  if (![left, top, right, bottom].every(Number.isFinite)) return null;
-  const width = Math.abs(right - left);
-  const height = Math.abs(bottom - top);
-  if (width < minSpan && height < minSpan) return null;
+export function boxFromDrag(x1, y1, x2, y2, minSpan = 3, lockAspect = false) {
+  const originX = Number(x1);
+  const originY = Number(y1);
+  const pointerX = Number(x2);
+  const pointerY = Number(y2);
+  if (![originX, originY, pointerX, pointerY].every(Number.isFinite)) return null;
+  const spanX = Math.abs(pointerX - originX);
+  const spanY = Math.abs(pointerY - originY);
+  if (lockAspect) {
+    const size = Math.max(spanX, spanY);
+    if (size < minSpan) return null;
+    return {
+      x: pointerX >= originX ? originX : originX - size,
+      y: pointerY >= originY ? originY : originY - size,
+      width: size,
+      height: size,
+    };
+  }
+  if (spanX < minSpan && spanY < minSpan) return null;
   return {
-    x: Math.min(left, right),
-    y: Math.min(top, bottom),
-    width,
-    height,
+    x: Math.min(originX, pointerX),
+    y: Math.min(originY, pointerY),
+    width: spanX,
+    height: spanY,
   };
 }
 
-export function regularPolygonUnitPoints(sides) {
+function regularPolygonUnitPoints(sides) {
   const count = Math.max(3, Number(sides) || 3);
   return Array.from({ length: count }, (_, index) => {
     const angle = -Math.PI / 2 + (index * 2 * Math.PI) / count;
@@ -366,7 +380,7 @@ export function regularPolygonUnitPoints(sides) {
   });
 }
 
-export function shapeUnitPoints(kind) {
+function shapeUnitPoints(kind) {
   if (kind === "triangle")
     return [
       [0.5, 0],
@@ -389,6 +403,116 @@ export function scaledShapePoints(kind, width, height) {
   const points = shapeUnitPoints(kind);
   if (!points) return [];
   return points.map(([x, y]) => [x * width, y * height]);
+}
+
+function clampNumber(value, fallback, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+}
+
+export function getShapeProps(item = {}) {
+  const width = Math.max(0, Number(item.width) || 0);
+  const height = Math.max(0, Number(item.height) || 0);
+  const strokeStyle = SHAPE_STROKE_STYLES.includes(item.strokeStyle)
+    ? item.strokeStyle
+    : "solid";
+  const strokeAlign = SHAPE_STROKE_ALIGNS.includes(item.strokeAlign)
+    ? item.strokeAlign
+    : "center";
+  return {
+    kind: shapeKind(item),
+    fill:
+      typeof item.fill === "string" && item.fill
+        ? item.fill
+        : DEFAULT_SHAPE_FILL,
+    fillVisible: item.fillVisible !== false,
+    stroke:
+      typeof item.stroke === "string" && item.stroke
+        ? item.stroke
+        : DEFAULT_SHAPE_STROKE,
+    strokeVisible: item.strokeVisible !== false,
+    strokeWidth: clampNumber(item.strokeWidth, 0, 0, 80),
+    strokeAlign,
+    strokeStyle,
+    cornerRadius: clampNumber(item.cornerRadius, 0, 0, 400),
+    opacity: clampNumber(item.opacity, 100, 0, 100),
+    locked: Boolean(item.locked),
+    aspectLocked: Boolean(item.aspectLocked),
+    flippedX: Boolean(item.flippedX),
+    flippedY: Boolean(item.flippedY),
+    x: Number(item.x) || 0,
+    y: Number(item.y) || 0,
+    width,
+    height,
+  };
+}
+
+export function flipShape(item, axis) {
+  if (axis === "y") return { flippedY: !item?.flippedY };
+  return { flippedX: !item?.flippedX };
+}
+
+export function shapeStrokeLine(style, strokeWidth) {
+  const width = Math.max(0, Number(strokeWidth) || 0);
+  const kind = style === "dash" || style === "dot" ? style : "line";
+  const props = lineStrokeProps(kind, Math.max(1, width));
+  return { ...props, width };
+}
+
+function ellipsePath(width, height) {
+  const rx = Math.max(0, width / 2);
+  const ry = Math.max(0, height / 2);
+  return `M 0 ${ry} A ${rx} ${ry} 0 1 0 ${width} ${ry} A ${rx} ${ry} 0 1 0 0 ${ry} Z`;
+}
+
+function roundedRectPath(width, height, radius) {
+  const w = Math.max(0, width);
+  const h = Math.max(0, height);
+  const r = Math.min(Math.max(0, radius), w / 2, h / 2);
+  if (!(r > 0)) return `M 0 0 H ${w} V ${h} H 0 Z`;
+  return `M ${r} 0 H ${w - r} A ${r} ${r} 0 0 1 ${w} ${r} V ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} H ${r} A ${r} ${r} 0 0 1 0 ${h - r} V ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`;
+}
+
+function roundedPolygonPath(points, radius) {
+  if (!Array.isArray(points) || points.length < 3) return "";
+  const r = Math.max(0, Number(radius) || 0);
+  if (!(r > 0)) {
+    return `M ${points[0][0]} ${points[0][1]} ${points
+      .slice(1)
+      .map((point) => `L ${point[0]} ${point[1]}`)
+      .join(" ")} Z`;
+  }
+  const count = points.length;
+  let d = "";
+  for (let index = 0; index < count; index += 1) {
+    const prev = points[(index + count - 1) % count];
+    const curr = points[index];
+    const next = points[(index + 1) % count];
+    const inX = curr[0] - prev[0];
+    const inY = curr[1] - prev[1];
+    const outX = next[0] - curr[0];
+    const outY = next[1] - curr[1];
+    const inLen = Math.hypot(inX, inY) || 1;
+    const outLen = Math.hypot(outX, outY) || 1;
+    const corner = Math.min(r, inLen / 2, outLen / 2);
+    const startX = curr[0] - (inX / inLen) * corner;
+    const startY = curr[1] - (inY / inLen) * corner;
+    const endX = curr[0] + (outX / outLen) * corner;
+    const endY = curr[1] + (outY / outLen) * corner;
+    d += index === 0 ? `M ${startX} ${startY}` : ` L ${startX} ${startY}`;
+    d += ` Q ${curr[0]} ${curr[1]} ${endX} ${endY}`;
+  }
+  return `${d} Z`;
+}
+
+export function shapePathD(kind, width, height, radius = 0) {
+  const w = Math.max(0, Number(width) || 0);
+  const h = Math.max(0, Number(height) || 0);
+  const r = Math.max(0, Number(radius) || 0);
+  if (kind === "circle") return ellipsePath(w, h);
+  if (kind === "square" || kind === "rect") return roundedRectPath(w, h, r);
+  return roundedPolygonPath(scaledShapePoints(kind, w, h), r);
 }
 
 export function addShapeElement(canvas, kind, box = {}) {
@@ -477,7 +601,7 @@ export function isMediaElement(item) {
   return item?.type === "image" || item?.type === "video";
 }
 
-export function fitMediaBox(canvas, naturalWidth, naturalHeight) {
+function fitMediaBox(canvas, naturalWidth, naturalHeight) {
   const sourceW = Number(naturalWidth) > 0 ? Number(naturalWidth) : 640;
   const sourceH = Number(naturalHeight) > 0 ? Number(naturalHeight) : 360;
   const maxW = Math.max(80, canvas.width * 0.62);
@@ -491,6 +615,20 @@ export function fitMediaBox(canvas, naturalWidth, naturalHeight) {
     y: Math.max(0, Math.round((canvas.height - height) / 2) + offset),
     width,
     height,
+  };
+}
+
+export function appendElements(canvas, elements) {
+  if (!Array.isArray(elements) || elements.length === 0) return canvas;
+  return {
+    ...canvas,
+    elements: [
+      ...canvas.elements,
+      ...elements.map((item) => ({
+        ...item,
+        id: nextElementId(item?.type || "el"),
+      })),
+    ],
   };
 }
 
@@ -549,20 +687,34 @@ export function applyCollageLayout(item, layoutRef) {
   const layout =
     typeof layoutRef === "string" ? findCollageLayout(layoutRef) : layoutRef;
   if (!layout?.id || !Array.isArray(layout.cells)) return {};
-  const srcs = (item?.cells || []).map((cell) => cell.src).filter(Boolean);
+  const previous = item?.cells || [];
   return {
     layoutId: layout.id,
     rowCount: layout.rowCount,
     colCount: layout.colCount,
     colTemplate: layout.colTemplate,
     rowTemplate: layout.rowTemplate,
-    cells: layout.cells.map((cell, index) => ({
-      r: cell.r,
-      c: cell.c,
-      rs: cell.rs,
-      cs: cell.cs,
-      ...(srcs[index] ? { src: srcs[index] } : {}),
-    })),
+    cells: layout.cells.map((cell, index) => {
+      const src = previous[index]?.src;
+      if (!src) {
+        return {
+          r: cell.r,
+          c: cell.c,
+          rs: cell.rs,
+          cs: cell.cs,
+        };
+      }
+      const offset = collageCellOffset(previous[index]);
+      return {
+        r: cell.r,
+        c: cell.c,
+        rs: cell.rs,
+        cs: cell.cs,
+        src,
+        ox: offset.ox,
+        oy: offset.oy,
+      };
+    }),
   };
 }
 
@@ -581,14 +733,100 @@ export function fillCollageCells(item, urls) {
   if (!isCollageElement(item) || sources.length === 0) return {};
   const cells = (item.cells || []).map((cell) => ({ ...cell }));
   const queue = [...sources];
+  const assign = (cell) => {
+    cell.src = queue.shift();
+    cell.ox = 50;
+    cell.oy = 50;
+  };
   for (const cell of cells) {
-    if (!cell.src && queue.length) cell.src = queue.shift();
+    if (!cell.src && queue.length) assign(cell);
   }
   for (const cell of cells) {
     if (!queue.length) break;
-    cell.src = queue.shift();
+    assign(cell);
   }
   return { cells };
+}
+
+export function collageCellOffset(cell) {
+  const ox = Number(cell?.ox);
+  const oy = Number(cell?.oy);
+  return {
+    ox: Number.isFinite(ox) ? Math.min(100, Math.max(0, ox)) : 50,
+    oy: Number.isFinite(oy) ? Math.min(100, Math.max(0, oy)) : 50,
+  };
+}
+
+export function localDragDelta(
+  dx,
+  dy,
+  rotate = 0,
+  flippedX = false,
+  flippedY = false,
+) {
+  const rad = ((Number(rotate) || 0) * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  let x = dx * cos + dy * sin;
+  let y = -dx * sin + dy * cos;
+  if (flippedX) x = -x;
+  if (flippedY) y = -y;
+  return { dx: x, dy: y };
+}
+
+export function setCollageCellOffset(item, index, next = {}) {
+  if (!isCollageElement(item)) return {};
+  const cells = item.cells || [];
+  if (!Number.isInteger(index) || index < 0 || index >= cells.length) {
+    return {};
+  }
+  const current = collageCellOffset(cells[index]);
+  const oxRaw = next.ox == null ? current.ox : Number(next.ox);
+  const oyRaw = next.oy == null ? current.oy : Number(next.oy);
+  if (!Number.isFinite(oxRaw) || !Number.isFinite(oyRaw)) return {};
+  return {
+    cells: cells.map((cell, cellIndex) =>
+      cellIndex === index
+        ? {
+            ...cell,
+            ox: Math.min(100, Math.max(0, oxRaw)),
+            oy: Math.min(100, Math.max(0, oyRaw)),
+          }
+        : { ...cell },
+    ),
+  };
+}
+
+export function panCollageCell(item, index, start, dx, dy, box) {
+  if (!isCollageElement(item) || !item.cells?.[index]?.src) return {};
+  const props = getCollageProps(item);
+  const local = localDragDelta(
+    dx,
+    dy,
+    item.rotate,
+    props.flippedX,
+    props.flippedY,
+  );
+  const width = Math.max(1, Number(box?.width) || Number(item.width) || 1);
+  const height = Math.max(1, Number(box?.height) || Number(item.height) || 1);
+  const origin = collageCellOffset(start);
+  return setCollageCellOffset(item, index, {
+    ox: origin.ox - (local.dx / width) * 100,
+    oy: origin.oy - (local.dy / height) * 100,
+  });
+}
+
+export function setCollageCellSrc(item, index, src) {
+  if (!isCollageElement(item) || !src) return {};
+  const cells = item.cells || [];
+  if (!Number.isInteger(index) || index < 0 || index >= cells.length) {
+    return {};
+  }
+  return {
+    cells: cells.map((cell, cellIndex) =>
+      cellIndex === index ? { ...cell, src, ox: 50, oy: 50 } : { ...cell },
+    ),
+  };
 }
 
 export function setCollageSize(item, next = {}) {
@@ -624,7 +862,7 @@ function collageAspect(layout) {
   return Math.min(1.45, Math.max(0.7, cols / rows));
 }
 
-export function fitCollageBox(canvas, layout) {
+function fitCollageBox(canvas, layout) {
   const aspect = collageAspect(layout);
   const maxW = Math.max(80, canvas.width * 0.62);
   const maxH = Math.max(80, canvas.height * 0.62);
@@ -767,7 +1005,7 @@ export const TEXT_FONTS = [
   },
 ];
 
-export const DEFAULT_TEXT_PROPS = {
+const DEFAULT_TEXT_PROPS = {
   fontFamily: TEXT_FONTS[0].family,
   fontWeight: 400,
   italic: false,
@@ -885,10 +1123,6 @@ function textTypeStyle(item) {
     letterSpacing: `${t.letterSpacing}px`,
     writingMode: t.writingMode === "vertical" ? "vertical-rl" : "horizontal-tb",
   };
-}
-
-export function textPaintStyle(item) {
-  return { ...textTypeStyle(item), ...textGlyphStyle(item) };
 }
 
 function boxFillColor(hex, opacity) {
@@ -1443,8 +1677,8 @@ export function applyHandleResize(
   return { x, y, width, height };
 }
 
-export const MIN_CANVAS_SIZE = 1;
-export const MAX_CANVAS_SIZE = 30000;
+const MIN_CANVAS_SIZE = 1;
+const MAX_CANVAS_SIZE = 30000;
 
 function shiftElement(item, dx, dy) {
   if (!dx && !dy) return item;
@@ -1526,8 +1760,8 @@ export function applyTextHandleResize(item, handle, dx, dy) {
   };
 }
 
-export const MIN_CANVAS_ZOOM = 0.05;
-export const MAX_CANVAS_ZOOM = 4;
+const MIN_CANVAS_ZOOM = 0.05;
+const MAX_CANVAS_ZOOM = 4;
 
 export function clampCanvasZoom(value) {
   const number = Number(value);

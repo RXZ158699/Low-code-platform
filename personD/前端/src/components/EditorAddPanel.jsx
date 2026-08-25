@@ -10,7 +10,7 @@ const MEDIA_ITEMS = [
   { id: "ai-draw", label: "AI 绘图", icon: "ai-frame" },
 ];
 
-const TEXT_PRESETS = [
+export const TEXT_PRESETS = [
   { id: "h1", caption: "标题", sample: "H1" },
   { id: "h2", caption: "副标题", sample: "H2" },
   { id: "body", caption: "正文", sample: "Aa" },

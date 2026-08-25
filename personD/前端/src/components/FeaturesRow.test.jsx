@@ -1,11 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import { App as AntdApp } from "antd";
 import { describe, expect, it } from "vitest";
 import { CreatePopoverProvider } from "./CreatePopover.jsx";
 import FeaturesRow from "./FeaturesRow.jsx";
 
 function renderWithProvider(ui) {
-  return render(<CreatePopoverProvider>{ui}</CreatePopoverProvider>);
+  return render(
+    <MemoryRouter>
+      <AntdApp>
+        <CreatePopoverProvider>{ui}</CreatePopoverProvider>
+      </AntdApp>
+    </MemoryRouter>,
+  );
 }
 
 describe("FeaturesRow", () => {
@@ -32,5 +40,14 @@ describe("FeaturesRow", () => {
 
     await user.click(moreButton);
     expect(moreButton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("opens the create canvas modal from 图片创作", async () => {
+    const user = userEvent.setup();
+    renderWithProvider(<FeaturesRow />);
+
+    await user.click(screen.getByRole("button", { name: "图片创作" }));
+
+    expect(screen.getByRole("dialog", { name: "创建设计" })).toBeInTheDocument();
   });
 });

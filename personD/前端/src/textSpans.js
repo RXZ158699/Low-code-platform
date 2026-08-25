@@ -32,7 +32,7 @@ function spanSignature(span) {
   return SPAN_STYLE_KEYS.map((key) => `${key}:${span[key] ?? ""}`).join("|");
 }
 
-export function mergeTextSpans(spans) {
+function mergeTextSpans(spans) {
   const out = [];
   for (const span of spans) {
     const text = String(span?.text ?? "");

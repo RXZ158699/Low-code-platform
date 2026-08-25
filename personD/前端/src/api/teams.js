@@ -24,12 +24,16 @@ export function listMembers(teamId) {
   return apiFetch(`/teams/${teamId}/members`);
 }
 
-export function inviteMember(teamId, username) {
-  return apiFetch(`/teams/${teamId}/members`, { method: "POST", body: { username } });
+export function inviteMember(teamId, username, role = "MEMBER") {
+  return apiFetch(`/teams/${teamId}/members`, { method: "POST", body: { username, role } });
 }
 
 export function removeMember(teamId, userId) {
   return apiFetch(`/teams/${teamId}/members/${userId}`, { method: "DELETE" });
+}
+
+export function updateMemberRole(teamId, userId, role) {
+  return apiFetch(`/teams/${teamId}/members/${userId}`, { method: "PUT", body: { role } });
 }
 
 export function listTeamWorks(teamId, { page = 1, size = 12 } = {}) {

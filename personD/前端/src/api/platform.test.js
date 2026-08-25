@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getWork, publishWork, updateWork, uploadWorkThumbnail } from "./works.js";
-import { listHotTemplates } from "./templates.js";
+import { archiveWork, favoriteWork, getWork, listFavoriteWorks, listTrashedWorks, publishWork, purgeWork, restoreWork, saveDraft, unfavoriteWork, unarchiveWork, updateWork, uploadWorkThumbnail } from "./works.js";
+import { getTemplate, listHotTemplates } from "./templates.js";
+import { listAssetCategories } from "./assets.js";
 import { updateMe, uploadAvatar } from "./users.js";
 import {
   createTeam,
@@ -11,6 +12,7 @@ import {
   listTeamAssets,
   listTeamWorks,
   removeMember,
+  updateMemberRole,
   updateTeam,
 } from "./teams.js";
 import { createShare, deleteShare, getShare, listWorkShares, probeShareEdit, updateShare } from "./shares.js";
@@ -48,6 +50,36 @@ describe("api modules", () => {
     expect(fetchMock.mock.calls[1][0]).toBe("/api/works/9/publish");
   });
 
+  it("saves a draft through the dedicated endpoint", async () => {
+    const fetchMock = vi.fn(() => jsonResponse({ code: 0, data: { id: 9, title: "新标题" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await saveDraft(9, { title: "新标题", canvasJson: "{}" });
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/works/9/draft");
+    expect(fetchMock.mock.calls[0][1].method).toBe("PUT");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      title: "新标题",
+      canvasJson: "{}",
+    });
+  });
+
+  it("archives and unarchives a work through the status endpoint", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { id: 9, status: "ARCHIVED" } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { id: 9, status: "DRAFT" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await archiveWork(9);
+    await unarchiveWork(9);
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/works/9/status");
+    expect(fetchMock.mock.calls[0][1].method).toBe("POST");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ target: "ARCHIVED" });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ target: "DRAFT" });
+  });
+
   it("uploads a work thumbnail as multipart", async () => {
     const fetchMock = vi.fn(() => jsonResponse({ code: 0, data: { id: 9, thumbnailUrl: "http://cdn/a.png" } }));
     vi.stubGlobal("fetch", fetchMock);
@@ -58,11 +90,68 @@ describe("api modules", () => {
     expect(fetchMock.mock.calls[0][1].body).toBeInstanceOf(FormData);
   });
 
+  it("lists and restores trashed works", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { total: 1, records: [{ id: 9 }] } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { id: 9, title: "海报" } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: null }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listTrashedWorks({ page: 1, size: 24 })).resolves.toEqual({ total: 1, records: [{ id: 9 }] });
+    await expect(restoreWork(9)).resolves.toEqual({ id: 9, title: "海报" });
+    await purgeWork(9);
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/works/trash?page=1&size=24");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/works/9/restore");
+    expect(fetchMock.mock.calls[1][1].method).toBe("POST");
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/works/9/purge");
+    expect(fetchMock.mock.calls[2][1].method).toBe("DELETE");
+  });
+
+  it("lists, favorites and unfavorites works", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { total: 1, records: [{ id: 9 }] } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: null }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: null }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listFavoriteWorks({ page: 1, size: 24 })).resolves.toEqual({ total: 1, records: [{ id: 9 }] });
+    await favoriteWork(9);
+    await unfavoriteWork(9);
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/works/favorites?page=1&size=24");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/works/9/favorite");
+    expect(fetchMock.mock.calls[1][1].method).toBe("POST");
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/works/9/favorite");
+    expect(fetchMock.mock.calls[2][1].method).toBe("DELETE");
+  });
+
   it("requests hot templates without auth", async () => {
     const fetchMock = vi.fn(() => jsonResponse({ code: 0, data: [] }));
     vi.stubGlobal("fetch", fetchMock);
     await listHotTemplates(8);
     expect(fetchMock.mock.calls[0][0]).toBe("/api/templates/hot?limit=8");
+  });
+
+  it("loads asset category aggregation", async () => {
+    const fetchMock = vi.fn(() =>
+      jsonResponse({ code: 0, data: [{ name: "海报", count: 2 }] }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listAssetCategories({ scope: "mine" })).resolves.toEqual([
+      { name: "海报", count: 2 },
+    ]);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/assets/categories?scope=mine");
+  });
+
+  it("loads a template by id without auth", async () => {
+    const fetchMock = vi.fn(() => jsonResponse({ code: 0, data: { id: 2, title: "海报" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getTemplate(2)).resolves.toEqual({ id: 2, title: "海报" });
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/templates/2");
   });
 
   it("updates profile and uploads avatar as multipart", async () => {
@@ -88,10 +177,27 @@ describe("api modules", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await createTeam("设计组");
-    await inviteMember(1, "demo");
+    await inviteMember(1, "demo", "ADMIN");
 
     expect(fetchMock.mock.calls[0][0]).toBe("/api/teams");
     expect(fetchMock.mock.calls[1][0]).toBe("/api/teams/1/members");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      username: "demo",
+      role: "ADMIN",
+    });
+  });
+
+  it("changes a team member role", async () => {
+    const fetchMock = vi.fn(() =>
+      jsonResponse({ code: 0, data: { userId: 3, username: "alice", role: "ADMIN" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await updateMemberRole(1, 3, "ADMIN");
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/teams/1/members/3");
+    expect(fetchMock.mock.calls[0][1].method).toBe("PUT");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ role: "ADMIN" });
   });
 
   it("loads team detail, members, works and assets", async () => {
@@ -141,11 +247,14 @@ describe("api modules", () => {
       .mockImplementationOnce(() => jsonResponse({ code: 0, data: { id: 9, title: "海报" } }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await createShare(9, { permission: "VIEW" });
-    await getShare("abc");
+    await createShare(9, { permission: "VIEW", accessCode: "abcd" });
+    await getShare("abc", "abcd");
 
     expect(fetchMock.mock.calls[0][0]).toBe("/api/works/9/shares");
-    expect(fetchMock.mock.calls[1][0]).toBe("/api/shares/abc");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(
+      expect.objectContaining({ permission: "VIEW", accessCode: "abcd" }),
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/shares/abc?code=abcd");
     expect(fetchMock.mock.calls[1][1].headers.Authorization).toBeUndefined();
   });
 
@@ -171,10 +280,10 @@ describe("api modules", () => {
       .mockImplementationOnce(() => jsonResponse({ code: 40300, message: "无权限" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await updateShare("abc", { title: "海报", canvasJson: "{}" });
-    await expect(probeShareEdit("abc")).resolves.toBe(false);
+    await updateShare("abc", { title: "海报", canvasJson: "{}" }, "abcd");
+    await expect(probeShareEdit("abc", "abcd")).resolves.toBe(false);
 
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/shares/abc");
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/shares/abc?code=abcd");
     expect(fetchMock.mock.calls[0][1].method).toBe("PUT");
     expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
     expect(fetchMock.mock.calls[1][1].method).toBe("PUT");

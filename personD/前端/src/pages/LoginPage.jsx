@@ -130,7 +130,7 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-glow" aria-hidden="true" />
       <div className="login-shell">
-        <h1 className="login-hero-title">欢迎使用稿定</h1>
+        <h1 className="login-hero-title">欢迎使用一稿</h1>
         <div className="login-columns">
           <section className="login-wechat" aria-label="微信扫码登录">
             <h2 className="login-col-title">微信扫码登录</h2>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { uploadAsset, listAssets, getAsset, updateAsset } from "./assets.js";
+import { uploadAsset, listAssets, getAsset, updateAsset, listTrashedAssets, restoreAsset, purgeAsset, listFavoriteAssets, favoriteAsset, unfavoriteAsset } from "./assets.js";
 
 function jsonResponse(payload) {
   return Promise.resolve({
@@ -55,5 +55,43 @@ describe("assets api", () => {
       teamId: 1,
       category: "海报",
     });
+  });
+
+  it("lists, restores and purges trashed assets", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { total: 1, records: [{ id: 8 }] } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { id: 8, fileName: "a.png" } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: null }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listTrashedAssets({ page: 1, size: 24 })).resolves.toEqual({ total: 1, records: [{ id: 8 }] });
+    await expect(restoreAsset(8)).resolves.toEqual({ id: 8, fileName: "a.png" });
+    await purgeAsset(8);
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/assets/trash?page=1&size=24");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/assets/8/restore");
+    expect(fetchMock.mock.calls[1][1].method).toBe("POST");
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/assets/8/purge");
+    expect(fetchMock.mock.calls[2][1].method).toBe("DELETE");
+  });
+
+  it("lists, favorites and unfavorites assets", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { total: 1, records: [{ id: 8 }] } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: null }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: null }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listFavoriteAssets({ page: 1, size: 24 })).resolves.toEqual({ total: 1, records: [{ id: 8 }] });
+    await favoriteAsset(8);
+    await unfavoriteAsset(8);
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/assets/favorites?page=1&size=24");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/assets/8/favorite");
+    expect(fetchMock.mock.calls[1][1].method).toBe("POST");
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/assets/8/favorite");
+    expect(fetchMock.mock.calls[2][1].method).toBe("DELETE");
   });
 });
