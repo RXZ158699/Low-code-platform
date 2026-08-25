@@ -7,6 +7,8 @@ import DiscoverStickyHeader, { DiscoverNavProvider } from "./components/Discover
 import StickySearchBar from "./components/StickySearchBar.jsx";
 import { CreatePopoverProvider } from "./components/CreatePopover.jsx";
 import { AppPageProvider } from "./AppPageContext.jsx";
+import { useAuth } from "./auth/AuthContext.jsx";
+import { canAccess } from "./auth/access.js";
 
 const DESIGN_WIDTH = 1440;
 const HOME_HEIGHT = 1302;
@@ -17,6 +19,11 @@ function App() {
   const shellRef = useRef(null);
   const innerRef = useRef(null);
   const [page, setPage] = useState("create");
+  const { user } = useAuth();
+  const navigatePage = (next) => {
+    const accessKey = next === "create" ? "home" : next;
+    if (canAccess(accessKey, user)) setPage(next);
+  };
   const [shellWidth, setShellWidth] = useState(
     () => document.documentElement.clientWidth,
   );
@@ -130,7 +137,7 @@ function App() {
           className="fixed-sidebar"
           style={{ "--page-scale": scale, transform: `scale(${scale})` }}
         >
-          <Sidebar active={page} onNavigate={setPage} />
+          <Sidebar active={page} onNavigate={navigatePage} />
         </div>
 
         <div
