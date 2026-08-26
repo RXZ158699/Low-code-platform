@@ -21,7 +21,8 @@ export function updateWork(id, payload) {
 }
 
 export function saveDraft(id, payload = {}) {
-  return apiFetch(`/works/${id}/draft`, { method: "PUT", body: payload });
+  // 后端未提供独立的 /draft 接口，草稿保存复用作品更新接口
+  return updateWork(id, payload);
 }
 
 function setWorkStatus(id, target) {

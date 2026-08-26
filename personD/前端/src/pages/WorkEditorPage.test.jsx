@@ -840,7 +840,7 @@ describe("WorkEditorPage", () => {
     expect(screen.getByLabelText("编辑文字")).toBeInTheDocument();
   });
 
-  it("uploads a canvas thumbnail when the draft autosaves", async () => {
+  it("saves the canvas draft without uploading a thumbnail", async () => {
     const user = userEvent.setup();
     renderEditor();
     await screen.findByDisplayValue("未命名作品");
@@ -854,14 +854,10 @@ describe("WorkEditorPage", () => {
     await waitFor(
       () => {
         expect(saveDraft).toHaveBeenCalled();
-        expect(canvasPreviewBlob).toHaveBeenCalled();
-        expect(uploadWorkThumbnail).toHaveBeenCalled();
+        expect(uploadWorkThumbnail).not.toHaveBeenCalled();
       },
       { timeout: 3000 },
     );
-    const file = uploadWorkThumbnail.mock.calls[0][1];
-    expect(file).toBeInstanceOf(Blob);
-    expect(file.type).toBe("image/png");
   });
 
   it("draws a polygon proportionally by dragging on the canvas instead of placing it immediately", async () => {

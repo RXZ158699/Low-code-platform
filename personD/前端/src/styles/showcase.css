@@ -255,6 +255,22 @@
   line-height: 1.4 !important;
 }
 
+.favorite-btn {
+  flex: none;
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #64748b !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.favorite-btn.is-favorited {
+  color: #f59e0b !important;
+}
+
 /* Template loading / empty / error status */
 .template-status {
   width: 100%;

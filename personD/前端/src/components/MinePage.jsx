@@ -14,6 +14,7 @@ import {
 } from "@ant-design/icons";
 import SearchPill from "./SearchPill.jsx";
 import MineWorkDetail from "./MineWorkDetail.jsx";
+import TemplateAdminPanel from "./TemplateAdminPanel.jsx";
 import cameraIcon from "../assets/icons/camera.svg";
 import downloadIcon from "../assets/icons/download.svg";
 import mineEmptyIcon from "../assets/icons/mine-empty.svg";
@@ -45,7 +46,8 @@ import { isAdmin } from "../auth/access.js";
 import { useNavigate } from "react-router-dom";
 import { canvasPreviewBlob } from "../canvasPreview.js";
 
-const SPACE_TABS = ["我的空间", "最近", "收藏夹", "草稿箱", "已归档", "回收站", "分享管理", "发布"];
+const SPACE_TABS = ["我的空间", "最近", "收藏夹", "草稿箱", "已归档", "回收站", "分享管理", "发布", "模板管理"];
+const TEMPLATE_TAB = "模板管理";
 const TYPE_TABS = [
   { key: "all", label: "全部" },
   { key: "works", label: "作品" },
@@ -54,7 +56,7 @@ const TYPE_TABS = [
 const FILTERS = ["颜色", "类别", "类型", "标签", "添加时间"];
 const FILTER_OPTIONS = [{ key: "all", label: "不限" }];
 const FALLBACK_COVERS = [card1, card2, card3, card4];
-const PLACEHOLDER_SPACES = new Set();
+const PLACEHOLDER_SPACES = new Set([TEMPLATE_TAB]);
 const ASSET_SPACES = new Set(["我的空间", "最近"]);
 const SHARE_TAB = "分享管理";
 const TRASH_TAB = "回收站";
@@ -240,6 +242,7 @@ export default function MinePage() {
   const trashSpace = spaceTab === TRASH_TAB;
   const favoriteSpace = spaceTab === FAVORITE_TAB;
   const archivedSpace = spaceTab === ARCHIVED_TAB;
+  const templateSpace = spaceTab === TEMPLATE_TAB;
   const selectedTeam = teams.find((team) => team.id === inviteTeamId);
   const selectedTeamRole = selectedTeam?.myRole;
 
@@ -999,7 +1002,7 @@ export default function MinePage() {
           <>
         <div className="mine-space-row">
           <nav className="mine-space-tabs" aria-label="我的空间分类">
-            {SPACE_TABS.map((item) => (
+            {SPACE_TABS.filter((item) => item !== TEMPLATE_TAB || isAdmin(user)).map((item) => (
               <button
                 key={item}
                 type="button"
@@ -1021,7 +1024,7 @@ export default function MinePage() {
               </button>
             ))}
           </nav>
-          {!readOnly && (
+          {!readOnly && !templateSpace && (
             <div className="mine-space-actions">
               <button type="button" className="mine-invite" onClick={openInvite}>
                 <UserAddOutlined aria-hidden />
@@ -1035,6 +1038,10 @@ export default function MinePage() {
           )}
         </div>
 
+        {templateSpace ? (
+          <TemplateAdminPanel />
+        ) : (
+          <>
         <div className="mine-toolbar">
           {selecting ? (
             <button type="button" className="mine-selected-count" onClick={toggleSelectAll}>
@@ -1376,6 +1383,8 @@ export default function MinePage() {
             {!showEmpty && !listError ? <p className="mine-loaded">已全部加载完成</p> : null}
           </div>
         </Spin>
+          </>
+        )}
           </>
         )}
         {selectBarMounted

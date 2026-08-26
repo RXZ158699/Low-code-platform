@@ -17,7 +17,19 @@ describe("access", () => {
     expect(roleOf(admin)).toBe(ROLE_ADMIN);
     expect(roleOf(user)).toBe(ROLE_USER);
     expect(roleOf(guest)).toBeNull();
-    expect(roleOf({ id: 3 })).toBeNull();
+    expect(roleOf({ id: 1, role: "ADMIN" })).toBe(ROLE_ADMIN);
+    expect(roleOf({ id: 2, role: "USER" })).toBe(ROLE_USER);
+    expect(roleOf({ id: 1, role: "1" })).toBe(ROLE_ADMIN);
+    expect(roleOf({ id: 2, role: "2" })).toBe(ROLE_USER);
+  });
+
+  it("已登录但角色异常时按普通用户处理", () => {
+    const unknown = { id: 3, role: "SUPER" };
+    expect(roleOf(unknown)).toBe(ROLE_USER);
+    expect(isAdmin(unknown)).toBe(false);
+    expect(canAccess("home", unknown)).toBe(true);
+    expect(canAccess("mine", unknown)).toBe(true);
+    expect(canAccess("discover", unknown)).toBe(false);
   });
 
   it("isAdmin / isLoggedIn", () => {

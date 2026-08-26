@@ -18,6 +18,32 @@ export function getTemplate(id) {
   return apiFetch(`/templates/${id}`, { auth: false });
 }
 
+export function createTemplate(payload) {
+  return apiFetch("/templates", { method: "POST", body: payload });
+}
+
+export function updateTemplate(id, payload) {
+  return apiFetch(`/templates/${id}`, { method: "PUT", body: payload });
+}
+
+export function deleteTemplate(id) {
+  return apiFetch(`/templates/${id}`, { method: "DELETE" });
+}
+
+export function uploadTemplateCover(id, file) {
+  const body = new FormData();
+  body.append("file", file);
+  return apiFetch(`/templates/${id}/cover`, { method: "POST", body });
+}
+
+export function favoriteTemplate(id) {
+  return apiFetch(`/templates/${id}/favorite`, { method: "POST" });
+}
+
+export function unfavoriteTemplate(id) {
+  return apiFetch(`/templates/${id}/favorite`, { method: "DELETE" });
+}
+
 export function createWorkFromTemplate(id) {
   return apiFetch(`/templates/${id}/use`, { method: "POST" });
 }

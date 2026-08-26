@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Spin, Tag, App as AntdApp } from "antd";
+import { StarFilled, StarOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import logoDot from "../assets/icons/logo-dot.svg";
 import { TEMPLATE_CATEGORIES } from "../config/templateCategories.js";
@@ -7,6 +8,9 @@ import { TEMPLATE_CATALOG } from "../data/templateCatalog.js";
 import {
   listHotTemplates,
   listTemplates,
+  getTemplate,
+  favoriteTemplate,
+  unfavoriteTemplate,
   createWorkFromTemplate,
 } from "../api/templates.js";
 import { createWork } from "../api/works.js";
@@ -18,6 +22,7 @@ import {
 import { useAuth } from "../auth/AuthContext.jsx";
 import { openLoginTab } from "../auth/openLoginTab.js";
 import TemplateCover from "./TemplateCover.jsx";
+import TemplateDetailModal from "./TemplateDetailModal.jsx";
 
 const PAGE_SIZE = 36;
 const HOT_LIMIT = 20;
@@ -40,6 +45,40 @@ function filterCatalog(activeKey) {
     );
   }
   return TEMPLATE_CATALOG;
+}
+
+function normalizeKeyword(keyword) {
+  return String(keyword || "").trim().toLowerCase();
+}
+
+export function matchesTemplateKeyword(template, keyword) {
+  const needle = normalizeKeyword(keyword);
+  if (!needle) return true;
+  const haystack = [
+    template.title,
+    template.category,
+    template.kicker,
+    ...(template.tags || []),
+  ]
+    .filter(Boolean)
+    .map((item) => String(item).toLowerCase())
+    .join(" ");
+  return haystack.includes(needle);
+}
+
+export function searchLocalTemplates(activeKey, keyword) {
+  return filterCatalog(activeKey)
+    .filter((template) => matchesTemplateKeyword(template, keyword))
+    .slice(0, KEYWORD_SIZE)
+    .map((template) => ({
+      ...template,
+      jsonData: canvasJsonForLocalTemplate(template),
+    }));
+}
+
+function searchScopeKey(activeKey) {
+  const active = TEMPLATE_CATEGORIES.find((item) => item.key === activeKey);
+  return active?.apiCategory ? activeKey : "all";
 }
 
 function isLocalTemplate(template) {
@@ -204,6 +243,7 @@ export function applyCatalogCanvas(template) {
 export async function loadHomepageTemplates({ category, keyword } = {}) {
   const useKeyword = Boolean(keyword);
   const activeKey = category || "all";
+  const active = TEMPLATE_CATEGORIES.find((item) => item.key === activeKey);
   const fallback = () =>
     filterCatalog(activeKey)
       .slice(0, PAGE_SIZE)
@@ -213,10 +253,42 @@ export async function loadHomepageTemplates({ category, keyword } = {}) {
       }));
 
   if (useKeyword) {
+    const local = searchLocalTemplates(searchScopeKey(activeKey), keyword);
+    const requestParams = { keyword, page: 1, size: KEYWORD_SIZE };
+    if (active?.apiCategory) {
+      requestParams.category = active.apiCategory;
+    }
     try {
-      const data = await listTemplates({ keyword, page: 1, size: KEYWORD_SIZE });
-      return { templates: asRecords(data), notice: "", error: null };
+      const data = await listTemplates(requestParams);
+      const remote = asRecords(data).map(enrichWithCatalog);
+      const seen = new Set();
+      remote.forEach((template) => {
+        if (template.id != null) seen.add(String(template.id));
+        if (template.title) seen.add(template.title);
+      });
+      const merged = [
+        ...remote,
+        ...local.filter(
+          (template) =>
+            !seen.has(String(template.id)) && !seen.has(template.title),
+        ),
+      ];
+      return {
+        templates: merged,
+        notice:
+          remote.length === 0 && local.length > 0
+            ? "后端暂无匹配模板，当前展示内置示例模板"
+            : "",
+        error: null,
+      };
     } catch (error) {
+      if (local.length > 0) {
+        return {
+          templates: local,
+          notice: "后端暂不可用，当前展示内置示例模板",
+          error: null,
+        };
+      }
       return {
         templates: [],
         notice: "",
@@ -225,7 +297,6 @@ export async function loadHomepageTemplates({ category, keyword } = {}) {
     }
   }
 
-  const active = TEMPLATE_CATEGORIES.find((item) => item.key === activeKey);
   try {
     const data =
       activeKey === "hot"
@@ -268,9 +339,14 @@ export default function TemplateShowcase({
   });
   const { loading, templates, error, notice } = state;
   const [usingId, setUsingId] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailTemplate, setDetailTemplate] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const { user } = useAuth();
   const { message } = AntdApp.useApp();
   const navigate = useNavigate();
+  const [favoritedIds, setFavoritedIds] = useState(() => new Set());
+  const [favoriteLoadingId, setFavoriteLoadingId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -288,7 +364,9 @@ export default function TemplateShowcase({
         if (cancelled) return;
         setState({
           loading: false,
-          templates: filterCatalog(activeKey).slice(0, PAGE_SIZE),
+          templates: keyword
+            ? searchLocalTemplates(searchScopeKey(activeKey), keyword)
+            : filterCatalog(activeKey).slice(0, PAGE_SIZE),
           error: null,
           notice: "后端暂不可用，当前展示内置示例模板",
         });
@@ -335,6 +413,65 @@ export default function TemplateShowcase({
     }
   };
 
+  const isTemplateFavorited = (template) =>
+    favoritedIds.has(String(template.id));
+
+  const handleToggleFavorite = async (template) => {
+    if (!user) {
+      message.info("请先登录后再收藏模板");
+      openLoginTab();
+      return;
+    }
+    const id = String(template.id);
+    const favorited = favoritedIds.has(id);
+    setFavoriteLoadingId(id);
+    try {
+      if (favorited) {
+        await unfavoriteTemplate(template.id);
+      } else {
+        await favoriteTemplate(template.id);
+      }
+      setFavoritedIds((prev) => {
+        const next = new Set(prev);
+        if (favorited) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+      message.success(favorited ? "已取消收藏" : "已收藏");
+    } catch (err) {
+      message.error(err.message || (favorited ? "取消收藏失败" : "收藏失败"));
+    } finally {
+      setFavoriteLoadingId(null);
+    }
+  };
+
+  const openDetail = async (template) => {
+    setDetailOpen(true);
+    setDetailLoading(true);
+    if (isLocalTemplate(template)) {
+      setDetailTemplate(template);
+      setDetailLoading(false);
+      return;
+    }
+    try {
+      const detail = await getTemplate(template.id);
+      setDetailTemplate(detail || template);
+    } catch {
+      setDetailTemplate(template);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDetail = () => {
+    if (usingId) return;
+    setDetailOpen(false);
+    setDetailTemplate(null);
+  };
+
   return (
     <section className="showcase">
       <div className="showcase-header">
@@ -377,6 +514,7 @@ export default function TemplateShowcase({
                     className="template-card"
                     key={template.id}
                     style={{ aspectRatio: template.ratio || "3 / 4" }}
+                    onClick={() => openDetail(template)}
                   >
                     <TemplateCover template={template} />
                     <div className="template-overlay">
@@ -398,11 +536,37 @@ export default function TemplateShowcase({
                       ) : null}
                       <div className="template-card-foot">
                         <span className="template-name">{template.title}</span>
+                        {!isLocalTemplate(template) ? (
+                          <Button
+                            size="small"
+                            className={`favorite-btn ${
+                              isTemplateFavorited(template) ? "is-favorited" : ""
+                            }`}
+                            icon={
+                              isTemplateFavorited(template) ? (
+                                <StarFilled />
+                              ) : (
+                                <StarOutlined />
+                              )
+                            }
+                            loading={favoriteLoadingId === String(template.id)}
+                            aria-label={`${
+                              isTemplateFavorited(template) ? "取消收藏" : "收藏"
+                            } ${template.title}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleToggleFavorite(template);
+                            }}
+                          />
+                        ) : null}
                         <Button
                           size="small"
                           className="use-btn"
                           loading={usingId === template.id}
-                          onClick={() => handleUse(template)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleUse(template);
+                          }}
                         >
                           使用
                         </Button>
@@ -415,6 +579,21 @@ export default function TemplateShowcase({
           </div>
         )}
       </Spin>
+      <TemplateDetailModal
+        open={detailOpen}
+        template={detailTemplate}
+        loading={detailLoading}
+        using={usingId === detailTemplate?.id}
+        favorited={detailTemplate ? isTemplateFavorited(detailTemplate) : false}
+        favoriteLoading={favoriteLoadingId === String(detailTemplate?.id)}
+        onToggleFavorite={
+          detailTemplate && !isLocalTemplate(detailTemplate)
+            ? () => handleToggleFavorite(detailTemplate)
+            : undefined
+        }
+        onClose={closeDetail}
+        onUse={() => handleUse(detailTemplate)}
+      />
     </section>
   );
 }

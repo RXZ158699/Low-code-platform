@@ -156,6 +156,24 @@ describe("MinePage", () => {
     expect(screen.getByRole("button", { name: "从「一稿设计」导入" })).toBeInTheDocument();
   });
 
+  it("shows the template management tab for admins", async () => {
+    seedUser({ id: 1, role: 1 });
+    listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
+
+    renderMine();
+
+    expect(screen.getByRole("button", { name: "模板管理" })).toBeInTheDocument();
+  });
+
+  it("hides the template management tab for normal users", async () => {
+    seedLogin();
+    listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
+
+    renderMine();
+
+    expect(screen.queryByRole("button", { name: "模板管理" })).not.toBeInTheDocument();
+  });
+
   it("lists works from the API", async () => {
     seedLogin();
     listWorks.mockResolvedValue({

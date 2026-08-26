@@ -30,7 +30,6 @@ import {
   publishWork,
   saveDraft,
   updateWork,
-  uploadWorkThumbnail,
 } from "../api/works.js";
 import { uploadAsset } from "../api/assets.js";
 import { getShare, updateShare } from "../api/shares.js";
@@ -276,22 +275,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         setSaving(false);
         return;
       }
-      if (shareToken) {
-        setSaving(false);
-        return;
-      }
-      try {
-        const blob = await canvasPreviewBlob(canvas);
-        if (blob) {
-          const file = new File([blob], "thumbnail.png", { type: "image/png" });
-          const withCover = await uploadWorkThumbnail(id, file);
-          setWork(withCover);
-        }
-      } catch {
-        /* json is already saved */
-      } finally {
-        setSaving(false);
-      }
+      setSaving(false);
     }, 800);
     return () => window.clearTimeout(timer);
   }, [canvas, title, dirty, id, shareToken, shareCode, sourceKey, message]);
@@ -999,15 +983,6 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
       if (dirty) {
         await saveDraft(id, { title, canvasJson: stringifyCanvas(canvas) });
         setDirty(false);
-      }
-      try {
-        const blob = await canvasPreviewBlob(canvas);
-        if (blob) {
-          const file = new File([blob], "thumbnail.png", { type: "image/png" });
-          await uploadWorkThumbnail(id, file);
-        }
-      } catch {
-        /* keep publishing even if the cover upload fails */
       }
       const published = await publishWork(id);
       setWork(published);

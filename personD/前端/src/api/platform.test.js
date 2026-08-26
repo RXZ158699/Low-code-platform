@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { archiveWork, favoriteWork, getWork, listFavoriteWorks, listTrashedWorks, publishWork, purgeWork, restoreWork, saveDraft, unfavoriteWork, unarchiveWork, updateWork, uploadWorkThumbnail } from "./works.js";
-import { getTemplate, listHotTemplates } from "./templates.js";
+import {
+  createTemplate,
+  deleteTemplate,
+  favoriteTemplate,
+  getTemplate,
+  listHotTemplates,
+  unfavoriteTemplate,
+  updateTemplate,
+  uploadTemplateCover,
+} from "./templates.js";
 import { listAssetCategories } from "./assets.js";
 import { updateMe, uploadAvatar } from "./users.js";
 import {
@@ -50,13 +59,13 @@ describe("api modules", () => {
     expect(fetchMock.mock.calls[1][0]).toBe("/api/works/9/publish");
   });
 
-  it("saves a draft through the dedicated endpoint", async () => {
+  it("saves a draft through the work update endpoint", async () => {
     const fetchMock = vi.fn(() => jsonResponse({ code: 0, data: { id: 9, title: "新标题" } }));
     vi.stubGlobal("fetch", fetchMock);
 
     await saveDraft(9, { title: "新标题", canvasJson: "{}" });
 
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/works/9/draft");
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/works/9");
     expect(fetchMock.mock.calls[0][1].method).toBe("PUT");
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
       title: "新标题",
@@ -152,6 +161,67 @@ describe("api modules", () => {
     vi.stubGlobal("fetch", fetchMock);
     await expect(getTemplate(2)).resolves.toEqual({ id: 2, title: "海报" });
     expect(fetchMock.mock.calls[0][0]).toBe("/api/templates/2");
+  });
+
+  it("creates, updates and deletes templates", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { id: 3, title: "新模板" } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: { id: 3, title: "新标题" } }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: null }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createTemplate({
+      title: "新模板",
+      category: "主题海报",
+      tags: [],
+      isPublic: true,
+      jsonData: "{}",
+    });
+    await updateTemplate(3, { title: "新标题" });
+    await deleteTemplate(3);
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/templates");
+    expect(fetchMock.mock.calls[0][1].method).toBe("POST");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(
+      expect.objectContaining({ title: "新模板", category: "主题海报" }),
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/templates/3");
+    expect(fetchMock.mock.calls[1][1].method).toBe("PUT");
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/templates/3");
+    expect(fetchMock.mock.calls[2][1].method).toBe("DELETE");
+  });
+
+  it("uploads a template cover as multipart", async () => {
+    const fetchMock = vi.fn(() =>
+      jsonResponse({ code: 0, data: { id: 3, coverImageUrl: "http://cdn/t.png" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const file = new File(["x"], "cover.png", { type: "image/png" });
+
+    await expect(uploadTemplateCover(3, file)).resolves.toEqual({
+      id: 3,
+      coverImageUrl: "http://cdn/t.png",
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/templates/3/cover");
+    expect(fetchMock.mock.calls[0][1].method).toBe("POST");
+    expect(fetchMock.mock.calls[0][1].body).toBeInstanceOf(FormData);
+  });
+
+  it("favorites and unfavorites a template", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: null }))
+      .mockImplementationOnce(() => jsonResponse({ code: 0, data: null }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await favoriteTemplate(5);
+    await unfavoriteTemplate(5);
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/templates/5/favorite");
+    expect(fetchMock.mock.calls[0][1].method).toBe("POST");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/templates/5/favorite");
+    expect(fetchMock.mock.calls[1][1].method).toBe("DELETE");
   });
 
   it("updates profile and uploads avatar as multipart", async () => {
