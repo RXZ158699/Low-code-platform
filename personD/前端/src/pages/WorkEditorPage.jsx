@@ -78,6 +78,8 @@ import {
   clearCanvasElements,
   resizeCanvas,
   rotateFromDrag,
+  snapMoveRect,
+  snapResizeRect,
   stringifyCanvas,
   textElementStyle,
   TRANSFORM_HANDLES,
@@ -213,6 +215,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
   const [resizeHeight, setResizeHeight] = useState("");
   const [drawTool, setDrawTool] = useState(null);
   const [drawDraft, setDrawDraft] = useState(null);
+  const [snapGuides, setSnapGuides] = useState({ vertical: [], horizontal: [] });
   const [resourceTarget, setResourceTarget] = useState(null);
   const dragRef = useRef(null);
   const canvasRef = useRef(canvas);
@@ -412,15 +415,27 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         return;
       }
       if (drag.type === "move") {
-        const patch = {
+        const currentCanvas = canvasRef.current;
+        const proposed = {
           x: drag.start.x + dx,
           y: drag.start.y + dy,
+          width: drag.start.width,
+          height: drag.start.height,
         };
+        const snapped = snapMoveRect(
+          proposed,
+          currentCanvas.width,
+          currentCanvas.height,
+        );
+        setSnapGuides(snapped.guides);
+        const ox = snapped.x - proposed.x;
+        const oy = snapped.y - proposed.y;
+        const patch = { x: snapped.x, y: snapped.y };
         if (Number.isFinite(drag.start.x1)) {
-          patch.x1 = drag.start.x1 + dx;
-          patch.y1 = drag.start.y1 + dy;
-          patch.x2 = drag.start.x2 + dx;
-          patch.y2 = drag.start.y2 + dy;
+          patch.x1 = drag.start.x1 + dx + ox;
+          patch.y1 = drag.start.y1 + dy + oy;
+          patch.x2 = drag.start.x2 + dx + ox;
+          patch.y2 = drag.start.y2 + dy + oy;
         }
         setCanvas((current) => updateElement(current, drag.id, patch));
         return;
@@ -487,26 +502,53 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         const live =
           canvasRef.current.elements.find((item) => item.id === drag.id) ||
           drag.start;
+        const box = applyTextHandleResize(
+          { ...live, ...drag.start },
+          drag.handle,
+          dx,
+          dy,
+        );
+        const currentCanvas = canvasRef.current;
+        const snapped = snapResizeRect(
+          box,
+          drag.handle,
+          currentCanvas.width,
+          currentCanvas.height,
+        );
+        setSnapGuides(snapped.guides);
         setCanvas((current) =>
-          updateElement(
-            current,
-            drag.id,
-            applyTextHandleResize(
-              { ...live, ...drag.start },
-              drag.handle,
-              dx,
-              dy,
-            ),
-          ),
+          updateElement(current, drag.id, {
+            ...box,
+            x: snapped.x,
+            y: snapped.y,
+            width: snapped.width,
+            height: snapped.height,
+          }),
         );
         return;
       }
-      setCanvas((current) => updateElement(current, drag.id, box));
+      const currentCanvas = canvasRef.current;
+      const snapped = snapResizeRect(
+        box,
+        drag.handle,
+        currentCanvas.width,
+        currentCanvas.height,
+      );
+      setSnapGuides(snapped.guides);
+      setCanvas((current) =>
+        updateElement(current, drag.id, {
+          x: snapped.x,
+          y: snapped.y,
+          width: snapped.width,
+          height: snapped.height,
+        }),
+      );
     };
     const handlePointerUp = () => {
       const drag = dragRef.current;
       if (!drag) return;
       dragRef.current = null;
+      setSnapGuides({ vertical: [], horizontal: [] });
       if (drag.type === "select-text") return;
       if (drag.type === "resize-canvas") {
         const current = canvasRef.current;
@@ -583,9 +625,11 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     };
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
     };
   }, []);
 
@@ -1776,6 +1820,20 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                   )
                 ) : null}
               </div>
+                {snapGuides.vertical.map((value) => (
+                  <div
+                    key={`guide-v-${value}`}
+                    className="editor-snap-guide is-vertical"
+                    style={{ left: value * zoom }}
+                  />
+                ))}
+                {snapGuides.horizontal.map((value) => (
+                  <div
+                    key={`guide-h-${value}`}
+                    className="editor-snap-guide is-horizontal"
+                    style={{ top: value * zoom }}
+                  />
+                ))}
             </div>
 
             <div className="editor-dock editor-dock-left">

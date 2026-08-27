@@ -1348,4 +1348,79 @@ describe("WorkEditorPage", () => {
     createObjectURL.mockRestore();
     revokeObjectURL.mockRestore();
   });
+
+  it("shows a red snap guide and snaps a moved element to the canvas border", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: "方形" }));
+    const layer = screen.getByLabelText("在画布上绘制方形");
+    layer.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
+    fireEvent.pointerDown(layer, {
+      button: 0,
+      clientX: 80,
+      clientY: 60,
+      pointerId: 7,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 280,
+      clientY: 180,
+      pointerId: 7,
+    });
+    fireEvent.pointerUp(window, {
+      clientX: 280,
+      clientY: 180,
+      pointerId: 7,
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector(".editor-el.is-shape")).toBeTruthy();
+    });
+    const element = document.querySelector(".editor-el.is-shape");
+    const zoom =
+      Number.parseFloat(
+        document
+          .querySelector(".editor-artboard")
+          .style.transform.replace("scale(", "")
+          .replace(")", ""),
+      ) || 1;
+
+    fireEvent.pointerDown(element, {
+      button: 0,
+      clientX: 80 * zoom,
+      clientY: 60 * zoom,
+      pointerId: 8,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: (80 - 78) * zoom,
+      clientY: (60 - 58) * zoom,
+      pointerId: 8,
+    });
+
+    await waitFor(() => expect(element.style.left).toBe("0px"));
+    const guide = document.querySelector(".editor-snap-guide.is-vertical");
+    expect(guide).toBeTruthy();
+    expect(guide.style.left).toBe("0px");
+
+    fireEvent.pointerUp(window, {
+      clientX: (80 - 78) * zoom,
+      clientY: (60 - 58) * zoom,
+      pointerId: 8,
+    });
+    expect(
+      document.querySelector(".editor-snap-guide.is-vertical"),
+    ).not.toBeInTheDocument();
+  });
 });

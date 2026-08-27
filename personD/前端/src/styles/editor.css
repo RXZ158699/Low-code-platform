@@ -1746,3 +1746,20 @@ button.editor-el-collage-cell.is-pickable:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.editor-snap-guide {
+  position: absolute;
+  background: #f5222d;
+  pointer-events: none;
+  z-index: 30;
+}
+.editor-snap-guide.is-vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.editor-snap-guide.is-horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
