@@ -24,6 +24,8 @@ const DEFAULT_CANVAS = {
   height: 1440,
   background: "#ffffff",
   backgroundOpacity: 100,
+  backgroundImage: "",
+  backgroundImageFit: "cover",
   elements: [],
 };
 
@@ -50,6 +52,12 @@ export function parseCanvas(json) {
           ? data.background
           : DEFAULT_CANVAS.background,
       backgroundOpacity: readOpacity(data.backgroundOpacity),
+      backgroundImage:
+        typeof data.backgroundImage === "string"
+          ? data.backgroundImage
+          : DEFAULT_CANVAS.backgroundImage,
+      backgroundImageFit:
+        data.backgroundImageFit === "contain" ? "contain" : "cover",
       elements: Array.isArray(data.elements) ? data.elements : [],
     };
   } catch {
@@ -67,7 +75,22 @@ export function createEmptyCanvas(width, height) {
     height: Number(height) > 0 ? Number(height) : DEFAULT_CANVAS.height,
     background: DEFAULT_CANVAS.background,
     backgroundOpacity: DEFAULT_CANVAS.backgroundOpacity,
+    backgroundImage: DEFAULT_CANVAS.backgroundImage,
+    backgroundImageFit: DEFAULT_CANVAS.backgroundImageFit,
     elements: [],
+  };
+}
+
+export function canvasBackgroundStyle(item = {}) {
+  const data = { ...DEFAULT_CANVAS, ...item };
+  return {
+    backgroundColor: data.background,
+    backgroundImage: data.backgroundImage
+      ? `url("${data.backgroundImage}")`
+      : undefined,
+    backgroundSize: data.backgroundImageFit === "contain" ? "contain" : "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
   };
 }
 

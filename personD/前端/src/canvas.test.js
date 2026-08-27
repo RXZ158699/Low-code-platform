@@ -10,6 +10,7 @@ import {
   applyHandleResize,
   applyTextHandleResize,
   boxFromDrag,
+  canvasBackgroundStyle,
   clampCanvasZoom,
   createEmptyCanvas,
   duplicateElement,
@@ -70,6 +71,8 @@ describe("canvas helpers", () => {
       height: 1440,
       background: "#ffffff",
       backgroundOpacity: 100,
+      backgroundImage: "",
+      backgroundImageFit: "cover",
       elements: [],
     });
     expect(parseCanvas("{")).toEqual({
@@ -77,6 +80,8 @@ describe("canvas helpers", () => {
       height: 1440,
       background: "#ffffff",
       backgroundOpacity: 100,
+      backgroundImage: "",
+      backgroundImageFit: "cover",
       elements: [],
     });
   });
@@ -87,8 +92,20 @@ describe("canvas helpers", () => {
       height: 2208,
       background: "#ffffff",
       backgroundOpacity: 100,
+      backgroundImage: "",
+      backgroundImageFit: "cover",
       elements: [],
     });
+  });
+
+  it("reads and renders a canvas background image", () => {
+    const canvas = parseCanvas(
+      '{"width":800,"height":600,"background":"#111827","backgroundImage":"data:image/svg+xml,abc","elements":[]}',
+    );
+    expect(canvas.backgroundImage).toBe("data:image/svg+xml,abc");
+    expect(canvasBackgroundStyle(canvas).backgroundImage).toContain("data:image/svg+xml,abc");
+    expect(canvasBackgroundStyle(canvas).backgroundSize).toBe("cover");
+    expect(canvasBackgroundStyle({ ...canvas, backgroundImageFit: "contain" }).backgroundSize).toBe("contain");
   });
 
   it("round-trips text elements", () => {

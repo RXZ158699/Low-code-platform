@@ -84,7 +84,7 @@ describe("CreateCanvasModal", () => {
     await waitFor(() =>
       expect(createWork).toHaveBeenCalledWith({
         title: "手机海报",
-        canvasJson: '{"width":1242,"height":2208,"background":"#ffffff","backgroundOpacity":100,"elements":[]}',
+        canvasJson: '{"width":1242,"height":2208,"background":"#ffffff","backgroundOpacity":100,"backgroundImage":"","backgroundImageFit":"cover","elements":[]}',
       }),
     );
   });
@@ -101,7 +101,7 @@ describe("CreateCanvasModal", () => {
     await waitFor(() =>
       expect(createWork).toHaveBeenCalledWith({
         title: "未命名作品",
-        canvasJson: '{"width":800,"height":600,"background":"#ffffff","backgroundOpacity":100,"elements":[]}',
+        canvasJson: '{"width":800,"height":600,"background":"#ffffff","backgroundOpacity":100,"backgroundImage":"","backgroundImageFit":"cover","elements":[]}',
       }),
     );
   });

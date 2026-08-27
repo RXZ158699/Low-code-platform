@@ -89,6 +89,9 @@ describe("WorkEditorPage", () => {
     expect(screen.getByRole("button", { name: /导\s*出/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "添加" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "文字" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "图片" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "画板" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "调整尺寸" }),
@@ -157,6 +160,26 @@ describe("WorkEditorPage", () => {
     await user.click(screen.getByRole("button", { name: "收起文字面板" }));
 
     expect(screen.queryByRole("dialog", { name: "文字" })).not.toBeInTheDocument();
+  });
+
+  it("opens and closes the background panel from the rail", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    const rail = document.querySelector(".editor-rail");
+    await user.click(within(rail).getByRole("button", { name: "背景" }));
+
+    const dialog = screen.getByRole("dialog", { name: "背景" });
+    expect(dialog).toHaveClass("is-open");
+    expect(within(dialog).getByLabelText("背景色")).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("slider", { name: "背景不透明度" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "收起背景面板" }));
+
+    expect(screen.queryByRole("dialog", { name: "背景" })).not.toBeInTheDocument();
   });
 
   it("resizes the canvas from the properties panel", async () => {

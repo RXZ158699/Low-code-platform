@@ -11,7 +11,6 @@ import {
   EllipsisOutlined,
   FontSizeOutlined,
   HomeOutlined,
-  PictureOutlined,
   PlusCircleOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
@@ -46,6 +45,7 @@ import {
   applyTextHandleResize,
   applyTextStyle,
   boxFromDrag,
+  canvasBackgroundStyle,
   DEFAULT_LINE_FILL,
   DEFAULT_SHAPE_FILL,
   duplicateElement,
@@ -91,6 +91,7 @@ import CanvasMedia from "../components/CanvasMedia.jsx";
 import CanvasShape from "../components/CanvasShape.jsx";
 import EditorAddPanel from "../components/EditorAddPanel.jsx";
 import EditorLibraryPanel from "../components/EditorLibraryPanel.jsx";
+import EditorBackgroundPanel from "../components/EditorBackgroundPanel.jsx";
 import { applyCatalogCanvas } from "../components/TemplateShowcase.jsx";
 import EditorMaterialPanel from "../components/EditorMaterialPanel.jsx";
 import EditorCollagePanel from "../components/EditorCollagePanel.jsx";
@@ -113,7 +114,6 @@ const LEFT_TOOLS = [
   { id: "template", label: "模板", icon: AppstoreOutlined },
   { id: "material", label: "素材", icon: BlockOutlined },
   { id: "text", label: "文字", icon: FontSizeOutlined },
-  { id: "image", label: "图片", icon: PictureOutlined },
   { id: "background", label: "背景", icon: null },
   { id: "mine", label: "我的", icon: UserOutlined },
   { id: "team", label: "团队", icon: TeamOutlined },
@@ -1013,13 +1013,14 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
       setActiveTool((current) => (current === "material" ? "" : "material"));
       return;
     }
-    setActiveTool(toolId);
     if (toolId === "background") {
+      setActiveTool((current) => (current === "background" ? "" : "background"));
       setSelectedId(null);
       setBoardSelected(true);
       setTextRange(null);
       return;
     }
+    setActiveTool(toolId);
     message.info("功能开发中");
   };
 
@@ -1423,6 +1424,13 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
           onPick={handleMaterialPick}
         />
 
+        <EditorBackgroundPanel
+          open={activeTool === "background"}
+          onClose={() => setActiveTool("")}
+          canvas={canvas}
+          onChange={(patch) => mutateCanvas({ ...canvas, ...patch })}
+        />
+
         <Spin spinning={loading} wrapperClassName="editor-stage-spin">
           <div className="editor-stage-wrap">
             <div
@@ -1458,7 +1466,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                   <div
                     className="editor-artboard-fill"
                     style={{
-                      background: canvas.background,
+                      ...canvasBackgroundStyle(canvas),
                       opacity: canvas.backgroundOpacity / 100,
                     }}
                   />
