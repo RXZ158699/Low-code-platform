@@ -1107,16 +1107,16 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     setDrawDraft(null);
     if (action === "text-h1") {
       placeTextPreset(
-        addTextElement(canvas, { text: "标题", fontSize: 72, fontWeight: 700 }),
+        addTextElement(canvas, { text: "标题", fontSize: 120, fontWeight: 700 }),
       );
       return;
     }
     if (action === "text-h2") {
-      placeTextPreset(addTextElement(canvas, { text: "副标题", fontSize: 48 }));
+      placeTextPreset(addTextElement(canvas, { text: "副标题", fontSize: 70 }));
       return;
     }
     if (action === "text-body") {
-      placeTextPreset(addTextElement(canvas, { text: "正文", fontSize: 28 }));
+      placeTextPreset(addTextElement(canvas, { text: "正文", fontSize: 50 }));
       return;
     }
     if (typeof action === "string" && action.startsWith("collage:")) {
