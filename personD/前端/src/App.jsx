@@ -13,7 +13,6 @@ import { canAccess } from "./auth/access.js";
 const DESIGN_WIDTH = 1440;
 const HOME_HEIGHT = 1302;
 const DISCOVER_HEIGHT = 1180;
-const MINE_HEIGHT = 1020;
 
 function App() {
   const shellRef = useRef(null);
@@ -36,7 +35,7 @@ function App() {
   const isDiscover = page === "discover";
   const isMine = page === "mine";
   const isHome = page === "create";
-  const designHeight = isDiscover ? DISCOVER_HEIGHT : isMine ? MINE_HEIGHT : HOME_HEIGHT;
+  const designHeight = isDiscover ? DISCOVER_HEIGHT : isMine ? 0 : HOME_HEIGHT;
 
   useEffect(() => {
     if (!isHome) return undefined;

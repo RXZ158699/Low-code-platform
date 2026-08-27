@@ -10,6 +10,7 @@
 .mine-page {
   position: relative;
   width: 1440px;
+  height: 100%;
   min-height: 100%;
   padding-left: 80px;
   background: #fff;
@@ -30,10 +31,26 @@
 
 .mine-main {
   position: relative;
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   padding: 18px 28px 40px;
   display: flex;
   flex-direction: column;
+}
+
+.mine-main > .mine-search,
+.mine-main > .mine-space-row,
+.mine-main > .mine-toolbar {
+  flex-shrink: 0;
+}
+
+.mine-page:not(.is-detail) .mine-main > .ant-spin-nested-loading,
+.mine-page:not(.is-detail) .mine-main > .template-admin {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c5cad1 transparent;
 }
 
 .mine-page.is-selecting .mine-main {
@@ -539,9 +556,15 @@
   min-height: 100%;
 }
 
+.mine-page.is-detail .mine-detail {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .mine-detail {
   position: relative;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 760px;
   margin-top: 16px;
   display: grid;
@@ -549,7 +572,6 @@
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
-  overflow: hidden;
 }
 
 .mine-detail-back {

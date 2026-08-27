@@ -148,41 +148,34 @@ function isImageFile(file) {
 const previewUrlCache = new Map();
 
 function WorkCover({ item, fallback }) {
-  const [src, setSrc] = useState(item.imageUrl || fallback);
+  const cacheKey = `${item.kind}-${item.id}:${item.canvasJson || ""}`;
+  const cachedUrl = item.canvasJson ? previewUrlCache.get(cacheKey) : undefined;
+  const [generated, setGenerated] = useState({ key: null, url: null });
+  const generatedUrl = generated.key === cacheKey ? generated.url : null;
+
   useEffect(() => {
-    if (item.imageUrl) {
-      setSrc(item.imageUrl);
-      return undefined;
-    }
-    const cacheKey = `${item.kind}-${item.id}:${item.canvasJson || ""}`;
-    const cached = previewUrlCache.get(cacheKey);
-    if (cached) {
-      setSrc(cached);
-      return undefined;
-    }
-    if (!item.canvasJson) {
-      setSrc(fallback);
-      return undefined;
-    }
+    if (item.imageUrl || !item.canvasJson || previewUrlCache.has(cacheKey)) return undefined;
     let cancelled = false;
     canvasPreviewBlob(item.canvasJson)
       .then((blob) => {
         if (cancelled) return;
         if (!blob) {
-          setSrc(fallback);
+          setGenerated({ key: cacheKey, url: fallback });
           return;
         }
         const url = URL.createObjectURL(blob);
         previewUrlCache.set(cacheKey, url);
-        setSrc(url);
+        setGenerated({ key: cacheKey, url });
       })
       .catch(() => {
-        if (!cancelled) setSrc(fallback);
+        if (!cancelled) setGenerated({ key: cacheKey, url: fallback });
       });
     return () => {
       cancelled = true;
     };
-  }, [item.kind, item.id, item.imageUrl, item.canvasJson, fallback]);
+  }, [item.imageUrl, item.canvasJson, cacheKey, fallback]);
+
+  const src = item.imageUrl || cachedUrl || generatedUrl || fallback;
   return <img src={src} alt={item.title} />;
 }
 
@@ -503,6 +496,9 @@ export default function MinePage() {
 
   const toggleSelected = (item) => {
     const key = itemKey(item);
+    if (!selectedKeys.has(key)) {
+      setSelectBarMounted(true);
+    }
     setSelectedKeys((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -898,10 +894,7 @@ export default function MinePage() {
   const [selectBarMounted, setSelectBarMounted] = useState(false);
 
   useEffect(() => {
-    if (selecting) {
-      setSelectBarMounted(true);
-      return undefined;
-    }
+    if (selecting) return undefined;
     if (!selectBarMounted) return undefined;
     const timer = window.setTimeout(() => setSelectBarMounted(false), 420);
     return () => window.clearTimeout(timer);
@@ -922,6 +915,7 @@ export default function MinePage() {
       clearSelection();
       return;
     }
+    setSelectBarMounted(true);
     setSelectedKeys(new Set(visibleRecords.map(itemKey)));
   };
 

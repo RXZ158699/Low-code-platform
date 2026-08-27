@@ -1244,8 +1244,8 @@ function canvasCharWidth(ch, style) {
   try {
     if (!measureCtx) {
       const canvas =
-        typeof OffscreenCanvas === "function"
-          ? new OffscreenCanvas(1, 1)
+        typeof globalThis.OffscreenCanvas === "function"
+          ? new globalThis.OffscreenCanvas(1, 1)
           : document.createElement("canvas");
       measureCtx = canvas.getContext?.("2d") || null;
       if (!measureCtx) {

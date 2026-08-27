@@ -27,17 +27,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => readLocalUser());
   const [ready, setReady] = useState(() => !getToken());
   const userRef = useRef(user);
-  userRef.current = user;
 
   useEffect(() => {
-    if (!getToken()) {
-      setReady(true);
-      return;
-    }
-    const cached = getCachedUser();
-    if (cached) {
-      setUser(cached);
-    }
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    if (!getToken()) return;
     fetchMe()
       .then((me) => {
         if (!me) return;

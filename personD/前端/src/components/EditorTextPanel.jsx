@@ -39,6 +39,12 @@ const LIST_ITEMS = [
   { key: "decimal", label: "数字列表" },
 ];
 
+const WARP_ITEMS = [
+  { key: "none", label: "无变形" },
+  { key: "arc", label: "弧形" },
+  { key: "wave", label: "波浪形" },
+];
+
 function readNumber(value, fallback, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
@@ -197,6 +203,14 @@ export default function EditorTextPanel({ item, onChange, onDelete, onDuplicate,
     const order = ["top", "middle", "bottom"];
     const index = order.indexOf(text.verticalAlign);
     onChange({ verticalAlign: order[(index + 1) % order.length] });
+  };
+
+  const applyWarp = (type) => {
+    if (type === "none") {
+      onChange({ warp: null });
+      return;
+    }
+    onChange({ warp: { type, strength: type === "arc" ? 44 : 30 } });
   };
 
   return (
@@ -433,6 +447,18 @@ export default function EditorTextPanel({ item, onChange, onDelete, onDuplicate,
                 />
               </span>
             </div>
+          </div>
+
+          <div className="editor-text-warp">
+            <Dropdown
+              menu={{ items: WARP_ITEMS, onClick: ({ key }) => applyWarp(key) }}
+              trigger={["click"]}
+            >
+              <button type="button" className="editor-text-warp-btn" aria-label="变形">
+                <span>变形</span>
+                <DownOutlined aria-hidden />
+              </button>
+            </Dropdown>
           </div>
 
           <FoldRow

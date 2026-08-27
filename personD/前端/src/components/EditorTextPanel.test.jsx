@@ -130,6 +130,16 @@ describe("EditorTextPanel effect add/remove", () => {
     expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
+  it("applies a warp from the warp menu", async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "变形" }));
+    await user.click(screen.getByRole("menuitem", { name: "弧形" }));
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ warp: { type: "arc", strength: 44 } }));
+  });
+
   it("emits text color while the picker is open, not only after it closes", async () => {
     const user = userEvent.setup();
     const { onChange } = renderPanel();

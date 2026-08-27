@@ -782,7 +782,7 @@ describe("WorkEditorPage", () => {
     expect(screen.getByLabelText("渐变左侧颜色")).toBeInTheDocument();
     expect(screen.getByLabelText("渐变右侧颜色")).toBeInTheDocument();
     expect(screen.queryByLabelText("填充色")).not.toBeInTheDocument();
-    expect(screen.queryByText("变形")).not.toBeInTheDocument();
+    expect(screen.getByText("变形")).toBeInTheDocument();
     expect(screen.queryByText("特效")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "删除填充" }));
     expect(screen.queryByLabelText("渐变左侧颜色")).not.toBeInTheDocument();
@@ -798,9 +798,7 @@ describe("WorkEditorPage", () => {
       "aria-pressed",
       "true",
     );
-    expect(
-      screen.queryByRole("button", { name: "变形" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "变形" })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "特效" }),
     ).not.toBeInTheDocument();
