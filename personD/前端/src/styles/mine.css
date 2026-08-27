@@ -80,9 +80,9 @@
 .mine-space-tabs {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 28px;
   min-width: 0;
-  overflow-x: auto;
 }
 
 .mine-space-tab {
