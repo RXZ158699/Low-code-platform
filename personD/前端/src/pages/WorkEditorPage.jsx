@@ -1105,6 +1105,11 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     }
     setDrawTool(null);
     setDrawDraft(null);
+    if (action === "text-more") {
+      setAddPanelOpen(false);
+      setActiveTool("text");
+      return;
+    }
     if (action === "text-h1") {
       placeTextPreset(
         addTextElement(canvas, { text: "标题", fontSize: 120, fontWeight: 700 }),

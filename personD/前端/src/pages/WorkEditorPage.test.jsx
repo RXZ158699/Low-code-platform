@@ -215,6 +215,21 @@ describe("WorkEditorPage", () => {
     expect(screen.getByRole("button", { name: /拼图/ })).toBeInTheDocument();
   });
 
+  it("switches from the add panel to the text panel via 查看更多", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    expect(screen.getByRole("dialog", { name: "添加" })).toHaveClass("is-open");
+
+    await user.click(screen.getByRole("button", { name: "查看更多" }));
+
+    expect(screen.queryByRole("dialog", { name: "添加" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "文字" })).toHaveClass("is-open");
+    expect(screen.queryByText("功能开发中")).not.toBeInTheDocument();
+  });
+
   it("opens the file picker from 本地上传 and places an image on the canvas", async () => {
     const user = userEvent.setup();
     renderEditor();
