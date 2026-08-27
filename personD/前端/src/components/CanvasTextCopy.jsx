@@ -5,9 +5,11 @@ import {
   getTextLines,
   getTextPaintRuns,
   getTextProps,
+  getWarpProps,
   hasSpanOverrides,
   textBackgroundPaint,
   textFillPaint,
+  warpGlyphPlacement,
 } from "../canvas.js";
 
 function typeStyle(style) {
@@ -98,12 +100,70 @@ function MixedCopy({ item, copy }) {
   );
 }
 
+function WarpedCopy({ item, copy }) {
+  const uid = useId();
+  const t = getTextProps(item);
+  const placements = warpGlyphPlacement(item);
+  const paint = textFillPaint(item);
+  const gradId = `text-grad-${uid.replace(/:/g, "")}`;
+  const strokeOn = t.strokeEnabled && Number(t.strokeWidth) > 0;
+  const fill = paint.type === "gradient" ? `url(#${gradId})` : paint.color;
+
+  return (
+    <span className="editor-el-copy-stack">
+      <span className="editor-el-copy is-metrics" aria-hidden>
+        {copy}
+      </span>
+      <svg
+        className="editor-el-copy-svg"
+        overflow="visible"
+        aria-hidden
+        style={
+          t.shadowEnabled
+            ? { filter: `drop-shadow(${t.shadowX}px ${t.shadowY}px ${t.shadowBlur}px ${t.shadowColor})` }
+            : undefined
+        }
+      >
+        <HighlightRings item={item} />
+        {paint.type === "gradient" ? (
+          <defs>
+            <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100%" y2="0">
+              <stop offset="0%" stopColor={paint.from} />
+              <stop offset="100%" stopColor={paint.to} />
+            </linearGradient>
+          </defs>
+        ) : null}
+        {placements.map(({ glyph, dx, dy, rotate }) => (
+          <text
+            key={`${glyph.start}-${glyph.ch}-${glyph.x}`}
+            x={glyph.x + dx}
+            y={glyph.y + dy}
+            transform={`rotate(${rotate} ${glyph.x + glyph.width / 2 + dx} ${glyph.y + glyph.height / 2 + dy})`}
+            textAnchor="start"
+            dominantBaseline="text-before-edge"
+            fill={fill}
+            stroke={strokeOn ? t.strokeColor : "none"}
+            strokeWidth={strokeOn ? Number(t.strokeWidth) * 2 : 0}
+            paintOrder="stroke fill"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            style={typeStyle(t)}
+          >
+            {glyph.ch}
+          </text>
+        ))}
+      </svg>
+    </span>
+  );
+}
+
 export default function CanvasTextCopy({ item }) {
   const copy = formatTextContent(item);
   const t = getTextProps(item);
   const paint = textFillPaint(item);
   const lines = getTextLines(item);
   const uid = useId();
+  if (getWarpProps(item)) return <WarpedCopy item={item} copy={copy} />;
   if (hasSpanOverrides(item) || t.highlight) return <MixedCopy item={item} copy={copy} />;
   const gradId = `text-grad-${uid.replace(/:/g, "")}`;
   const strokeOn = t.strokeEnabled && Number(t.strokeWidth) > 0;

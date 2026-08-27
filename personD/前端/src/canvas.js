@@ -75,8 +75,6 @@ export function addTextElement(canvas, patch = {}) {
   const element = {
     id: nextElementId("text"),
     type: "text",
-    x: 80,
-    y: 120 + canvas.elements.length * 40,
     text: "双击编辑文字",
     fontSize: 48,
     color: "#111827",
@@ -84,15 +82,25 @@ export function addTextElement(canvas, patch = {}) {
     ...patch,
   };
   const box = fitTextBox(element);
+  const width = patch.width ?? box.width;
+  const height = patch.height ?? box.height;
+  const x = Number.isFinite(Number(patch.x))
+    ? Number(patch.x)
+    : Math.max(0, Math.round((canvas.width - width) / 2));
+  const y = Number.isFinite(Number(patch.y))
+    ? Number(patch.y)
+    : Math.max(0, Math.round((canvas.height - height) / 2));
   return {
     ...canvas,
     elements: [
       ...canvas.elements,
       {
         ...element,
+        x,
+        y,
         autoWidth: patch.autoWidth ?? patch.width == null,
-        width: patch.width ?? box.width,
-        height: patch.height ?? box.height,
+        width,
+        height,
       },
     ],
   };
@@ -1008,6 +1016,7 @@ export const TEXT_FONTS = [
 const DEFAULT_TEXT_PROPS = {
   fontFamily: TEXT_FONTS[0].family,
   fontWeight: 400,
+  warp: null,
   italic: false,
   underline: false,
   strikethrough: false,
@@ -1043,6 +1052,40 @@ const DEFAULT_TEXT_PROPS = {
 
 export function getTextProps(item = {}) {
   return { ...DEFAULT_TEXT_PROPS, ...item };
+}
+
+export function getWarpProps(item = {}) {
+  const warp = getTextProps(item).warp;
+  if (!warp || !["arc", "wave"].includes(warp.type)) return null;
+  const strength = Number(warp.strength);
+  return {
+    type: warp.type,
+    strength: Number.isFinite(strength) ? Math.max(0, Math.min(120, strength)) : 40,
+  };
+}
+
+export function warpGlyphPlacement(item = {}) {
+  const warp = getWarpProps(item);
+  if (!warp) return null;
+  const glyphs = getTextGlyphs(item);
+  const boxW = Math.max(1, Number(item.width) || 1);
+  const centerX = boxW / 2;
+  const halfW = Math.max(1, centerX);
+  const strength = warp.strength;
+  return glyphs.map((glyph) => {
+    const cx = glyph.x + glyph.width / 2 - centerX;
+    if (warp.type === "wave") {
+      const period = Math.max(60, boxW / 2);
+      const phase = (cx / period) * Math.PI * 2;
+      const dy = -strength * Math.sin(phase);
+      const slope = (-strength * Math.cos(phase) * Math.PI * 2) / period;
+      return { glyph, dx: 0, dy, rotate: (Math.atan(slope) * 180) / Math.PI };
+    }
+    const ratio = cx / halfW;
+    const dy = -strength * (1 - ratio * ratio);
+    const slope = (2 * strength * cx) / (halfW * halfW);
+    return { glyph, dx: 0, dy, rotate: (Math.atan(slope) * 180) / Math.PI };
+  });
 }
 
 export function isTextAutoWidth(item) {

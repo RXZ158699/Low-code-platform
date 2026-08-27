@@ -230,6 +230,21 @@ describe("WorkEditorPage", () => {
     expect(screen.queryByText("功能开发中")).not.toBeInTheDocument();
   });
 
+  it("inserts warped text from the 变形文字 preset", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: /变形文字/ }));
+
+    await waitFor(() => {
+      const artboard = document.querySelector(".editor-artboard");
+      expect(within(artboard).getAllByText("变形文字").length).toBeGreaterThan(0);
+    });
+    expect(document.querySelectorAll(".editor-el-copy-svg text").length).toBeGreaterThan(1);
+  });
+
   it("opens the file picker from 本地上传 and places an image on the canvas", async () => {
     const user = userEvent.setup();
     renderEditor();

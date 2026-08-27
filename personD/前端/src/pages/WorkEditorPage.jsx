@@ -1124,6 +1124,16 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
       placeTextPreset(addTextElement(canvas, { text: "正文", fontSize: 50 }));
       return;
     }
+    if (action === "text-warp") {
+      placeTextPreset(
+        addTextElement(canvas, {
+          text: "变形文字",
+          fontSize: 56,
+          warp: { type: "arc", strength: 44 },
+        }),
+      );
+      return;
+    }
     if (typeof action === "string" && action.startsWith("collage:")) {
       const next = addCollageElement(canvas, action.slice("collage:".length));
       if (next.elements.length === canvas.elements.length) return;

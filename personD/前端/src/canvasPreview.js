@@ -17,6 +17,7 @@ import {
   shapeStrokeLine,
   textBackgroundPaint,
   textFillPaint,
+  warpGlyphPlacement,
 } from "./canvas.js";
 
 const THUMB_MAX_EDGE = 720;
@@ -183,6 +184,33 @@ function paintText(ctx, item) {
     ctx.strokeStyle = ring.color;
     ctx.lineWidth = ring.strokeWidth;
     ctx.stroke();
+  }
+  const placements = warpGlyphPlacement(item);
+  if (placements) {
+    const style = getTextProps(item);
+    const fontSize = Number(style.fontSize) || 16;
+    for (const placement of placements) {
+      const halfLeading = Math.max(
+        0,
+        (Number(placement.glyph.height) - fontSize) / 2,
+      );
+      ctx.save();
+      ctx.translate(
+        originX + placement.glyph.x + placement.glyph.width / 2 + placement.dx,
+        originY + placement.glyph.y + placement.glyph.height / 2 + placement.dy,
+      );
+      ctx.rotate((placement.rotate * Math.PI) / 180);
+      ctx.font = `${style.italic ? "italic " : ""}${style.fontWeight || 400} ${fontSize}px ${style.fontFamily}`;
+      ctx.fillStyle = paintFill(style);
+      ctx.fillText(
+        placement.glyph.ch,
+        -placement.glyph.width / 2,
+        -placement.glyph.height / 2 + halfLeading,
+      );
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    return;
   }
   ctx.textBaseline = "top";
   ctx.textAlign = "left";

@@ -29,6 +29,7 @@ import {
   getHighlightEllipses,
   getTextGlyphs,
   getTextProps,
+  getWarpProps,
   isBlankText,
   isCornerHandle,
   isLineKind,
@@ -58,6 +59,7 @@ import {
   textFillPaint,
   textGlyphStyle,
   textStrokeLayerStyle,
+  warpGlyphPlacement,
   zoomByWheelDelta,
 } from "./canvas.js";
 
@@ -96,6 +98,53 @@ describe("canvas helpers", () => {
     expect(next.width).toBe(800);
     expect(next.elements).toHaveLength(1);
     expect(JSON.parse(stringifyCanvas(next)).elements[0].type).toBe("text");
+  });
+
+  it("centers a new text element on the artboard", () => {
+    const canvas = createEmptyCanvas(1000, 800);
+    const next = addTextElement(canvas);
+    const element = next.elements[0];
+    expect(Math.abs(element.x + element.width / 2 - canvas.width / 2)).toBeLessThanOrEqual(1);
+    expect(Math.abs(element.y + element.height / 2 - canvas.height / 2)).toBeLessThanOrEqual(1);
+  });
+
+  it("normalizes warp props", () => {
+    const text = addTextElement(createEmptyCanvas(1000, 800), {
+      text: "变形文字",
+      warp: { type: "arc", strength: 999 },
+    });
+    const warp = getWarpProps(text.elements[0]);
+    expect(warp.type).toBe("arc");
+    expect(warp.strength).toBe(120);
+    expect(getWarpProps({})).toBeNull();
+    expect(getWarpProps({ warp: { type: "wave", strength: 30 } }).strength).toBe(30);
+    expect(getWarpProps({ warp: { type: "spin" } })).toBeNull();
+  });
+
+  it("warps glyphs with finite offsets and rotation", () => {
+    const text = addTextElement(createEmptyCanvas(1000, 800), {
+      text: "变形文字",
+      fontSize: 48,
+      warp: { type: "arc", strength: 44 },
+    });
+    const placements = warpGlyphPlacement(text.elements[0]);
+    expect(placements).toHaveLength(getTextGlyphs(text.elements[0]).length);
+    for (const placement of placements) {
+      expect(Number.isFinite(placement.dx)).toBe(true);
+      expect(Number.isFinite(placement.dy)).toBe(true);
+      expect(Number.isFinite(placement.rotate)).toBe(true);
+    }
+    expect(placements[0].dy).toBeCloseTo(placements[placements.length - 1].dy, 0);
+  });
+
+  it("applies a wave offset that changes across glyphs", () => {
+    const text = addTextElement(createEmptyCanvas(1000, 800), {
+      text: "变形文字",
+      fontSize: 48,
+      warp: { type: "wave", strength: 30 },
+    });
+    const placements = warpGlyphPlacement(text.elements[0]);
+    expect(new Set(placements.map((p) => p.dy)).size).toBeGreaterThan(1);
   });
 
   it("adds an image element fitted to the artboard", () => {

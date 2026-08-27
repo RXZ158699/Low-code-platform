@@ -64,6 +64,19 @@ describe("canvasPreview", () => {
     ).toBe(true);
   });
 
+  it("paints warped text glyph-by-glyph with rotation", () => {
+    const ctx = mockCtx();
+    let canvas = createEmptyCanvas(800, 600);
+    canvas = addTextElement(canvas, {
+      text: "变形文字",
+      fontSize: 48,
+      warp: { type: "arc", strength: 44 },
+    });
+    paintCanvasPreview(ctx, canvas, 1);
+    expect(ctx.rotate).toHaveBeenCalled();
+    expect(ctx.fillText.mock.calls.length).toBeGreaterThan(1);
+  });
+
   it("paints grey placeholder cells for a collage", () => {
     const ctx = mockCtx();
     const canvas = addCollageElement(createEmptyCanvas(800, 600), "2-v");
