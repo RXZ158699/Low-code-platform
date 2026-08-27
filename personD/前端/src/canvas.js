@@ -1239,6 +1239,103 @@ export const TEXT_BOX_MAX_WIDTH = 1000;
 export const TEXT_BOX_MAX_RESIZE = 8000;
 export const MIN_ELEMENT_SIZE = 16;
 
+export const SNAP_GUIDE_DISTANCE = 8;
+
+function bestLineSnap(edge, lines, threshold) {
+  let best = null;
+  for (const line of lines) {
+    const delta = line - edge;
+    if (
+      Math.abs(delta) <= threshold &&
+      (!best || Math.abs(delta) < Math.abs(best.delta))
+    ) {
+      best = { delta, line };
+    }
+  }
+  return best;
+}
+
+export function snapMoveRect(
+  rect,
+  width,
+  height,
+  threshold = SNAP_GUIDE_DISTANCE,
+) {
+  const vertical = [0, width / 2, width];
+  const horizontal = [0, height / 2, height];
+  const xHit = bestLineSnap(rect.x, vertical, threshold)
+    || bestLineSnap(rect.x + rect.width, vertical, threshold)
+    || bestLineSnap(rect.x + rect.width / 2, vertical, threshold);
+  const yHit = bestLineSnap(rect.y, horizontal, threshold)
+    || bestLineSnap(rect.y + rect.height, horizontal, threshold)
+    || bestLineSnap(rect.y + rect.height / 2, horizontal, threshold);
+  return {
+    x: xHit ? rect.x + xHit.delta : rect.x,
+    y: yHit ? rect.y + yHit.delta : rect.y,
+    guides: {
+      vertical: xHit ? [xHit.line] : [],
+      horizontal: yHit ? [yHit.line] : [],
+    },
+  };
+}
+
+export function snapResizeRect(
+  rect,
+  handle,
+  width,
+  height,
+  threshold = SNAP_GUIDE_DISTANCE,
+  minSize = MIN_ELEMENT_SIZE,
+) {
+  const vertical = [0, width / 2, width];
+  const horizontal = [0, height / 2, height];
+  let x = rect.x;
+  let y = rect.y;
+  let nextWidth = rect.width;
+  let nextHeight = rect.height;
+  const guides = { vertical: [], horizontal: [] };
+
+  if (handle.includes("e")) {
+    const hit = bestLineSnap(rect.x + rect.width, vertical, threshold);
+    if (hit) {
+      nextWidth = Math.max(minSize, rect.width + hit.delta);
+      guides.vertical.push(hit.line);
+    }
+  }
+  if (handle.includes("w")) {
+    const hit = bestLineSnap(rect.x, vertical, threshold);
+    if (hit) {
+      x = rect.x + hit.delta;
+      nextWidth = rect.width - hit.delta;
+      if (nextWidth < minSize) {
+        x = rect.x + rect.width - minSize;
+        nextWidth = minSize;
+      }
+      guides.vertical.push(hit.line);
+    }
+  }
+  if (handle.includes("s")) {
+    const hit = bestLineSnap(rect.y + rect.height, horizontal, threshold);
+    if (hit) {
+      nextHeight = Math.max(minSize, rect.height + hit.delta);
+      guides.horizontal.push(hit.line);
+    }
+  }
+  if (handle.includes("n")) {
+    const hit = bestLineSnap(rect.y, horizontal, threshold);
+    if (hit) {
+      y = rect.y + hit.delta;
+      nextHeight = rect.height - hit.delta;
+      if (nextHeight < minSize) {
+        y = rect.y + rect.height - minSize;
+        nextHeight = minSize;
+      }
+      guides.horizontal.push(hit.line);
+    }
+  }
+  return { x, y, width: nextWidth, height: nextHeight, guides };
+}
+
 const TEXT_FIT_KEYS = [
   "text",
   "fontSize",

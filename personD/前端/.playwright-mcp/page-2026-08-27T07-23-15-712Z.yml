@@ -1,0 +1,16 @@
+- generic [ref=e2]:
+  - img "logo" [ref=e4]
+  - generic [ref=e5]:
+    - img "empty" [ref=e6]
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - img "warning" [ref=e9]
+        - generic [ref=e10]: "405"
+        - generic [ref=e11]: 异常访问
+      - paragraph [ref=e12]:
+        - text: 非常抱歉,检测到您的请求有异常行为,有可能对网站造成安全威胁,您的访问被阻止了。
+        - link "为什么被阻止?" [ref=e13] [cursor=pointer]:
+          - /url: https://www.gaoding.com/help-center/article/2010953710109462528
+      - generic [ref=e14]: 您的请求ID:16860053710320307963
+      - generic [ref=e15]: 您的请求地址:https://www.gaoding.com/editor/design
+      - button "获取帮助" [ref=e17] [cursor=pointer]

@@ -54,6 +54,8 @@ import {
   setLineStrokeWidth,
   shapeKind,
   shapePathD,
+  snapMoveRect,
+  snapResizeRect,
   stringifyCanvas,
   TEXT_BOX_MAX_WIDTH,
   textElementStyle,
@@ -929,6 +931,59 @@ describe("canvas helpers", () => {
       x2: 110,
       y2: 20,
     });
+  });
+
+  it("snaps a moved rect to the left and top borders", () => {
+    expect(
+      snapMoveRect({ x: 5, y: 4, width: 100, height: 60 }, 800, 600),
+    ).toEqual({
+      x: 0,
+      y: 0,
+      guides: { vertical: [0], horizontal: [0] },
+    });
+  });
+
+  it("snaps a moved rect edge to the right border and center to the center line", () => {
+    const right = snapMoveRect({ x: 695, y: 20, width: 100, height: 60 }, 800, 600);
+    expect(right.x).toBe(700);
+    expect(right.guides.vertical).toEqual([800]);
+
+    const center = snapMoveRect({ x: 345, y: 20, width: 100, height: 60 }, 800, 600);
+    expect(center.x).toBe(350);
+    expect(center.guides.vertical).toEqual([400]);
+  });
+
+  it("keeps a moved rect unchanged beyond the snap threshold", () => {
+    expect(
+      snapMoveRect({ x: 30, y: 40, width: 100, height: 60 }, 800, 600),
+    ).toEqual({
+      x: 30,
+      y: 40,
+      guides: { vertical: [], horizontal: [] },
+    });
+  });
+
+  it("snaps only the edge controlled by the resize handle", () => {
+    const east = snapResizeRect({ x: 3, y: 100, width: 100, height: 60 }, "e", 800, 600);
+    expect(east.x).toBe(3);
+    expect(east.guides.vertical).toEqual([]);
+
+    const west = snapResizeRect({ x: 5, y: 100, width: 100, height: 60 }, "w", 800, 600);
+    expect(west).toMatchObject({ x: 0, width: 105 });
+    expect(west.guides.vertical).toEqual([0]);
+  });
+
+  it("snaps the right and bottom edges during corner resize", () => {
+    const corner = snapResizeRect(
+      { x: 700, y: 540, width: 95, height: 55 },
+      "se",
+      800,
+      600,
+    );
+    expect(corner.width).toBe(100);
+    expect(corner.height).toBe(60);
+    expect(corner.guides.vertical).toEqual([800]);
+    expect(corner.guides.horizontal).toEqual([600]);
   });
 });
 
