@@ -1241,6 +1241,10 @@ export const MIN_ELEMENT_SIZE = 16;
 
 export const SNAP_GUIDE_DISTANCE = 8;
 
+function sameSnapLine(value, line) {
+  return Math.abs(value - line) < 1e-9;
+}
+
 function bestLineSnap(edge, lines, threshold) {
   let best = null;
   for (const line of lines) {
@@ -1286,54 +1290,127 @@ export function snapResizeRect(
   height,
   threshold = SNAP_GUIDE_DISTANCE,
   minSize = MIN_ELEMENT_SIZE,
+  lockAspect = false,
 ) {
-  const vertical = [0, width / 2, width];
-  const horizontal = [0, height / 2, height];
+  const vertical = [0, width];
+  const horizontal = [0, height];
+  const verticalHit =
+    handle.includes("e") || handle.includes("w")
+      ? bestLineSnap(
+          handle.includes("w") ? rect.x : rect.x + rect.width,
+          vertical,
+          threshold,
+        )
+      : null;
+  const horizontalHit =
+    handle.includes("n") || handle.includes("s")
+      ? bestLineSnap(
+          handle.includes("n") ? rect.y : rect.y + rect.height,
+          horizontal,
+          threshold,
+        )
+      : null;
+  const drivesVertical =
+    Boolean(verticalHit) &&
+    (!horizontalHit ||
+      Math.abs(verticalHit.delta) > Math.abs(horizontalHit.delta) ||
+      (Math.abs(verticalHit.delta) === Math.abs(horizontalHit.delta) &&
+        rect.width >= rect.height));
+
+  if (lockAspect && (verticalHit || horizontalHit)) {
+    const corrected = applyHandleResize(
+      rect,
+      handle,
+      drivesVertical ? verticalHit.delta : 0,
+      !drivesVertical && horizontalHit ? horizontalHit.delta : 0,
+      minSize,
+      true,
+    );
+    return {
+      x: corrected.x,
+      y: corrected.y,
+      width: corrected.width,
+      height: corrected.height,
+      guides: {
+        vertical:
+          verticalHit &&
+          sameSnapLine(
+            handle.includes("w")
+              ? corrected.x
+              : corrected.x + corrected.width,
+            verticalHit.line,
+          )
+            ? [verticalHit.line]
+            : [],
+        horizontal:
+          horizontalHit &&
+          sameSnapLine(
+            handle.includes("n")
+              ? corrected.y
+              : corrected.y + corrected.height,
+            horizontalHit.line,
+          )
+            ? [horizontalHit.line]
+            : [],
+      },
+    };
+  }
+
   let x = rect.x;
   let y = rect.y;
   let nextWidth = rect.width;
   let nextHeight = rect.height;
   const guides = { vertical: [], horizontal: [] };
 
-  if (handle.includes("e")) {
-    const hit = bestLineSnap(rect.x + rect.width, vertical, threshold);
-    if (hit) {
-      nextWidth = Math.max(minSize, rect.width + hit.delta);
-      guides.vertical.push(hit.line);
-    }
+  if (verticalHit && handle.includes("e")) {
+    nextWidth = Math.max(minSize, rect.width + verticalHit.delta);
+    guides.vertical.push(verticalHit.line);
   }
-  if (handle.includes("w")) {
-    const hit = bestLineSnap(rect.x, vertical, threshold);
-    if (hit) {
-      x = rect.x + hit.delta;
-      nextWidth = rect.width - hit.delta;
-      if (nextWidth < minSize) {
-        x = rect.x + rect.width - minSize;
-        nextWidth = minSize;
-      }
-      guides.vertical.push(hit.line);
+  if (verticalHit && handle.includes("w")) {
+    x = rect.x + verticalHit.delta;
+    nextWidth = rect.width - verticalHit.delta;
+    if (nextWidth < minSize) {
+      x = rect.x + rect.width - minSize;
+      nextWidth = minSize;
     }
+    guides.vertical.push(verticalHit.line);
   }
-  if (handle.includes("s")) {
-    const hit = bestLineSnap(rect.y + rect.height, horizontal, threshold);
-    if (hit) {
-      nextHeight = Math.max(minSize, rect.height + hit.delta);
-      guides.horizontal.push(hit.line);
+  if (horizontalHit && handle.includes("s")) {
+    nextHeight = Math.max(minSize, rect.height + horizontalHit.delta);
+    guides.horizontal.push(horizontalHit.line);
+  }
+  if (horizontalHit && handle.includes("n")) {
+    y = rect.y + horizontalHit.delta;
+    nextHeight = rect.height - horizontalHit.delta;
+    if (nextHeight < minSize) {
+      y = rect.y + rect.height - minSize;
+      nextHeight = minSize;
     }
+    guides.horizontal.push(horizontalHit.line);
   }
-  if (handle.includes("n")) {
-    const hit = bestLineSnap(rect.y, horizontal, threshold);
-    if (hit) {
-      y = rect.y + hit.delta;
-      nextHeight = rect.height - hit.delta;
-      if (nextHeight < minSize) {
-        y = rect.y + rect.height - minSize;
-        nextHeight = minSize;
-      }
-      guides.horizontal.push(hit.line);
-    }
-  }
-  return { x, y, width: nextWidth, height: nextHeight, guides };
+
+  return {
+    x,
+    y,
+    width: nextWidth,
+    height: nextHeight,
+    guides: {
+      vertical: guides.vertical.filter((line) =>
+        handle.includes("e")
+          ? sameSnapLine(x + nextWidth, line)
+          : handle.includes("w")
+            ? sameSnapLine(x, line)
+            : false,
+      ),
+      horizontal: guides.horizontal.filter((line) =>
+        handle.includes("s")
+          ? sameSnapLine(y + nextHeight, line)
+          : handle.includes("n")
+            ? sameSnapLine(y, line)
+            : false,
+      ),
+    },
+  };
 }
 
 const TEXT_FIT_KEYS = [

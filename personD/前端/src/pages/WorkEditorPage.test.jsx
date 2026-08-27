@@ -1423,4 +1423,228 @@ describe("WorkEditorPage", () => {
       document.querySelector(".editor-snap-guide.is-vertical"),
     ).not.toBeInTheDocument();
   });
+
+  it("snaps a moved line by its real endpoints to the canvas border", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: "直线" }));
+    const layer = screen.getByLabelText("在画布上绘制直线");
+    layer.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
+    fireEvent.pointerDown(layer, {
+      button: 0,
+      clientX: 80,
+      clientY: 60,
+      pointerId: 9,
+    });
+    fireEvent.pointerMove(window, { clientX: 280, clientY: 76, pointerId: 9 });
+    fireEvent.pointerUp(window, { clientX: 280, clientY: 76, pointerId: 9 });
+
+    const line = await waitFor(() => {
+      const node = document.querySelector(".editor-artboard .editor-el.is-line");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    const zoom =
+      Number.parseFloat(
+        document
+          .querySelector(".editor-artboard")
+          .style.transform.replace("scale(", "")
+          .replace(")", ""),
+      ) || 1;
+
+    fireEvent.pointerDown(line, {
+      button: 0,
+      clientX: 80 * zoom,
+      clientY: 60 * zoom,
+      pointerId: 10,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: (80 - 78) * zoom,
+      clientY: 60 * zoom,
+      pointerId: 10,
+    });
+
+    await waitFor(() => {
+      const shapeLine = line.querySelector("line");
+      const originX = Number.parseFloat(line.style.left);
+      expect(
+        Number.parseFloat(shapeLine.getAttribute("x1")) + originX,
+      ).toBe(0);
+      expect(
+        Number.parseFloat(shapeLine.getAttribute("x2")) + originX,
+      ).toBe(200);
+    });
+    const guide = document.querySelector(".editor-snap-guide.is-vertical");
+    expect(guide).toBeTruthy();
+    expect(guide.style.left).toBe("0px");
+
+    fireEvent.pointerUp(window, {
+      clientX: (80 - 78) * zoom,
+      clientY: 60 * zoom,
+      pointerId: 10,
+    });
+    expect(
+      document.querySelector(".editor-snap-guide.is-vertical"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the aspect ratio while snapping an aspect-locked corner resize", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: "五边形" }));
+    const layer = screen.getByLabelText("在画布上绘制五边形");
+    layer.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
+    fireEvent.pointerDown(layer, {
+      button: 0,
+      clientX: 600,
+      clientY: 400,
+      pointerId: 11,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 795,
+      clientY: 595,
+      pointerId: 11,
+    });
+    fireEvent.pointerUp(window, {
+      clientX: 795,
+      clientY: 595,
+      pointerId: 11,
+    });
+
+    const shape = await waitFor(() => {
+      const node = document.querySelector(
+        ".editor-artboard .editor-el.is-shape",
+      );
+      expect(node).toBeTruthy();
+      return node;
+    });
+    const zoom =
+      Number.parseFloat(
+        document
+          .querySelector(".editor-artboard")
+          .style.transform.replace("scale(", "")
+          .replace(")", ""),
+      ) || 1;
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "缩放 右下" }), {
+      button: 0,
+      clientX: 795 * zoom,
+      clientY: 595 * zoom,
+      pointerId: 12,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 797 * zoom,
+      clientY: 597 * zoom,
+      pointerId: 12,
+    });
+
+    await waitFor(() => {
+      expect(Number.parseFloat(shape.style.width)).toBeCloseTo(200, 5);
+      expect(Number.parseFloat(shape.style.height)).toBeCloseTo(200, 5);
+    });
+    const verticalGuide = document.querySelector(
+      ".editor-snap-guide.is-vertical",
+    );
+    const horizontalGuide = document.querySelector(
+      ".editor-snap-guide.is-horizontal",
+    );
+    expect(verticalGuide).toBeTruthy();
+    expect(verticalGuide.style.left).toBe(`${800 * zoom}px`);
+    expect(horizontalGuide).toBeTruthy();
+    expect(horizontalGuide.style.top).toBe(`${600 * zoom}px`);
+
+    fireEvent.pointerUp(window, {
+      clientX: 797 * zoom,
+      clientY: 597 * zoom,
+      pointerId: 12,
+    });
+    expect(
+      document.querySelector(".editor-snap-guide.is-vertical"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("scales text font size while snapping a corner resize to the border", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "文字" }));
+    await user.click(screen.getByRole("button", { name: /H1标题/ }));
+
+    const text = await waitFor(() => {
+      const node = document.querySelector(".editor-el.is-text");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    const zoom =
+      Number.parseFloat(
+        document
+          .querySelector(".editor-artboard")
+          .style.transform.replace("scale(", "")
+          .replace(")", ""),
+      ) || 1;
+    const startX = Number.parseFloat(text.style.left);
+    const startY = Number.parseFloat(text.style.top);
+    const startWidth = Number.parseFloat(text.style.width);
+    const startHeight = Number.parseFloat(text.style.height);
+    const startFontSize = Number.parseFloat(text.style.fontSize);
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "缩放 右下" }), {
+      button: 0,
+      clientX: (startX + startWidth) * zoom,
+      clientY: (startY + startHeight) * zoom,
+      pointerId: 13,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 795 * zoom,
+      clientY: (startY + startHeight + 10) * zoom,
+      pointerId: 13,
+    });
+
+    await waitFor(() => {
+      expect(Number.parseFloat(text.style.left)).toBe(startX);
+      expect(Number.parseFloat(text.style.width)).toBeCloseTo(800 - startX, 5);
+      expect(Number.parseFloat(text.style.fontSize)).toBeGreaterThan(
+        startFontSize,
+      );
+    });
+    const guide = document.querySelector(".editor-snap-guide.is-vertical");
+    expect(guide).toBeTruthy();
+    expect(guide.style.left).toBe(`${800 * zoom}px`);
+
+    fireEvent.pointerUp(window, {
+      clientX: 795 * zoom,
+      clientY: (startY + startHeight + 10) * zoom,
+      pointerId: 13,
+    });
+    expect(
+      document.querySelector(".editor-snap-guide.is-vertical"),
+    ).not.toBeInTheDocument();
+  });
 });

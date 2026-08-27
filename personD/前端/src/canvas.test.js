@@ -54,6 +54,7 @@ import {
   setLineStrokeWidth,
   shapeKind,
   shapePathD,
+  SNAP_GUIDE_DISTANCE,
   snapMoveRect,
   snapResizeRect,
   stringifyCanvas,
@@ -984,6 +985,49 @@ describe("canvas helpers", () => {
     expect(corner.height).toBe(60);
     expect(corner.guides.vertical).toEqual([800]);
     expect(corner.guides.horizontal).toEqual([600]);
+  });
+
+  it("does not snap a resized edge to the canvas center line", () => {
+    const result = snapResizeRect(
+      { x: 300, y: 100, width: 98, height: 60 },
+      "e",
+      800,
+      600,
+    );
+    expect(result).toMatchObject({ x: 300, width: 98 });
+    expect(result.guides.vertical).toEqual([]);
+  });
+
+  it("keeps the aspect ratio after snapping an aspect-locked corner resize", () => {
+    const result = snapResizeRect(
+      { x: 700, y: 500, width: 95, height: 55 },
+      "se",
+      800,
+      600,
+      SNAP_GUIDE_DISTANCE,
+      MIN_ELEMENT_SIZE,
+      true,
+    );
+    expect(result.x + result.width).toBe(800);
+    expect(result.width / result.height).toBeCloseTo(95 / 55, 5);
+    expect(result.guides.vertical).toEqual([800]);
+    expect(result.guides.horizontal).toEqual([]);
+  });
+
+  it("prefers one snap axis for aspect-locked corner resize and hides unfulfilled guides", () => {
+    const result = snapResizeRect(
+      { x: 700, y: 540, width: 95, height: 55 },
+      "se",
+      800,
+      600,
+      SNAP_GUIDE_DISTANCE,
+      MIN_ELEMENT_SIZE,
+      true,
+    );
+    expect(result.x + result.width).toBe(800);
+    expect(result.width / result.height).toBeCloseTo(95 / 55, 5);
+    expect(result.guides.vertical).toEqual([800]);
+    expect(result.guides.horizontal).toEqual([]);
   });
 });
 

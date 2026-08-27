@@ -80,12 +80,14 @@ import {
   rotateFromDrag,
   snapMoveRect,
   snapResizeRect,
+  SNAP_GUIDE_DISTANCE,
   stringifyCanvas,
   textElementStyle,
   TRANSFORM_HANDLES,
   updateElement,
   clampCanvasZoom,
   elementRotateStyle,
+  fitTextBox,
   zoomByWheelDelta,
 } from "../canvas.js";
 import CanvasCollage from "../components/CanvasCollage.jsx";
@@ -416,12 +418,20 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
       }
       if (drag.type === "move") {
         const currentCanvas = canvasRef.current;
-        const proposed = {
-          x: drag.start.x + dx,
-          y: drag.start.y + dy,
-          width: drag.start.width,
-          height: drag.start.height,
-        };
+        const isLineMove = Number.isFinite(drag.start.x1);
+        const proposed = isLineMove
+          ? {
+              x: Math.min(drag.start.x1, drag.start.x2) + dx,
+              y: Math.min(drag.start.y1, drag.start.y2) + dy,
+              width: Math.abs(drag.start.x2 - drag.start.x1),
+              height: Math.abs(drag.start.y2 - drag.start.y1),
+            }
+          : {
+              x: drag.start.x + dx,
+              y: drag.start.y + dy,
+              width: drag.start.width,
+              height: drag.start.height,
+            };
         const snapped = snapMoveRect(
           proposed,
           currentCanvas.width,
@@ -430,8 +440,11 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         setSnapGuides(snapped.guides);
         const ox = snapped.x - proposed.x;
         const oy = snapped.y - proposed.y;
-        const patch = { x: snapped.x, y: snapped.y };
-        if (Number.isFinite(drag.start.x1)) {
+        const patch = {
+          x: drag.start.x + dx + ox,
+          y: drag.start.y + dy + oy,
+        };
+        if (isLineMove) {
           patch.x1 = drag.start.x1 + dx + ox;
           patch.y1 = drag.start.y1 + dy + oy;
           patch.x2 = drag.start.x2 + dx + ox;
@@ -502,7 +515,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         const live =
           canvasRef.current.elements.find((item) => item.id === drag.id) ||
           drag.start;
-        const box = applyTextHandleResize(
+        const textBox = applyTextHandleResize(
           { ...live, ...drag.start },
           drag.handle,
           dx,
@@ -510,20 +523,78 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         );
         const currentCanvas = canvasRef.current;
         const snapped = snapResizeRect(
-          box,
+          textBox,
           drag.handle,
           currentCanvas.width,
           currentCanvas.height,
         );
-        setSnapGuides(snapped.guides);
-        setCanvas((current) =>
-          updateElement(current, drag.id, {
-            ...box,
+        const start = drag.start;
+        const changed =
+          snapped.x !== textBox.x ||
+          snapped.y !== textBox.y ||
+          snapped.width !== textBox.width ||
+          snapped.height !== textBox.height;
+        let nextBox = {
+          x: snapped.x,
+          y: snapped.y,
+          width: snapped.width,
+          height: snapped.height,
+          fontSize: textBox.fontSize,
+          autoWidth: false,
+        };
+        if (changed && isCornerHandle(drag.handle)) {
+          const widthDriven = snapped.width !== textBox.width;
+          const scale = widthDriven
+            ? snapped.width / Math.max(1, textBox.width)
+            : snapped.height / Math.max(1, textBox.height);
+          const width = widthDriven ? snapped.width : textBox.width * scale;
+          const fontSize = Math.max(
+            8,
+            Math.round((start.fontSize || 16) * scale),
+          );
+          const fitted = fitTextBox({
+            ...live,
+            ...start,
+            width,
+            fontSize,
+            autoWidth: false,
+          });
+          nextBox = {
             x: snapped.x,
             y: snapped.y,
+            width,
+            height: fitted.height,
+            fontSize,
+            autoWidth: false,
+          };
+        } else if (
+          changed &&
+          (drag.handle.includes("e") || drag.handle.includes("w"))
+        ) {
+          const fitted = fitTextBox({
+            ...live,
+            ...start,
             width: snapped.width,
-            height: snapped.height,
-          }),
+            autoWidth: false,
+          });
+          nextBox.height = fitted.height;
+        }
+        setSnapGuides({
+          vertical: snapped.guides.vertical.filter((line) =>
+            Math.abs(
+              (drag.handle.includes("w") ? nextBox.x : nextBox.x + nextBox.width) -
+                line,
+            ) < 1e-9,
+          ),
+          horizontal: snapped.guides.horizontal.filter((line) =>
+            Math.abs(
+              (drag.handle.includes("n") ? nextBox.y : nextBox.y + nextBox.height) -
+                line,
+            ) < 1e-9,
+          ),
+        });
+        setCanvas((current) =>
+          updateElement(current, drag.id, nextBox),
         );
         return;
       }
@@ -533,6 +604,9 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         drag.handle,
         currentCanvas.width,
         currentCanvas.height,
+        SNAP_GUIDE_DISTANCE,
+        minSize,
+        isCornerHandle(drag.handle) || Boolean(drag.start.aspectLocked),
       );
       setSnapGuides(snapped.guides);
       setCanvas((current) =>
