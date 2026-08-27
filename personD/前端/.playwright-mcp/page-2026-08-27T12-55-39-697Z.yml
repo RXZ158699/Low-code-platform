@@ -1,0 +1,67 @@
+- main [ref=f1e606]:
+  - complementary [ref=f1e608]:
+    - generic [ref=f1e609]:
+      - generic [ref=f1e610]: 一稿
+      - navigation "主导航" [ref=f1e611]:
+        - button "创作" [ref=f1e613] [cursor=pointer]
+        - button "我的" [ref=f1e617] [cursor=pointer]
+    - generic [ref=f1e620]:
+      - button "会员中心" [ref=f1e621] [cursor=pointer]
+      - button "用户菜单" [ref=f1e622] [cursor=pointer]:
+        - generic [ref=f1e623]: 演
+        - generic [ref=f1e625]: 演示用户
+  - generic [ref=f1e1202]:
+    - button "选择本地图片" [ref=f1e1203]
+    - generic [ref=f1e1204]:
+      - generic [ref=f1e1205]:
+        - textbox "搜索你想要的创意模板、素材与作品" [ref=f1e1206]
+        - button "以图搜图" [ref=f1e1207] [cursor=pointer]
+      - region "作品详情" [ref=f1e1385]:
+        - button "返回" [ref=f1e1386] [cursor=pointer]:
+          - img "left" [ref=f1e1387]
+        - generic [ref=f1e1390]:
+          - generic [ref=f1e1395]:
+            - generic "圆形"
+            - generic "方形"
+            - generic:
+              - generic:
+                - img:
+                  - generic: RED PACKET
+            - generic:
+              - generic:
+                - img:
+                  - generic: 春节红包封面
+            - generic:
+              - generic:
+                - img:
+                  - generic: 春节 · 红包
+          - toolbar "预览缩放" [ref=f1e1396]:
+            - button "缩小" [ref=f1e1397] [cursor=pointer]:
+              - img "minus" [ref=f1e1398]
+            - button "86%" [ref=f1e1401] [cursor=pointer]
+            - button "放大" [ref=f1e1402] [cursor=pointer]:
+              - img "plus" [ref=f1e1403]
+            - button "镜像画布" [ref=f1e1408] [cursor=pointer]
+            - button "全屏预览" [ref=f1e1411] [cursor=pointer]:
+              - img "fullscreen" [ref=f1e1412]
+        - complementary [ref=f1e1415]:
+          - button "评论" [ref=f1e1417] [cursor=pointer]:
+            - img "message" [ref=f1e1418]
+          - heading "春节红包封面" [level=1] [ref=f1e1421]
+          - button "AI 编辑" [ref=f1e1423] [cursor=pointer]
+          - heading "基本信息" [level=2] [ref=f1e1426]
+          - generic [ref=f1e1427]:
+            - generic [ref=f1e1428]:
+              - term [ref=f1e1429]: 文件位置
+              - definition [ref=f1e1430]: 我的空间
+            - generic [ref=f1e1431]:
+              - term [ref=f1e1432]: 大小
+              - definition [ref=f1e1433]: 1.28 KB
+            - generic [ref=f1e1434]:
+              - term [ref=f1e1435]: 添加时间
+              - definition [ref=f1e1436]: 2026/08/27 20:53
+            - generic [ref=f1e1437]:
+              - term [ref=f1e1438]: 修改时间
+              - definition [ref=f1e1439]: 2026/08/27 20:53
+          - heading "标签" [level=2] [ref=f1e1440]
+          - button "+ 添加标签" [ref=f1e1441] [cursor=pointer]

@@ -1,0 +1,4 @@
+[    1456ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=87a39b10:20102
+[   36727ms] [ERROR] Warning: [antd: compatible] antd v5 support React is 16 ~ 18. see https://u.ant.design/v5-for-19 for compatible. @ http://localhost:5173/node_modules/.vite/deps/antd.js?v=87a39b10:1136
+[   84018ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/assets/categories?scope=mine:0
+[   84329ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/assets/categories?scope=mine:0

@@ -1396,6 +1396,28 @@ describe("WorkEditorPage", () => {
           .style.transform.replace("scale(", "")
           .replace(")", ""),
       ) || 1;
+    document.querySelector(".editor-canvas-area").getBoundingClientRect = () => ({
+      x: 100,
+      y: 80,
+      left: 100,
+      top: 80,
+      right: 1100,
+      bottom: 780,
+      width: 1000,
+      height: 700,
+      toJSON() {},
+    });
+    document.querySelector(".editor-stage-frame").getBoundingClientRect = () => ({
+      x: 200,
+      y: 130,
+      left: 200,
+      top: 130,
+      right: 1000,
+      bottom: 730,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
 
     fireEvent.pointerDown(element, {
       button: 0,
@@ -1412,7 +1434,8 @@ describe("WorkEditorPage", () => {
     await waitFor(() => expect(element.style.left).toBe("0px"));
     const guide = document.querySelector(".editor-snap-guide.is-vertical");
     expect(guide).toBeTruthy();
-    expect(guide.style.left).toBe("0px");
+    expect(guide.parentElement).toHaveClass("editor-snap-overlay");
+    expect(guide.style.left).toBe("100px");
 
     fireEvent.pointerUp(window, {
       clientX: (80 - 78) * zoom,
@@ -1422,6 +1445,118 @@ describe("WorkEditorPage", () => {
     expect(
       document.querySelector(".editor-snap-guide.is-vertical"),
     ).not.toBeInTheDocument();
+  });
+
+  it("snaps an element center to the canvas center lines across the editing area", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: "方形" }));
+    const layer = screen.getByLabelText("在画布上绘制方形");
+    layer.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
+    fireEvent.pointerDown(layer, {
+      button: 0,
+      clientX: 80,
+      clientY: 60,
+      pointerId: 7,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 280,
+      clientY: 180,
+      pointerId: 7,
+    });
+    fireEvent.pointerUp(window, {
+      clientX: 280,
+      clientY: 180,
+      pointerId: 7,
+    });
+
+    const element = await waitFor(() => {
+      const node = document.querySelector(".editor-el.is-shape");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    const zoom =
+      Number.parseFloat(
+        document
+          .querySelector(".editor-artboard")
+          .style.transform.replace("scale(", "")
+          .replace(")", ""),
+      ) || 1;
+    document.querySelector(".editor-canvas-area").getBoundingClientRect = () => ({
+      x: 100,
+      y: 80,
+      left: 100,
+      top: 80,
+      right: 1100,
+      bottom: 780,
+      width: 1000,
+      height: 700,
+      toJSON() {},
+    });
+    document.querySelector(".editor-stage-frame").getBoundingClientRect = () => ({
+      x: 200,
+      y: 130,
+      left: 200,
+      top: 130,
+      right: 1000,
+      bottom: 730,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
+
+    fireEvent.pointerDown(element, {
+      button: 0,
+      clientX: 80 * zoom,
+      clientY: 60 * zoom,
+      pointerId: 8,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 300 * zoom,
+      clientY: 200 * zoom,
+      pointerId: 8,
+    });
+
+    await waitFor(() => {
+      expect(Number.parseFloat(element.style.left)).toBeCloseTo(300, 5);
+      expect(Number.parseFloat(element.style.top)).toBeCloseTo(200, 5);
+    });
+    const verticalGuide = document.querySelector(
+      ".editor-snap-guide.is-vertical",
+    );
+    const horizontalGuide = document.querySelector(
+      ".editor-snap-guide.is-horizontal",
+    );
+    expect(verticalGuide).toBeTruthy();
+    expect(verticalGuide.parentElement).toHaveClass("editor-snap-overlay");
+    expect(Number.parseFloat(verticalGuide.style.left)).toBeCloseTo(
+      100 + 400 * zoom,
+      5,
+    );
+    expect(horizontalGuide).toBeTruthy();
+    expect(Number.parseFloat(horizontalGuide.style.top)).toBeCloseTo(
+      50 + 300 * zoom,
+      5,
+    );
+
+    fireEvent.pointerUp(window, {
+      clientX: 300 * zoom,
+      clientY: 200 * zoom,
+      pointerId: 8,
+    });
   });
 
   it("snaps a moved line by its real endpoints to the canvas border", async () => {

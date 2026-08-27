@@ -1747,6 +1747,14 @@ button.editor-el-collage-cell.is-pickable:focus-visible {
   white-space: nowrap;
 }
 
+.editor-snap-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 30;
+}
+
 .editor-snap-guide {
   position: absolute;
   background: #f5222d;

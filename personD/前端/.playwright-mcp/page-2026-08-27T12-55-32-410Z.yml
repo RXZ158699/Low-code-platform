@@ -1,0 +1,55 @@
+- main [ref=f1e606]:
+  - complementary [ref=f1e608]:
+    - generic [ref=f1e609]:
+      - generic [ref=f1e610]: 一稿
+      - navigation "主导航" [ref=f1e611]:
+        - button "创作" [ref=f1e613] [cursor=pointer]
+        - button "我的" [ref=f1e617] [cursor=pointer]
+    - generic [ref=f1e620]:
+      - button "会员中心" [ref=f1e621] [cursor=pointer]
+      - button "用户菜单" [ref=f1e622] [cursor=pointer]:
+        - generic [ref=f1e623]: 演
+        - generic [ref=f1e625]: 演示用户
+  - generic [ref=f1e1202]:
+    - button "选择本地图片" [ref=f1e1203]
+    - generic [ref=f1e1204]:
+      - generic [ref=f1e1205]:
+        - textbox "搜索你想要的创意模板、素材与作品" [ref=f1e1206]
+        - button "以图搜图" [ref=f1e1207] [cursor=pointer]
+      - navigation "我的空间分类" [ref=f1e1329]:
+        - button "我的空间" [ref=f1e1330] [cursor=pointer]
+        - button "最近" [ref=f1e1331] [cursor=pointer]
+        - button "收藏夹" [ref=f1e1332] [cursor=pointer]
+        - button "草稿箱" [ref=f1e1333] [cursor=pointer]
+        - button "已归档" [ref=f1e1334] [cursor=pointer]
+        - button "回收站" [ref=f1e1335] [cursor=pointer]
+        - button "分享管理" [ref=f1e1336] [cursor=pointer]:
+          - text: 分享管理
+          - generic [ref=f1e1337]: 升级
+        - button "发布" [ref=f1e1338] [cursor=pointer]
+      - generic [ref=f1e1339]:
+        - tablist "内容类型" [ref=f1e1340]:
+          - button "全部 (1)" [ref=f1e1341] [cursor=pointer]
+          - button "作品" [ref=f1e1342] [cursor=pointer]
+          - button "我上传的" [ref=f1e1343] [cursor=pointer]
+        - generic [ref=f1e1344]:
+          - button "颜色" [ref=f1e1345] [cursor=pointer]
+          - button "类别" [ref=f1e1350] [cursor=pointer]
+          - button "类型" [ref=f1e1354] [cursor=pointer]
+          - button "标签" [ref=f1e1358] [cursor=pointer]
+          - button "添加时间" [ref=f1e1362] [cursor=pointer]
+          - generic [ref=f1e1366] [cursor=pointer]:
+            - switch "显示文件夹内容" [checked] [ref=f1e1367]
+            - text: 显示文件夹内容
+          - button "排序" [ref=f1e1370] [cursor=pointer]
+          - button "网格视图" [ref=f1e1372] [cursor=pointer]
+      - generic [ref=f1e1376]:
+        - article [ref=f1e1378]:
+          - generic [ref=f1e1379] [cursor=pointer]:
+            - img "春节红包封面"
+            - generic:
+              - button "下载 春节红包封面"
+          - generic [ref=f1e1381]:
+            - strong [ref=f1e1382]: 春节红包封面
+            - generic [ref=f1e1383]: 草稿 · 2026-08-27 20:53
+        - paragraph [ref=f1e1384]: 已全部加载完成

@@ -331,6 +331,23 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     textRangeRef.current = textRange;
   }, [textRange]);
 
+  const snapGuidePixels = (guides, scale) => {
+    const area = stageRef.current;
+    const frame = area?.querySelector(".editor-stage-frame");
+    let offsetX = 0;
+    let offsetY = 0;
+    if (area && frame) {
+      const areaRect = area.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      offsetX = frameRect.left - areaRect.left;
+      offsetY = frameRect.top - areaRect.top;
+    }
+    return {
+      vertical: guides.vertical.map((line) => offsetX + line * scale),
+      horizontal: guides.horizontal.map((line) => offsetY + line * scale),
+    };
+  };
+
   useEffect(() => {
     if (!editingId) return undefined;
     const handleMouseDown = (event) => {
@@ -437,7 +454,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
           currentCanvas.width,
           currentCanvas.height,
         );
-        setSnapGuides(snapped.guides);
+        setSnapGuides(snapGuidePixels(snapped.guides, scale));
         const ox = snapped.x - proposed.x;
         const oy = snapped.y - proposed.y;
         const patch = {
@@ -579,20 +596,25 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
           });
           nextBox.height = fitted.height;
         }
-        setSnapGuides({
-          vertical: snapped.guides.vertical.filter((line) =>
-            Math.abs(
-              (drag.handle.includes("w") ? nextBox.x : nextBox.x + nextBox.width) -
-                line,
-            ) < 1e-9,
+        setSnapGuides(
+          snapGuidePixels(
+            {
+              vertical: snapped.guides.vertical.filter((line) =>
+                Math.abs(
+                  (drag.handle.includes("w") ? nextBox.x : nextBox.x + nextBox.width) -
+                    line,
+                ) < 1e-9,
+              ),
+              horizontal: snapped.guides.horizontal.filter((line) =>
+                Math.abs(
+                  (drag.handle.includes("n") ? nextBox.y : nextBox.y + nextBox.height) -
+                    line,
+                ) < 1e-9,
+              ),
+            },
+            scale,
           ),
-          horizontal: snapped.guides.horizontal.filter((line) =>
-            Math.abs(
-              (drag.handle.includes("n") ? nextBox.y : nextBox.y + nextBox.height) -
-                line,
-            ) < 1e-9,
-          ),
-        });
+        );
         setCanvas((current) =>
           updateElement(current, drag.id, nextBox),
         );
@@ -608,7 +630,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         minSize,
         isCornerHandle(drag.handle) || Boolean(drag.start.aspectLocked),
       );
-      setSnapGuides(snapped.guides);
+      setSnapGuides(snapGuidePixels(snapped.guides, scale));
       setCanvas((current) =>
         updateElement(current, drag.id, {
           x: snapped.x,
@@ -1894,20 +1916,23 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                   )
                 ) : null}
               </div>
-                {snapGuides.vertical.map((value) => (
-                  <div
-                    key={`guide-v-${value}`}
-                    className="editor-snap-guide is-vertical"
-                    style={{ left: value * zoom }}
-                  />
-                ))}
-                {snapGuides.horizontal.map((value) => (
-                  <div
-                    key={`guide-h-${value}`}
-                    className="editor-snap-guide is-horizontal"
-                    style={{ top: value * zoom }}
-                  />
-                ))}
+            </div>
+
+            <div className="editor-snap-overlay" aria-hidden="true">
+              {snapGuides.vertical.map((value) => (
+                <div
+                  key={`guide-v-${value}`}
+                  className="editor-snap-guide is-vertical"
+                  style={{ left: value }}
+                />
+              ))}
+              {snapGuides.horizontal.map((value) => (
+                <div
+                  key={`guide-h-${value}`}
+                  className="editor-snap-guide is-horizontal"
+                  style={{ top: value }}
+                />
+              ))}
             </div>
 
             <div className="editor-dock editor-dock-left">

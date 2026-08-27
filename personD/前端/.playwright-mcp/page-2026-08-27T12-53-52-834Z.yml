@@ -1,0 +1,396 @@
+- generic [active] [ref=f1e1]:
+  - main [ref=f1e606]:
+    - complementary [ref=f1e608]:
+      - generic [ref=f1e609]:
+        - generic [ref=f1e610]: 一稿
+        - navigation "主导航" [ref=f1e611]:
+          - button "创作" [ref=f1e613] [cursor=pointer]
+          - button "我的" [ref=f1e617] [cursor=pointer]
+      - generic [ref=f1e620]:
+        - button "会员中心" [ref=f1e621] [cursor=pointer]
+        - button "用户菜单" [ref=f1e622] [cursor=pointer]:
+          - generic [ref=f1e623]: 演
+          - generic [ref=f1e625]: 演示用户
+    - main [ref=f1e629]:
+      - generic [ref=f1e630]:
+        - generic [ref=f1e631]:
+          - heading "设计需求，一稿就好" [level=1] [ref=f1e632]
+          - tablist "搜索或生成" [ref=f1e633]:
+            - tab "搜索" [selected] [ref=f1e634] [cursor=pointer]
+            - tab "电商工作流 生成" [ref=f1e635] [cursor=pointer]:
+              - generic: 电商工作流
+              - text: 生成
+        - generic [ref=f1e636]:
+          - textbox "请输入关键词" [ref=f1e637]
+          - button "搜 索" [ref=f1e638] [cursor=pointer]
+        - group "分类筛选" [ref=f1e641]:
+          - button "全部分类" [ref=f1e643] [cursor=pointer]
+          - button "热门" [ref=f1e647] [cursor=pointer]
+          - button "全部" [pressed] [ref=f1e648] [cursor=pointer]
+          - button "海报" [ref=f1e649] [cursor=pointer]
+          - button "活动营销" [ref=f1e650] [cursor=pointer]
+          - button "小红书" [ref=f1e651] [cursor=pointer]
+          - button "公众号" [ref=f1e652] [cursor=pointer]
+          - button "电商" [ref=f1e653] [cursor=pointer]
+          - button "邀请函" [ref=f1e654] [cursor=pointer]
+          - button "节日祝福" [ref=f1e655] [cursor=pointer]
+      - region "功能入口" [ref=f1e656]:
+        - generic [ref=f1e657]:
+          - generic [ref=f1e658] [cursor=pointer]
+          - paragraph [ref=f1e659]: AI 画布
+        - generic [ref=f1e660]:
+          - generic [ref=f1e661] [cursor=pointer]
+          - paragraph [ref=f1e662]: AI 电商
+        - generic [ref=f1e663]:
+          - generic [ref=f1e664] [cursor=pointer]
+          - paragraph [ref=f1e665]: 视频创作
+        - generic [ref=f1e666]:
+          - generic [ref=f1e667] [cursor=pointer]
+          - paragraph [ref=f1e668]: SKILL HUB
+      - generic [ref=f1e669]:
+        - generic [ref=f1e670]:
+          - heading "模版专场 限时精品" [level=2] [ref=f1e671]:
+            - generic [ref=f1e672]: 模版专场
+            - generic [ref=f1e673]: 限时精品
+          - tablist "模板分类" [ref=f1e674]:
+            - tab "热门" [ref=f1e675] [cursor=pointer]
+            - tab "全部" [selected] [ref=f1e676] [cursor=pointer]
+            - tab "海报" [ref=f1e677] [cursor=pointer]
+            - tab "活动营销" [ref=f1e678] [cursor=pointer]
+            - tab "小红书" [ref=f1e679] [cursor=pointer]
+            - tab "公众号" [ref=f1e680] [cursor=pointer]
+            - tab "电商" [ref=f1e681] [cursor=pointer]
+            - tab "邀请函" [ref=f1e682] [cursor=pointer]
+            - tab "节日祝福" [ref=f1e683] [cursor=pointer]
+        - generic [ref=f1e686]:
+          - generic [ref=f1e687]:
+            - generic [ref=f1e688] [cursor=pointer]:
+              - generic [ref=f1e689]: RED PACKET春节红包封面春节 · 红包
+              - generic [ref=f1e690]:
+                - generic [ref=f1e691]: 管理员
+                - generic [ref=f1e693]:
+                  - generic [ref=f1e694]: 春节红包封面
+                  - button "收藏 春节红包封面" [ref=f1e695]:
+                    - img "star" [ref=f1e697]
+                  - button "使 用" [ref=f1e700]
+            - generic [ref=f1e702] [cursor=pointer]:
+              - generic [ref=f1e703]: BIRTHDAY生日派对邀请生日 · 派对
+              - generic [ref=f1e704]:
+                - generic [ref=f1e705]: 管理员
+                - generic [ref=f1e707]:
+                  - generic [ref=f1e708]: 生日派对邀请
+                  - button "收藏 生日派对邀请" [ref=f1e709]:
+                    - img "star" [ref=f1e711]
+                  - button "使 用" [ref=f1e714]
+            - generic [ref=f1e716] [cursor=pointer]:
+              - generic [ref=f1e717]: CLEARANCE服饰清仓特卖服饰 · 清仓
+              - generic [ref=f1e718]:
+                - generic [ref=f1e719]: 管理员
+                - generic [ref=f1e721]:
+                  - generic [ref=f1e722]: 服饰清仓特卖
+                  - button "收藏 服饰清仓特卖" [ref=f1e723]:
+                    - img "star" [ref=f1e725]
+                  - button "使 用" [ref=f1e728]
+            - generic [ref=f1e730] [cursor=pointer]:
+              - generic [ref=f1e731]: WELLNESS健康生活周刊健康 · 生活
+              - generic [ref=f1e732]:
+                - generic [ref=f1e733]: 管理员
+                - generic [ref=f1e735]:
+                  - generic [ref=f1e736]: 健康生活周刊
+                  - button "收藏 健康生活周刊" [ref=f1e737]:
+                    - img "star" [ref=f1e739]
+                  - button "使 用" [ref=f1e742]
+            - generic [ref=f1e744] [cursor=pointer]:
+              - generic [ref=f1e745]: CAMPING 101周末露营攻略露营 · 攻略
+              - generic [ref=f1e746]:
+                - generic [ref=f1e747]: 管理员
+                - generic [ref=f1e749]:
+                  - generic [ref=f1e750]: 周末露营攻略
+                  - button "收藏 周末露营攻略" [ref=f1e751]:
+                    - img "star" [ref=f1e753]
+                  - button "使 用" [ref=f1e756]
+            - generic [ref=f1e758] [cursor=pointer]:
+              - generic [ref=f1e759]: FOOD HUNT美食探店测评美食 · 探店
+              - generic [ref=f1e760]:
+                - generic [ref=f1e761]: 管理员
+                - generic [ref=f1e763]:
+                  - generic [ref=f1e764]: 美食探店测评
+                  - button "收藏 美食探店测评" [ref=f1e765]:
+                    - img "star" [ref=f1e767]
+                  - button "使 用" [ref=f1e770]
+            - generic [ref=f1e772] [cursor=pointer]:
+              - generic [ref=f1e773]: FLASH SALE会员日限时秒杀秒杀 · 会员
+              - generic [ref=f1e774]:
+                - generic [ref=f1e775]: 管理员
+                - generic [ref=f1e777]:
+                  - generic [ref=f1e778]: 会员日限时秒杀
+                  - button "收藏 会员日限时秒杀" [ref=f1e779]:
+                    - img "star" [ref=f1e781]
+                  - button "使 用" [ref=f1e784]
+            - generic [ref=f1e786] [cursor=pointer]:
+              - generic [ref=f1e787]: OPEN-AIR CINEMA电影之夜露天放映海报 · 电影
+              - generic [ref=f1e788]:
+                - generic [ref=f1e789]: 管理员
+                - generic [ref=f1e791]:
+                  - generic [ref=f1e792]: 电影之夜露天放映
+                  - button "收藏 电影之夜露天放映" [ref=f1e793]:
+                    - img "star" [ref=f1e795]
+                  - button "使 用" [ref=f1e798]
+            - generic [ref=f1e800] [cursor=pointer]:
+              - generic [ref=f1e801]: FARM DAY绿色有机农场日海报 · 自然
+              - generic [ref=f1e802]:
+                - generic [ref=f1e803]: 管理员
+                - generic [ref=f1e805]:
+                  - generic [ref=f1e806]: 绿色有机农场日
+                  - button "收藏 绿色有机农场日" [ref=f1e807]:
+                    - img "star" [ref=f1e809]
+                  - button "使 用" [ref=f1e812]
+          - generic [ref=f1e814]:
+            - generic [ref=f1e815] [cursor=pointer]:
+              - generic [ref=f1e816]: THANKS感恩节感谢卡感恩 · 祝福
+              - generic [ref=f1e817]:
+                - generic [ref=f1e818]: 管理员
+                - generic [ref=f1e820]:
+                  - generic [ref=f1e821]: 感恩节感谢卡
+                  - button "收藏 感恩节感谢卡" [ref=f1e822]:
+                    - img "star" [ref=f1e824]
+                  - button "使 用" [ref=f1e827]
+            - generic [ref=f1e829] [cursor=pointer]:
+              - generic [ref=f1e830]: ANNUAL GALA企业年会邀请年会 · 企业
+              - generic [ref=f1e831]:
+                - generic [ref=f1e832]: 管理员
+                - generic [ref=f1e834]:
+                  - generic [ref=f1e835]: 企业年会邀请
+                  - button "收藏 企业年会邀请" [ref=f1e836]:
+                    - img "star" [ref=f1e838]
+                  - button "使 用" [ref=f1e841]
+            - generic [ref=f1e843] [cursor=pointer]:
+              - generic [ref=f1e844]: BEAUTY化妆品详情海报美妆 · 详情
+              - generic [ref=f1e845]:
+                - generic [ref=f1e846]: 管理员
+                - generic [ref=f1e848]:
+                  - generic [ref=f1e849]: 化妆品详情海报
+                  - button "收藏 化妆品详情海报" [ref=f1e850]:
+                    - img "star" [ref=f1e852]
+                  - button "使 用" [ref=f1e855]
+            - generic [ref=f1e857] [cursor=pointer]:
+              - generic [ref=f1e858]: BOOK CLUB读书会周荐读书 · 推荐
+              - generic [ref=f1e859]:
+                - generic [ref=f1e860]: 管理员
+                - generic [ref=f1e862]:
+                  - generic [ref=f1e863]: 读书会周荐
+                  - button "收藏 读书会周荐" [ref=f1e864]:
+                    - img "star" [ref=f1e866]
+                  - button "使 用" [ref=f1e869]
+            - generic [ref=f1e871] [cursor=pointer]:
+              - generic [ref=f1e872]: CAT DIARY猫咪生活图鉴宠物 · 日常
+              - generic [ref=f1e873]:
+                - generic [ref=f1e874]: 管理员
+                - generic [ref=f1e876]:
+                  - generic [ref=f1e877]: 猫咪生活图鉴
+                  - button "收藏 猫咪生活图鉴" [ref=f1e878]:
+                    - img "star" [ref=f1e880]
+                  - button "使 用" [ref=f1e883]
+            - generic [ref=f1e885] [cursor=pointer]:
+              - generic [ref=f1e886]: TRAVEL OOTD旅行穿搭笔记封面穿搭 · 旅行
+              - generic [ref=f1e887]:
+                - generic [ref=f1e888]: 管理员
+                - generic [ref=f1e890]:
+                  - generic [ref=f1e891]: 旅行穿搭笔记封面
+                  - button "收藏 旅行穿搭笔记封面" [ref=f1e892]:
+                    - img "star" [ref=f1e894]
+                  - button "使 用" [ref=f1e897]
+            - generic [ref=f1e899] [cursor=pointer]:
+              - generic [ref=f1e900]: GRAND OPENING新店开业庆典开业 · 庆典
+              - generic [ref=f1e901]:
+                - generic [ref=f1e902]: 管理员
+                - generic [ref=f1e904]:
+                  - generic [ref=f1e905]: 新店开业庆典
+                  - button "收藏 新店开业庆典" [ref=f1e906]:
+                    - img "star" [ref=f1e908]
+                  - button "使 用" [ref=f1e911]
+            - generic [ref=f1e913] [cursor=pointer]:
+              - generic [ref=f1e914]: CAMPUS CLUB校园社团招新海报 · 校园
+              - generic [ref=f1e915]:
+                - generic [ref=f1e916]: 管理员
+                - generic [ref=f1e918]:
+                  - generic [ref=f1e919]: 校园社团招新
+                  - button "收藏 校园社团招新" [ref=f1e920]:
+                    - img "star" [ref=f1e922]
+                  - button "使 用" [ref=f1e925]
+            - generic [ref=f1e927] [cursor=pointer]:
+              - generic [ref=f1e928]: CITY WALK城市漫游摄影展海报 · 展览
+              - generic [ref=f1e929]:
+                - generic [ref=f1e930]: 管理员
+                - generic [ref=f1e932]:
+                  - generic [ref=f1e933]: 城市漫游摄影展
+                  - button "收藏 城市漫游摄影展" [ref=f1e934]:
+                    - img "star" [ref=f1e936]
+                  - button "使 用" [ref=f1e939]
+          - generic [ref=f1e941]:
+            - generic [ref=f1e942] [cursor=pointer]:
+              - generic [ref=f1e943]: NEW YEAR新年开工祝福新年 · 开工
+              - generic [ref=f1e944]:
+                - generic [ref=f1e945]: 管理员
+                - generic [ref=f1e947]:
+                  - generic [ref=f1e948]: 新年开工祝福
+                  - button "收藏 新年开工祝福" [ref=f1e949]:
+                    - img "star" [ref=f1e951]
+                  - button "使 用" [ref=f1e954]
+            - generic [ref=f1e956] [cursor=pointer]:
+              - generic [ref=f1e957]: WEDDING婚礼邀请函婚礼 · 邀请
+              - generic [ref=f1e958]:
+                - generic [ref=f1e959]: 管理员
+                - generic [ref=f1e961]:
+                  - generic [ref=f1e962]: 婚礼邀请函
+                  - button "收藏 婚礼邀请函" [ref=f1e963]:
+                    - img "star" [ref=f1e965]
+                  - button "使 用" [ref=f1e968]
+            - generic [ref=f1e970] [cursor=pointer]:
+              - generic [ref=f1e971]: NEW PHONE手机新品主图数码 · 主图
+              - generic [ref=f1e972]:
+                - generic [ref=f1e973]: 管理员
+                - generic [ref=f1e975]:
+                  - generic [ref=f1e976]: 手机新品主图
+                  - button "收藏 手机新品主图" [ref=f1e977]:
+                    - img "star" [ref=f1e979]
+                  - button "使 用" [ref=f1e982]
+            - generic [ref=f1e984] [cursor=pointer]:
+              - generic [ref=f1e985]: INSIGHT深度行业观察行业 · 深度
+              - generic [ref=f1e986]:
+                - generic [ref=f1e987]: 管理员
+                - generic [ref=f1e989]:
+                  - generic [ref=f1e990]: 深度行业观察
+                  - button "收藏 深度行业观察" [ref=f1e991]:
+                    - img "star" [ref=f1e993]
+                  - button "使 用" [ref=f1e996]
+            - generic [ref=f1e998] [cursor=pointer]:
+              - generic [ref=f1e999]: STUDY LOG自习室打卡日常学习 · 打卡
+              - generic [ref=f1e1000]:
+                - generic [ref=f1e1001]: 管理员
+                - generic [ref=f1e1003]:
+                  - generic [ref=f1e1004]: 自习室打卡日常
+                  - button "收藏 自习室打卡日常" [ref=f1e1005]:
+                    - img "star" [ref=f1e1007]
+                  - button "使 用" [ref=f1e1010]
+            - generic [ref=f1e1012] [cursor=pointer]:
+              - generic [ref=f1e1013]: ANNIVERSARY周年庆抽奖活动周年庆 · 抽奖
+              - generic [ref=f1e1014]:
+                - generic [ref=f1e1015]: 管理员
+                - generic [ref=f1e1017]:
+                  - generic [ref=f1e1018]: 周年庆抽奖活动
+                  - button "收藏 周年庆抽奖活动" [ref=f1e1019]:
+                    - img "star" [ref=f1e1021]
+                  - button "使 用" [ref=f1e1024]
+            - generic [ref=f1e1026] [cursor=pointer]:
+              - generic [ref=f1e1027]: MID-YEAR SALE618年中大促大促 · 年中
+              - generic [ref=f1e1028]:
+                - generic [ref=f1e1029]: 管理员
+                - generic [ref=f1e1031]:
+                  - generic [ref=f1e1032]: 618年中大促
+                  - button "收藏 618年中大促" [ref=f1e1033]:
+                    - img "star" [ref=f1e1035]
+                  - button "使 用" [ref=f1e1038]
+            - generic [ref=f1e1040] [cursor=pointer]:
+              - generic [ref=f1e1041]: TECH TOMORROW未来科技发布会海报 · 科技
+              - generic [ref=f1e1042]:
+                - generic [ref=f1e1043]: 管理员
+                - generic [ref=f1e1045]:
+                  - generic [ref=f1e1046]: 未来科技发布会
+                  - button "收藏 未来科技发布会" [ref=f1e1047]:
+                    - img "star" [ref=f1e1049]
+                  - button "使 用" [ref=f1e1052]
+            - generic [ref=f1e1054] [cursor=pointer]:
+              - generic [ref=f1e1055]: VINYL NIGHT复古胶片音乐派对海报 · 复古
+              - generic [ref=f1e1056]:
+                - generic [ref=f1e1057]: 管理员
+                - generic [ref=f1e1059]:
+                  - generic [ref=f1e1060]: 复古胶片音乐派对
+                  - button "收藏 复古胶片音乐派对" [ref=f1e1061]:
+                    - img "star" [ref=f1e1063]
+                  - button "使 用" [ref=f1e1066]
+          - generic [ref=f1e1068]:
+            - generic [ref=f1e1069] [cursor=pointer]:
+              - generic [ref=f1e1070]: MID-AUTUMN中秋团圆贺卡中秋 · 团圆
+              - generic [ref=f1e1071]:
+                - generic [ref=f1e1072]: 管理员
+                - generic [ref=f1e1074]:
+                  - generic [ref=f1e1075]: 中秋团圆贺卡
+                  - button "收藏 中秋团圆贺卡" [ref=f1e1076]:
+                    - img "star" [ref=f1e1078]
+                  - button "使 用" [ref=f1e1081]
+            - generic [ref=f1e1083] [cursor=pointer]:
+              - generic [ref=f1e1084]: FRESH MARKET生鲜水果主图生鲜 · 主图
+              - generic [ref=f1e1085]:
+                - generic [ref=f1e1086]: 管理员
+                - generic [ref=f1e1088]:
+                  - generic [ref=f1e1089]: 生鲜水果主图
+                  - button "收藏 生鲜水果主图" [ref=f1e1090]:
+                    - img "star" [ref=f1e1092]
+                  - button "使 用" [ref=f1e1095]
+            - generic [ref=f1e1097] [cursor=pointer]:
+              - generic [ref=f1e1098]: CAREER TIPS职场干货分享职场 · 干货
+              - generic [ref=f1e1099]:
+                - generic [ref=f1e1100]: 管理员
+                - generic [ref=f1e1102]:
+                  - generic [ref=f1e1103]: 职场干货分享
+                  - button "收藏 职场干货分享" [ref=f1e1104]:
+                    - img "star" [ref=f1e1106]
+                  - button "使 用" [ref=f1e1109]
+            - generic [ref=f1e1111] [cursor=pointer]:
+              - generic [ref=f1e1112]: MORNING NEWS每日新闻早报新闻 · 早报
+              - generic [ref=f1e1113]:
+                - generic [ref=f1e1114]: 管理员
+                - generic [ref=f1e1116]:
+                  - generic [ref=f1e1117]: 每日新闻早报
+                  - button "收藏 每日新闻早报" [ref=f1e1118]:
+                    - img "star" [ref=f1e1120]
+                  - button "使 用" [ref=f1e1123]
+            - generic [ref=f1e1125] [cursor=pointer]:
+              - generic [ref=f1e1126]: SKINCARE护肤好物分享护肤 · 好物
+              - generic [ref=f1e1127]:
+                - generic [ref=f1e1128]: 管理员
+                - generic [ref=f1e1130]:
+                  - generic [ref=f1e1131]: 护肤好物分享
+                  - button "收藏 护肤好物分享" [ref=f1e1132]:
+                    - img "star" [ref=f1e1134]
+                  - button "使 用" [ref=f1e1137]
+            - generic [ref=f1e1139] [cursor=pointer]:
+              - generic [ref=f1e1140]: GRADUATION毕业季感恩回馈毕业 · 回馈
+              - generic [ref=f1e1141]:
+                - generic [ref=f1e1142]: 管理员
+                - generic [ref=f1e1144]:
+                  - generic [ref=f1e1145]: 毕业季感恩回馈
+                  - button "收藏 毕业季感恩回馈" [ref=f1e1146]:
+                    - img "star" [ref=f1e1148]
+                  - button "使 用" [ref=f1e1151]
+            - generic [ref=f1e1153] [cursor=pointer]:
+              - generic [ref=f1e1154]: DOUBLE 11双11狂欢购物节大促 · 购物
+              - generic [ref=f1e1155]:
+                - generic [ref=f1e1156]: 管理员
+                - generic [ref=f1e1158]:
+                  - generic [ref=f1e1159]: 双11狂欢购物节
+                  - button "收藏 双11狂欢购物节" [ref=f1e1160]:
+                    - img "star" [ref=f1e1162]
+                  - button "使 用" [ref=f1e1165]
+            - generic [ref=f1e1167] [cursor=pointer]:
+              - generic [ref=f1e1168]: FORM & SPACE极简几何艺术展海报 · 极简
+              - generic [ref=f1e1169]:
+                - generic [ref=f1e1170]: 管理员
+                - generic [ref=f1e1172]:
+                  - generic [ref=f1e1173]: 极简几何艺术展
+                  - button "收藏 极简几何艺术展" [ref=f1e1174]:
+                    - img "star" [ref=f1e1176]
+                  - button "使 用" [ref=f1e1179]
+            - generic [ref=f1e1181] [cursor=pointer]:
+              - generic [ref=f1e1182]: SUMMER POP夏日冰爽饮品节海报 · 夏天
+              - generic [ref=f1e1183]:
+                - generic [ref=f1e1184]: 管理员
+                - generic [ref=f1e1186]:
+                  - generic [ref=f1e1187]: 夏日冰爽饮品节
+                  - button "收藏 夏日冰爽饮品节" [ref=f1e1188]:
+                    - img "star" [ref=f1e1190]
+                  - button "使 用" [ref=f1e1193]
+  - generic [ref=f1e1197]:
+    - img "check-circle" [ref=f1e1198]
+    - generic [ref=f1e1201]: 已创建作品「春节红包封面」
