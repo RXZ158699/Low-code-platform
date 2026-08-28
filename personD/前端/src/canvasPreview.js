@@ -6,11 +6,13 @@ import {
   getTextPaintRuns,
   getLineProps,
   getShapeProps,
+  getTableProps,
   getTextProps,
   isCollageElement,
   isLineKind,
   isMagnifierElement,
   isShapeElement,
+  isTableElement,
   lineStrokeProps,
   parseCanvas,
   scaledShapePoints,
@@ -321,6 +323,49 @@ function paintMagnifier(ctx, item, canvas) {
   ctx.fill();
 }
 
+function paintTable(ctx, item) {
+  const props = getTableProps(item);
+  const x = Number(item.x) || 0;
+  const y = Number(item.y) || 0;
+  const width = Number(item.width) || 0;
+  const height = Number(item.height) || 0;
+  const colWidth = width / props.cols;
+  const rowHeight = height / props.rows;
+  const gap = props.gap > 0 ? props.gap : 1;
+  ctx.save();
+  ctx.fillStyle = props.borderColor;
+  ctx.fillRect(x, y, width, height);
+  ctx.fillStyle = props.fill;
+  for (let row = 0; row < props.rows; row += 1) {
+    for (let col = 0; col < props.cols; col += 1) {
+      const cellX = x + col * colWidth + gap;
+      const cellY = y + row * rowHeight + gap;
+      ctx.fillRect(
+        cellX,
+        cellY,
+        Math.max(0, colWidth - gap * 2),
+        Math.max(0, rowHeight - gap * 2),
+      );
+    }
+  }
+  ctx.fillStyle = props.textColor;
+  ctx.font = `${props.fontSize}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  props.cells.forEach((text, index) => {
+    const col = index % props.cols;
+    const row = Math.floor(index / props.cols);
+    if (text) {
+      ctx.fillText(
+        text,
+        x + col * colWidth + colWidth / 2,
+        y + row * rowHeight + rowHeight / 2,
+      );
+    }
+  });
+  ctx.restore();
+}
+
 function paintCanvasContent(ctx, canvas, items) {
   ctx.save();
   ctx.fillStyle = colorWithOpacity(canvas.background, canvas.backgroundOpacity);
@@ -329,6 +374,7 @@ function paintCanvasContent(ctx, canvas, items) {
     if (item?.type === "text") paintText(ctx, item);
     else if (isCollageElement(item)) paintCollage(ctx, item);
     else if (isMagnifierElement(item)) paintMagnifier(ctx, item, canvas);
+    else if (isTableElement(item)) paintTable(ctx, item);
     else if (isShapeElement(item)) paintShape(ctx, item);
   }
   ctx.restore();

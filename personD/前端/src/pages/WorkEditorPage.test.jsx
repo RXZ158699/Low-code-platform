@@ -460,6 +460,83 @@ describe("WorkEditorPage", () => {
     });
   });
 
+  it("adds a table and edits cell text from the canvas", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: "表格" }));
+    await user.click(screen.getByRole("button", { name: "两行两列" }));
+
+    const table = await waitFor(() => {
+      const node = document.querySelector(".editor-el.is-table");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    expect(table).toHaveClass("is-selected");
+    expect(table.querySelectorAll(".editor-table-cell")).toHaveLength(4);
+    expect(screen.getByRole("button", { name: "表格布局" })).toBeInTheDocument();
+    expect(screen.getByLabelText("单元格内容")).toBeInTheDocument();
+
+    await user.dblClick(table.querySelector(".editor-table-cell"));
+    const input = screen.getByLabelText("编辑表格单元格1");
+    await user.type(input, "报价{Enter}");
+
+    await waitFor(() => {
+      expect(
+        table.querySelector(".editor-table-cell").textContent,
+      ).toContain("报价");
+    });
+  });
+
+  it("resizes a table side handle without changing the other dimension", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: "表格" }));
+    await user.click(screen.getByRole("button", { name: "两行两列" }));
+
+    const table = await waitFor(() => {
+      const node = document.querySelector(".editor-el.is-table");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    const startWidth = Number.parseFloat(table.style.width);
+    const startHeight = Number.parseFloat(table.style.height);
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "缩放 右" }), {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 41,
+    });
+    fireEvent.pointerMove(window, { clientX: 100, clientY: 0, pointerId: 41 });
+    fireEvent.pointerUp(window, { clientX: 100, clientY: 0, pointerId: 41 });
+
+    await waitFor(() => {
+      expect(Number.parseFloat(table.style.width)).toBeGreaterThan(startWidth);
+      expect(Number.parseFloat(table.style.height)).toBe(startHeight);
+    });
+
+    const widthAfter = Number.parseFloat(table.style.width);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "缩放 下" }), {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 42,
+    });
+    fireEvent.pointerMove(window, { clientX: 0, clientY: 100, pointerId: 42 });
+    fireEvent.pointerUp(window, { clientX: 0, clientY: 100, pointerId: 42 });
+
+    await waitFor(() => {
+      expect(Number.parseFloat(table.style.width)).toBe(widthAfter);
+      expect(Number.parseFloat(table.style.height)).toBeGreaterThan(startHeight);
+    });
+  });
+
   it("rotates a collage around its center from the bottom handle", async () => {
     const user = userEvent.setup();
     renderEditor();

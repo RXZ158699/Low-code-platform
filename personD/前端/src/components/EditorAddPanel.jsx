@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { LeftOutlined } from "@ant-design/icons";
 import { MEDIA_ACCEPT } from "../mediaFile.js";
 import EditorCollagePicker from "./EditorCollagePicker.jsx";
+import EditorTablePicker from "./EditorTablePicker.jsx";
 
 const MEDIA_ITEMS = [
   { id: "local-upload", label: "本地上传", icon: "upload-photo" },
@@ -268,7 +269,7 @@ export default function EditorAddPanel({
 
   return (
     <div
-      className={`editor-add-panel ${open ? "is-open" : ""} ${view === "collage" ? "is-collage" : ""}`}
+      className={`editor-add-panel ${open ? "is-open" : ""} ${view === "collage" ? "is-collage" : ""} ${view === "table" ? "is-table" : ""}`}
       role="dialog"
       aria-label="添加"
       aria-hidden={!open}
@@ -284,6 +285,11 @@ export default function EditorAddPanel({
       />
       {view === "collage" ? (
         <EditorCollagePicker
+          onCancel={() => setView("home")}
+          onSelect={onSelect}
+        />
+      ) : view === "table" ? (
+        <EditorTablePicker
           onCancel={() => setView("home")}
           onSelect={onSelect}
         />
@@ -404,6 +410,10 @@ export default function EditorAddPanel({
                   onClick={() => {
                     if (item.id === "collage") {
                       setView("collage");
+                      return;
+                    }
+                    if (item.id === "table") {
+                      setView("table");
                       return;
                     }
                     onSelect(item.id);

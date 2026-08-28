@@ -6,6 +6,7 @@ import {
   syncSpansToText,
 } from "./textSpans.js";
 import { COLLAGE_GAP, findCollageLayout } from "./collageLayouts.js";
+import { findTableLayout } from "./tableLayouts.js";
 
 export {
   applyTextStyle,
@@ -734,6 +735,128 @@ export function setMagnifierScale(item, scale) {
     scale: Math.min(
       MAGNIFIER_MAX_SCALE,
       Math.max(MAGNIFIER_MIN_SCALE, next),
+    ),
+  };
+}
+
+export const TABLE_DEFAULT_FILL = "#ffffff";
+export const TABLE_DEFAULT_TEXT = "#111827";
+export const TABLE_DEFAULT_BORDER = "#d1d5db";
+
+export function isTableElement(item) {
+  return item?.type === "table";
+}
+
+export function getTableProps(item) {
+  const rows = Math.max(1, Math.round(Number(item?.rowCount) || 1));
+  const cols = Math.max(1, Math.round(Number(item?.colCount) || 1));
+  const rawCells = Array.isArray(item?.cells) ? item.cells : [];
+  return {
+    rows,
+    cols,
+    cells: Array.from(
+      { length: rows * cols },
+      (_, index) =>
+        typeof rawCells[index] === "string" ? rawCells[index] : "",
+    ),
+    fill:
+      typeof item?.fill === "string" && item.fill
+        ? item.fill
+        : TABLE_DEFAULT_FILL,
+    textColor:
+      typeof item?.textColor === "string" && item.textColor
+        ? item.textColor
+        : TABLE_DEFAULT_TEXT,
+    fontSize: Number(item?.fontSize) > 0 ? Number(item.fontSize) : 16,
+    borderColor:
+      typeof item?.borderColor === "string" && item.borderColor
+        ? item.borderColor
+        : TABLE_DEFAULT_BORDER,
+    gap: Number.isFinite(Number(item?.gap)) ? Math.max(0, Number(item.gap)) : 0,
+    padding:
+      Number.isFinite(Number(item?.padding))
+        ? Math.max(0, Number(item.padding))
+        : 8,
+    aspectLocked: Boolean(item?.aspectLocked),
+  };
+}
+
+function fitTableBox(canvas, layout) {
+  const width = Math.max(
+    120,
+    Math.round((Number(canvas.width) || 800) * 0.62),
+  );
+  const height = Math.max(
+    120,
+    Math.round(
+      Math.min(
+        (Number(canvas.height) || 600) * 0.55,
+        layout.rows * 72,
+      ),
+    ),
+  );
+  const offset = canvas.elements.filter(isTableElement).length * 24;
+  return {
+    x: Math.max(0, Math.round((canvas.width - width) / 2) + offset),
+    y: Math.max(0, Math.round((canvas.height - height) / 2) + offset),
+    width,
+    height,
+  };
+}
+
+export function addTableElement(canvas, layoutRef) {
+  const layout =
+    typeof layoutRef === "string" ? findTableLayout(layoutRef) : layoutRef;
+  if (!layout?.id) return canvas;
+  const box = fitTableBox(canvas, layout);
+  return {
+    ...canvas,
+    elements: [
+      ...canvas.elements,
+      {
+        id: nextElementId("table"),
+        type: "table",
+        layoutId: layout.id,
+        rowCount: layout.rows,
+        colCount: layout.cols,
+        cells: Array.from({ length: layout.rows * layout.cols }, () => ""),
+        ...box,
+        fill: TABLE_DEFAULT_FILL,
+        textColor: TABLE_DEFAULT_TEXT,
+        fontSize: 16,
+        borderColor: TABLE_DEFAULT_BORDER,
+        gap: 0,
+        padding: 8,
+        aspectLocked: false,
+      },
+    ],
+  };
+}
+
+export function setTableCellText(item, index, text) {
+  if (!isTableElement(item) || !Number.isInteger(index) || index < 0) {
+    return {};
+  }
+  const cells = Array.isArray(item.cells) ? [...item.cells] : [];
+  if (index >= cells.length) return {};
+  cells[index] = typeof text === "string" ? text : "";
+  return { cells };
+}
+
+export function applyTableLayout(item, layoutRef) {
+  const layout =
+    typeof layoutRef === "string" ? findTableLayout(layoutRef) : layoutRef;
+  if (!isTableElement(item) || !layout?.id) return {};
+  const oldCells = Array.isArray(item.cells) ? item.cells : [];
+  const nextCount = layout.rows * layout.cols;
+  return {
+    layoutId: layout.id,
+    rowCount: layout.rows,
+    colCount: layout.cols,
+    cells: Array.from(
+      { length: nextCount },
+      (_, index) =>
+        typeof oldCells[index] === "string" ? oldCells[index] : "",
     ),
   };
 }

@@ -18,6 +18,21 @@ describe("EditorAddPanel collage view", () => {
     expect(onSelect).toHaveBeenCalledWith("magnifier");
   });
 
+  it("opens the table picker and emits the selected table layout", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(<EditorAddPanel open onClose={() => {}} onSelect={onSelect} />);
+
+    await user.click(screen.getByRole("button", { name: "表格" }));
+
+    expect(screen.getByRole("heading", { name: "表格" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "两行两列" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "两行两列" }));
+
+    expect(onSelect).toHaveBeenCalledWith("table:table-2x2");
+  });
+
   it("replaces the add catalog with a scrollable collage layout picker", async () => {
     const user = userEvent.setup();
     renderPanel();

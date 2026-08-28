@@ -40,6 +40,7 @@ import {
   addMagnifierElement,
   addMediaElement,
   addShapeElement,
+  addTableElement,
   addTextElement,
   applyHandleResize,
   applyTextHandleResize,
@@ -60,6 +61,7 @@ import {
   isShapeElement,
   isShapeKind,
   isSpanStylePatch,
+  isTableElement,
   isTextAutoWidth,
   itemForStylePanel,
   lineBounds,
@@ -74,6 +76,7 @@ import {
   parseCanvas,
   panMagnifierFocus,
   setMagnifierFocus,
+  setTableCellText,
   patchTextElement,
   pointerAngle,
   removeElement,
@@ -96,6 +99,7 @@ import CanvasCollage from "../components/CanvasCollage.jsx";
 import CanvasMagnifier from "../components/CanvasMagnifier.jsx";
 import CanvasMedia from "../components/CanvasMedia.jsx";
 import CanvasShape from "../components/CanvasShape.jsx";
+import CanvasTable from "../components/CanvasTable.jsx";
 import EditorAddPanel from "../components/EditorAddPanel.jsx";
 import EditorLibraryPanel from "../components/EditorLibraryPanel.jsx";
 import EditorBackgroundPanel from "../components/EditorBackgroundPanel.jsx";
@@ -108,6 +112,7 @@ import EditorMagnifierPanel from "../components/EditorMagnifierPanel.jsx";
 import EditorShapePanel from "../components/EditorShapePanel.jsx";
 import EditorTextPanel from "../components/EditorTextPanel.jsx";
 import EditorTextPickerPanel from "../components/EditorTextPickerPanel.jsx";
+import EditorTablePanel from "../components/EditorTablePanel.jsx";
 import SelectResourceModal from "../components/SelectResourceModal.jsx";
 import CanvasTextCopy from "../components/CanvasTextCopy.jsx";
 import { canvasPreviewBlob } from "../canvasPreview.js";
@@ -206,6 +211,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
   const [editingId, setEditingId] = useState(null);
   const [textRange, setTextRange] = useState(null);
   const textRangeRef = useRef(null);
+  const [tableEditing, setTableEditing] = useState(null);
   const [activeTool, setActiveTool] = useState("");
   const [addPanelOpen, setAddPanelOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -894,6 +900,27 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     };
   };
 
+  const beginTableCellEdit = (item, index) => {
+    if (shareMode || item.locked) return;
+    setSelectedId(item.id);
+    setBoardSelected(false);
+    setEditingId(null);
+    setTextRange(null);
+    setTableEditing({ id: item.id, cell: index });
+  };
+
+  const commitTableCellText = (index, text) => {
+    const id = tableEditing?.id;
+    if (!id) return;
+    setCanvas((current) => {
+      const item = current.elements.find((entry) => entry.id === id);
+      if (!isTableElement(item)) return current;
+      return updateElement(current, id, setTableCellText(item, index, text));
+    });
+    setDirty(true);
+    setTableEditing(null);
+  };
+
   const beginMove = (event, item) => {
     if (event.button !== 0 || editingId === item.id) return;
     event.preventDefault();
@@ -971,7 +998,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         width: selected.width,
         height: selected.height,
         fontSize: selected.fontSize,
-        aspectLocked: selected.aspectLocked,
+        aspectLocked: isTableElement(selected) ? false : selected.aspectLocked,
         px: event.clientX,
         py: event.clientY,
       },
@@ -1284,6 +1311,12 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     }
     if (action === "magnifier") {
       placeElement(addMagnifierElement(canvas));
+      return;
+    }
+    if (typeof action === "string" && action.startsWith("table:")) {
+      const next = addTableElement(canvas, action.slice("table:".length));
+      if (next.elements.length === canvas.elements.length) return;
+      placeElement(next);
       return;
     }
     if (typeof action === "string" && action.startsWith("collage:")) {
@@ -1624,7 +1657,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                   {canvas.elements.map((item) => (
                     <div
                       key={item.id}
-                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isLineKind(shapeKind(item)) ? "is-line" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""} ${isMagnifierElement(item) ? "is-magnifier" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
+                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isLineKind(shapeKind(item)) ? "is-line" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""} ${isMagnifierElement(item) ? "is-magnifier" : ""} ${isTableElement(item) ? "is-table" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
                       aria-label={
                         isShapeElement(item)
                           ? SHAPE_LABELS[shapeKind(item)]
@@ -1632,7 +1665,9 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                             ? "拼图"
                             : isMagnifierElement(item)
                               ? "放大镜"
-                              : undefined
+                              : isTableElement(item)
+                                ? "表格"
+                                : undefined
                       }
                       style={{
                         left: item.x,
@@ -1644,7 +1679,8 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                           : isShapeElement(item) ||
                               isMediaElement(item) ||
                               isCollageElement(item) ||
-                              isMagnifierElement(item)
+                              isMagnifierElement(item) ||
+                              isTableElement(item)
                             ? elementRotateStyle(item)
                             : { background: item.fill, color: item.color }),
                       }}
@@ -1716,6 +1752,21 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                         <CanvasMedia item={item} />
                       ) : isMagnifierElement(item) ? (
                         <CanvasMagnifier item={item} canvas={canvas} />
+                      ) : isTableElement(item) ? (
+                        <CanvasTable
+                          item={item}
+                          editingCell={
+                            tableEditing?.id === item.id
+                              ? tableEditing.cell
+                              : -1
+                          }
+                          onCellDoubleClick={
+                            shareMode || item.locked
+                              ? undefined
+                              : (index) => beginTableCellEdit(item, index)
+                          }
+                          onCellTextBlur={commitTableCellText}
+                        />
                       ) : null}
                     </div>
                   ))}
@@ -1901,7 +1952,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                     </div>
                   ) : (
                   <div
-                    className={`editor-transform ${selected.type === "text" && selectedId ? "is-text" : ""} ${isCollageElement(selected) ? "is-collage" : ""} ${isMagnifierElement(selected) ? "is-magnifier" : ""}`}
+                    className={`editor-transform ${selected.type === "text" && selectedId ? "is-text" : ""} ${isCollageElement(selected) ? "is-collage" : ""} ${isMagnifierElement(selected) ? "is-magnifier" : ""} ${isTableElement(selected) ? "is-table" : ""}`}
                     role="group"
                     aria-label="拖拽图层"
                     style={{
@@ -2100,6 +2151,16 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
             />
           ) : isMagnifierElement(selected) ? (
             <EditorMagnifierPanel
+              item={selected}
+              onChange={patchSelected}
+              onDelete={deleteSelected}
+              onDuplicate={duplicateSelected}
+              onLayer={(direction) =>
+                mutateCanvas(moveElementLayer(canvas, selected.id, direction))
+              }
+            />
+          ) : isTableElement(selected) ? (
+            <EditorTablePanel
               item={selected}
               onChange={patchSelected}
               onDelete={deleteSelected}

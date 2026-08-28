@@ -3,11 +3,13 @@ import {
   addCollageElement,
   addMagnifierElement,
   addMediaElement,
+  addTableElement,
   appendElements,
   addRectElement,
   addShapeElement,
   addTextElement,
   applyCollageLayout,
+  applyTableLayout,
   applyHandleResize,
   applyTextHandleResize,
   boxFromDrag,
@@ -29,6 +31,7 @@ import {
   formatTextContent,
   getCollageProps,
   getMagnifierProps,
+  getTableProps,
   getLineProps,
   getShapeProps,
   getHighlightEllipses,
@@ -40,6 +43,7 @@ import {
   isLineKind,
   isMagnifierElement,
   isShapeElement,
+  isTableElement,
   lineStrokeProps,
   MAGNIFIER_MAX_SCALE,
   MAGNIFIER_MIN_SCALE,
@@ -61,6 +65,7 @@ import {
   setLineOrigin,
   setLineStrokeWidth,
   setMagnifierScale,
+  setTableCellText,
   shapeKind,
   shapePathD,
   SNAP_GUIDE_DISTANCE,
@@ -1119,6 +1124,49 @@ describe("canvas helpers", () => {
     expect(clamped).toEqual({ scale: MAGNIFIER_MAX_SCALE });
     expect(setMagnifierScale({ type: "magnifier" }, -1)).toEqual({
       scale: MAGNIFIER_MIN_SCALE,
+    });
+  });
+
+  it("adds a table with the selected rows and columns", () => {
+    const next = addTableElement(createEmptyCanvas(800, 600), "table-2x2");
+    const table = next.elements[0];
+    expect(isTableElement(table)).toBe(true);
+    expect(table).toMatchObject({
+      type: "table",
+      rowCount: 2,
+      colCount: 2,
+      aspectLocked: false,
+    });
+    expect(table.cells).toHaveLength(4);
+  });
+
+  it("edits table cell text and preserves it when switching layouts", () => {
+    const item = {
+      type: "table",
+      rowCount: 2,
+      colCount: 2,
+      cells: ["", "", "", ""],
+    };
+    expect(setTableCellText(item, 1, "名称")).toEqual({
+      cells: ["", "名称", "", ""],
+    });
+    const next = {
+      ...item,
+      cells: ["标题", "名称", "", ""],
+    };
+    expect(applyTableLayout(next, "table-3x2")).toMatchObject({
+      rowCount: 3,
+      colCount: 2,
+      cells: ["标题", "名称", "", "", "", ""],
+    });
+  });
+
+  it("reads table props with sensible defaults", () => {
+    expect(getTableProps({ type: "table" })).toMatchObject({
+      rows: 1,
+      cols: 1,
+      cells: [""],
+      fontSize: 16,
     });
   });
 });

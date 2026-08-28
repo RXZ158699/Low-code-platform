@@ -3,6 +3,7 @@ import { paintCanvasPreview } from "./canvasPreview.js";
 import {
   createEmptyCanvas,
   addMagnifierElement,
+  addTableElement,
   addTextElement,
   addRectElement,
   addCollageElement,
@@ -113,5 +114,15 @@ describe("canvasPreview", () => {
     canvas.elements[0].shape = "circle";
     paintCanvasPreview(ctx, canvas, 1);
     expect(ctx.ellipse).toHaveBeenCalled();
+  });
+
+  it("paints table cell text", () => {
+    const ctx = mockCtx();
+    let canvas = addTableElement(createEmptyCanvas(400, 300), "table-2x2");
+    canvas.elements[0].cells[0] = "标题";
+    paintCanvasPreview(ctx, canvas, 1);
+    expect(
+      ctx.fillText.mock.calls.some((call) => call[0] === "标题"),
+    ).toBe(true);
   });
 });
