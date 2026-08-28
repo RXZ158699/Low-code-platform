@@ -115,9 +115,11 @@ import EditorTextPickerPanel from "../components/EditorTextPickerPanel.jsx";
 import EditorTablePanel from "../components/EditorTablePanel.jsx";
 import SelectResourceModal from "../components/SelectResourceModal.jsx";
 import CanvasTextCopy from "../components/CanvasTextCopy.jsx";
+import TextBubble from "../components/TextBubble.jsx";
 import { canvasPreviewBlob } from "../canvasPreview.js";
 import { mediaKind, readMediaSize } from "../mediaFile.js";
 import { collageCellBoxes } from "../collageLayouts.js";
+import { findBubbleTextPreset, getBubbleProps } from "../bubbleText.js";
 
 const LINE_SELECT_GAP = 8;
 const LIBRARY_TOOLS = new Set(["template", "image", "mine"]);
@@ -1309,6 +1311,21 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
       );
       return;
     }
+    if (typeof action === "string" && action.startsWith("bubble-")) {
+      const preset = findBubbleTextPreset(action.slice("bubble-".length));
+      if (!preset) {
+        message.info("功能开发中");
+        return;
+      }
+      placeTextPreset(
+        addTextElement(canvas, {
+          text: preset.text,
+          ...preset.textStyle,
+          bubble: preset.bubble,
+        }),
+      );
+      return;
+    }
     if (action === "magnifier") {
       placeElement(addMagnifierElement(canvas));
       return;
@@ -1657,7 +1674,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                   {canvas.elements.map((item) => (
                     <div
                       key={item.id}
-                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isLineKind(shapeKind(item)) ? "is-line" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""} ${isMagnifierElement(item) ? "is-magnifier" : ""} ${isTableElement(item) ? "is-table" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
+                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isLineKind(shapeKind(item)) ? "is-line" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""} ${isMagnifierElement(item) ? "is-magnifier" : ""} ${isTableElement(item) ? "is-table" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
                       aria-label={
                         isShapeElement(item)
                           ? SHAPE_LABELS[shapeKind(item)]
@@ -1700,37 +1717,40 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                       }}
                     >
                       {item.type === "text" ? (
-                        <span className="editor-el-text-host">
-                          <CanvasTextCopy item={item} />
-                          {editingId === item.id ? (
-                            <textarea
-                              className="editor-inline-text"
-                              aria-label="编辑文字"
-                              name="canvas-text"
-                              autoComplete="off"
-                              value={item.text}
-                              autoFocus
-                              onSelect={(event) => {
-                                if (event.target !== document.activeElement)
-                                  return;
-                                const el = event.target;
-                                setTextRange(
-                                  el.selectionEnd > el.selectionStart
-                                    ? {
-                                        start: el.selectionStart,
-                                        end: el.selectionEnd,
-                                      }
-                                    : null,
-                                );
-                              }}
-                              onClick={(event) => event.stopPropagation()}
-                              onChange={(event) =>
-                                patchSelected({ text: event.target.value })
-                              }
-                              onBlur={finishTextEdit}
-                            />
-                          ) : null}
-                        </span>
+                        <>
+                          {getBubbleProps(item) ? <TextBubble item={item} /> : null}
+                          <span className="editor-el-text-host">
+                            <CanvasTextCopy item={item} />
+                            {editingId === item.id ? (
+                              <textarea
+                                className="editor-inline-text"
+                                aria-label="编辑文字"
+                                name="canvas-text"
+                                autoComplete="off"
+                                value={item.text}
+                                autoFocus
+                                onSelect={(event) => {
+                                  if (event.target !== document.activeElement)
+                                    return;
+                                  const el = event.target;
+                                  setTextRange(
+                                    el.selectionEnd > el.selectionStart
+                                      ? {
+                                          start: el.selectionStart,
+                                          end: el.selectionEnd,
+                                        }
+                                      : null,
+                                  );
+                                }}
+                                onClick={(event) => event.stopPropagation()}
+                                onChange={(event) =>
+                                  patchSelected({ text: event.target.value })
+                                }
+                                onBlur={finishTextEdit}
+                              />
+                            ) : null}
+                          </span>
+                        </>
                       ) : isShapeElement(item) ? (
                         <CanvasShape item={item} />
                       ) : isCollageElement(item) ? (

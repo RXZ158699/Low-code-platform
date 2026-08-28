@@ -87,6 +87,22 @@ describe("canvasPreview", () => {
     expect(ctx.fillText.mock.calls.length).toBeGreaterThan(1);
   });
 
+  it("paints a bubble background behind styled text", () => {
+    const ctx = mockCtx();
+    let canvas = createEmptyCanvas(800, 600);
+    canvas = addTextElement(canvas, {
+      text: "毕业快乐",
+      fontSize: 44,
+      bubble: { kind: "rounded", fill: "#ffffff", stroke: "#000000" },
+    });
+    paintCanvasPreview(ctx, canvas, 1);
+    expect(
+      ctx.fillRect.mock.calls.some(
+        (call) => call[2] > 300 && call[3] > 80,
+      ),
+    ).toBe(true);
+  });
+
   it("paints grey placeholder cells for a collage", () => {
     const ctx = mockCtx();
     const canvas = addCollageElement(createEmptyCanvas(800, 600), "2-v");

@@ -16,7 +16,9 @@ import CanvasCollage from "../components/CanvasCollage.jsx";
 import CanvasMedia from "../components/CanvasMedia.jsx";
 import CanvasShape from "../components/CanvasShape.jsx";
 import CanvasTextCopy from "../components/CanvasTextCopy.jsx";
+import TextBubble from "../components/TextBubble.jsx";
 import WorkEditorPage from "./WorkEditorPage.jsx";
+import { getBubbleProps } from "../bubbleText.js";
 
 export default function ShareViewPage() {
   const { token } = useParams();
@@ -131,7 +133,7 @@ export default function ShareViewPage() {
               {canvas.elements.map((item) => (
                 <div
                   key={item.id}
-                  className={`editor-el ${item.type === "text" ? "is-text" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""}`}
+                  className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""}`}
                   aria-label={
                     isShapeElement(item)
                       ? SHAPE_LABELS[shapeKind(item)]
@@ -153,7 +155,10 @@ export default function ShareViewPage() {
                   }}
                 >
                   {item.type === "text" ? (
-                    <CanvasTextCopy item={item} />
+                    <>
+                      {getBubbleProps(item) ? <TextBubble item={item} /> : null}
+                      <CanvasTextCopy item={item} />
+                    </>
                   ) : isShapeElement(item) ? (
                     <CanvasShape item={item} />
                   ) : isCollageElement(item) ? (

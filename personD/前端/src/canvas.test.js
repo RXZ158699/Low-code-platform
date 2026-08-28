@@ -134,6 +134,21 @@ describe("canvas helpers", () => {
     expect(JSON.parse(stringifyCanvas(next)).elements[0].type).toBe("text");
   });
 
+  it("expands the text box when a bubble style is applied", () => {
+    const next = addTextElement(
+      createEmptyCanvas(800, 600),
+      {
+        text: "毕业快乐",
+        fontSize: 44,
+        bubble: { kind: "speech", fill: "#ffffff", stroke: "#000000" },
+      },
+    );
+    const element = next.elements[0];
+    expect(element.bubble.kind).toBe("speech");
+    expect(element.width).toBeGreaterThan(100);
+    expect(element.height).toBeGreaterThan(60);
+  });
+
   it("centers a new text element on the artboard", () => {
     const canvas = createEmptyCanvas(1000, 800);
     const next = addTextElement(canvas);

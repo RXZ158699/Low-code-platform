@@ -1,4 +1,5 @@
 import { collageCellBoxes, COLLAGE_PLACEHOLDER } from "./collageLayouts.js";
+import { bubblePath, getBubbleProps } from "./bubbleText.js";
 import {
   getCollageProps,
   getHighlightEllipses,
@@ -160,6 +161,26 @@ function paintShape(ctx, item) {
 function paintText(ctx, item) {
   const originX = Number(item.x) || 0;
   const originY = Number(item.y) || 0;
+  const bubble = getBubbleProps(item);
+  if (bubble) {
+    const width = Math.max(1, Number(item.width) || 0);
+    const height = Math.max(1, Number(item.height) || 0);
+    ctx.save();
+    if (typeof globalThis.Path2D === "function" && typeof ctx.fill === "function") {
+      const path = new globalThis.Path2D(
+        bubblePath(bubble.kind, width, height, bubble),
+      );
+      ctx.fillStyle = bubble.fill;
+      ctx.fill(path);
+      ctx.strokeStyle = bubble.stroke;
+      ctx.lineWidth = bubble.strokeWidth;
+      ctx.stroke(path);
+    } else {
+      ctx.fillStyle = bubble.fill;
+      ctx.fillRect(originX, originY, width, height);
+    }
+    ctx.restore();
+  }
   const box = textBackgroundPaint(item);
   if (box) {
     ctx.fillStyle = box;

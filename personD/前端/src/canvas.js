@@ -7,6 +7,12 @@ import {
 } from "./textSpans.js";
 import { COLLAGE_GAP, findCollageLayout } from "./collageLayouts.js";
 import { findTableLayout } from "./tableLayouts.js";
+import {
+  BUBBLE_PAD_BOTTOM,
+  BUBBLE_PAD_TOP,
+  BUBBLE_PAD_X,
+  getBubbleProps,
+} from "./bubbleText.js";
 
 export {
   applyTextStyle,
@@ -95,6 +101,14 @@ export function canvasBackgroundStyle(item = {}) {
   };
 }
 
+function textBoxWithBubble(item, box) {
+  if (!getBubbleProps(item)) return box;
+  return {
+    width: box.width + BUBBLE_PAD_X * 2,
+    height: box.height + BUBBLE_PAD_TOP + BUBBLE_PAD_BOTTOM,
+  };
+}
+
 export function addTextElement(canvas, patch = {}) {
   const element = {
     id: nextElementId("text"),
@@ -106,8 +120,9 @@ export function addTextElement(canvas, patch = {}) {
     ...patch,
   };
   const box = fitTextBox(element);
-  const width = patch.width ?? box.width;
-  const height = patch.height ?? box.height;
+  const bubbleBox = textBoxWithBubble(element, box);
+  const width = patch.width ?? bubbleBox.width;
+  const height = patch.height ?? bubbleBox.height;
   const x = Number.isFinite(Number(patch.x))
     ? Number(patch.x)
     : Math.max(0, Math.round((canvas.width - width) / 2));
@@ -2029,10 +2044,10 @@ export function patchTextElement(item, patch) {
   );
   if (!layoutChanged && patch.width == null && patch.autoWidth === undefined) {
     if (patch.height == null) return next;
-    const box = fitTextBox(next);
+    const box = textBoxWithBubble(next, fitTextBox(next));
     return { ...next, height: Math.max(Number(patch.height) || 0, box.height) };
   }
-  const box = fitTextBox(next);
+  const box = textBoxWithBubble(next, fitTextBox(next));
   if (isTextAutoWidth(next)) {
     return { ...next, width: box.width, height: box.height };
   }

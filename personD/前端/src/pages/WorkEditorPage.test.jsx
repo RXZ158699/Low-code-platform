@@ -150,6 +150,23 @@ describe("WorkEditorPage", () => {
     });
   });
 
+  it("adds a bubble text preset with a bubble frame", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "文字" }));
+    await user.click(screen.getByRole("button", { name: "学士帽" }));
+
+    const text = await waitFor(() => {
+      const node = document.querySelector(".editor-el.is-text.has-bubble");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    expect(text.querySelector(".editor-text-bubble")).toBeTruthy();
+    expect(text.textContent).toContain("毕业快乐");
+  });
+
   it("closes the text preset panel from the collapse handle", async () => {
     const user = userEvent.setup();
     renderEditor();
@@ -799,7 +816,9 @@ describe("WorkEditorPage", () => {
     await user.clear(copy);
     await user.type(copy, "你好");
     expect(copy).toHaveValue("你好");
-    expect(document.querySelector(".editor-el-copy")).toHaveTextContent("你好");
+    expect(
+      document.querySelector(".editor-artboard .editor-el-copy"),
+    ).toHaveTextContent("你好");
     const afterHello = Number.parseFloat(
       document.querySelector(".editor-el.is-text").style.width,
     );
@@ -830,7 +849,9 @@ describe("WorkEditorPage", () => {
 
     expect(screen.queryByLabelText("文案")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "画板" })).toBeInTheDocument();
-    expect(document.querySelector(".editor-el-copy")).not.toBeInTheDocument();
+    expect(
+      document.querySelector(".editor-artboard .editor-el-copy"),
+    ).not.toBeInTheDocument();
   });
 
   it("deletes a shape from the properties panel", async () => {
@@ -1030,7 +1051,9 @@ describe("WorkEditorPage", () => {
     editor.setSelectionRange(0, 2);
     fireEvent.select(editor);
 
-    expect(document.querySelector(".editor-el-copy")).toHaveTextContent("副标题");
+    expect(
+      document.querySelector(".editor-artboard .editor-el-copy"),
+    ).toHaveTextContent("副标题");
 
     await user.click(screen.getByLabelText("文字色"));
     const hexInput = document.querySelector(
@@ -1040,7 +1063,7 @@ describe("WorkEditorPage", () => {
     fireEvent.change(hexInput, { target: { value: "FF0000" } });
 
     const fills = [
-      ...document.querySelectorAll(".editor-el-copy-svg text"),
+      ...document.querySelectorAll(".editor-artboard .editor-el-copy-svg text"),
     ].map((node) => String(node.getAttribute("fill") || "").toLowerCase());
     expect(fills).toContain("#ff0000");
     expect(fills.some((fill) => fill !== "#ff0000")).toBe(true);

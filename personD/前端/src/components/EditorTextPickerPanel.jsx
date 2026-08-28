@@ -3,6 +3,9 @@
  */
 import { LeftOutlined } from "@ant-design/icons";
 import { TEXT_PRESETS } from "./EditorAddPanel.jsx";
+import { BUBBLE_TEXT_SECTIONS } from "../bubbleText.js";
+import CanvasTextCopy from "./CanvasTextCopy.jsx";
+import TextBubble from "./TextBubble.jsx";
 
 export default function EditorTextPickerPanel({ open, onClose, onPick }) {
   return (
@@ -38,6 +41,51 @@ export default function EditorTextPickerPanel({ open, onClose, onPick }) {
             ))}
           </div>
         </section>
+        {BUBBLE_TEXT_SECTIONS.map((section) => (
+          <section
+            key={section.title}
+            className="editor-add-section editor-add-bubble-section"
+          >
+            <h3>{section.title}</h3>
+            <div className="editor-add-text-row">
+              {section.presets.map((preset) => (
+                <button
+                  type="button"
+                  key={preset.id}
+                  className="editor-add-text-item is-bubble"
+                  aria-label={preset.label}
+                  onClick={() => onPick?.(`bubble-${preset.id}`)}
+                >
+                  <strong className="editor-add-bubble-sample">
+                    <em className="editor-add-bubble-preview">
+                      <TextBubble
+                        item={{
+                          width: 56,
+                          height: 32,
+                          bubble: preset.bubble,
+                        }}
+                      />
+                      <CanvasTextCopy
+                        item={{
+                          type: "text",
+                          text: preset.sample,
+                          width: 56,
+                          height: 32,
+                          ...preset.textStyle,
+                          fontSize: Math.min(
+                            Number(preset.textStyle.fontSize) || 48,
+                            18,
+                          ),
+                        }}
+                      />
+                    </em>
+                  </strong>
+                  <span>{preset.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
       <button
         type="button"

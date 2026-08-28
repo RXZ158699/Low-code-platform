@@ -25,6 +25,8 @@ import CanvasCollage from "./CanvasCollage.jsx";
 import CanvasMedia from "./CanvasMedia.jsx";
 import CanvasShape from "./CanvasShape.jsx";
 import CanvasTextCopy from "./CanvasTextCopy.jsx";
+import TextBubble from "./TextBubble.jsx";
+import { getBubbleProps } from "../bubbleText.js";
 
 function formatDetailTime(value) {
   if (!value) return "—";
@@ -111,7 +113,7 @@ function CanvasPreview({ canvas, thumbnailUrl, title, zoom, flipped }) {
         {data.elements.map((item) => (
           <div
             key={item.id}
-            className={`editor-el ${item.type === "text" ? "is-text" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${
+            className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${
               isMediaElement(item) ? "is-media" : ""
             } ${isCollageElement(item) ? "is-collage" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""}`}
             aria-label={
@@ -135,7 +137,10 @@ function CanvasPreview({ canvas, thumbnailUrl, title, zoom, flipped }) {
             }}
           >
             {item.type === "text" ? (
-              <CanvasTextCopy item={item} />
+              <>
+                {getBubbleProps(item) ? <TextBubble item={item} /> : null}
+                <CanvasTextCopy item={item} />
+              </>
             ) : isShapeElement(item) ? (
               <CanvasShape item={item} />
             ) : isCollageElement(item) ? (
