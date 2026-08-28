@@ -1348,10 +1348,6 @@ button.editor-el-collage-cell.is-pickable:focus-visible {
   transform-origin: center center;
 }
 
-.editor-transform.is-text {
-  cursor: text;
-}
-
 .editor-transform.is-collage {
   pointer-events: none;
 }

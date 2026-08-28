@@ -92,6 +92,9 @@ describe("WorkEditorPage", () => {
     expect(
       screen.queryByRole("button", { name: "图片" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "团队" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "画板" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "调整尺寸" }),
@@ -889,6 +892,54 @@ describe("WorkEditorPage", () => {
     expect(fills).toContain("#ff0000");
     expect(fills.some((fill) => fill !== "#ff0000")).toBe(true);
     expect(screen.getByLabelText("编辑文字")).toBeInTheDocument();
+  });
+
+  it("moves a selected text element when dragging instead of editing its content", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "文字" }));
+    await user.click(screen.getByRole("button", { name: /H1标题/ }));
+
+    const text = await waitFor(() => {
+      const node = document.querySelector(".editor-el.is-text");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    await user.click(text);
+    const startLeft = Number.parseFloat(text.style.left);
+    const startTop = Number.parseFloat(text.style.top);
+    const zoom =
+      Number.parseFloat(
+        document
+          .querySelector(".editor-artboard")
+          .style.transform.replace("scale(", "")
+          .replace(")", ""),
+      ) || 1;
+
+    fireEvent.pointerDown(text, {
+      button: 0,
+      clientX: 80 * zoom,
+      clientY: 60 * zoom,
+      pointerId: 20,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 180 * zoom,
+      clientY: 160 * zoom,
+      pointerId: 20,
+    });
+    fireEvent.pointerUp(window, {
+      clientX: 180 * zoom,
+      clientY: 160 * zoom,
+      pointerId: 20,
+    });
+
+    await waitFor(() => {
+      expect(Number.parseFloat(text.style.left)).toBeCloseTo(startLeft + 100, 5);
+      expect(Number.parseFloat(text.style.top)).toBeCloseTo(startTop + 100, 5);
+    });
+    expect(screen.queryByLabelText("编辑文字")).not.toBeInTheDocument();
   });
 
   it("saves the canvas draft without uploading a thumbnail", async () => {

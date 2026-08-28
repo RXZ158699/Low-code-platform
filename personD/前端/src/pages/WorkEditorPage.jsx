@@ -16,7 +16,6 @@ import {
   QuestionCircleOutlined,
   RedoOutlined,
   RobotOutlined,
-  TeamOutlined,
   UndoOutlined,
   UploadOutlined,
   UserOutlined,
@@ -50,8 +49,6 @@ import {
   DEFAULT_SHAPE_FILL,
   duplicateElement,
   getSelectionRects,
-  getTextGlyphs,
-  hitTestTextOffset,
   isBlankText,
   isCollageElement,
   isCornerHandle,
@@ -111,7 +108,7 @@ import { mediaKind, readMediaSize } from "../mediaFile.js";
 import { collageCellBoxes } from "../collageLayouts.js";
 
 const LINE_SELECT_GAP = 8;
-const LIBRARY_TOOLS = new Set(["template", "image", "mine", "team"]);
+const LIBRARY_TOOLS = new Set(["template", "image", "mine"]);
 
 const LEFT_TOOLS = [
   { id: "add", label: "添加", icon: PlusCircleOutlined },
@@ -120,7 +117,6 @@ const LEFT_TOOLS = [
   { id: "text", label: "文字", icon: FontSizeOutlined },
   { id: "background", label: "背景", icon: null },
   { id: "mine", label: "我的", icon: UserOutlined },
-  { id: "team", label: "团队", icon: TeamOutlined },
 ];
 
 function AddToolIcon({ filled }) {
@@ -496,25 +492,6 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         );
         return;
       }
-      if (drag.type === "select-text") {
-        const item = canvasRef.current.elements.find(
-          (entry) => entry.id === drag.id,
-        );
-        if (!item || !drag.bounds) return;
-        const localX =
-          ((event.clientX - drag.bounds.left) /
-            Math.max(1, drag.bounds.width)) *
-          drag.boxWidth;
-        const localY =
-          ((event.clientY - drag.bounds.top) /
-            Math.max(1, drag.bounds.height)) *
-          drag.boxHeight;
-        const offset = hitTestTextOffset(item, localX, localY);
-        const start = Math.min(drag.anchor, offset);
-        const end = Math.max(drag.anchor, offset);
-        setTextRange(end > start ? { start, end } : null);
-        return;
-      }
       const liveItem = canvasRef.current.elements.find(
         (item) => item.id === drag.id,
       );
@@ -645,7 +622,6 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
       if (!drag) return;
       dragRef.current = null;
       setSnapGuides({ vertical: [], horizontal: [] });
-      if (drag.type === "select-text") return;
       if (drag.type === "resize-canvas") {
         const current = canvasRef.current;
         const origin = drag.snapshot;
@@ -823,19 +799,6 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     setTextRange(null);
   };
 
-  const localPoint = (event, item, target) => {
-    const bounds = target.getBoundingClientRect();
-    return {
-      bounds,
-      x:
-        ((event.clientX - bounds.left) / Math.max(1, bounds.width)) *
-        item.width,
-      y:
-        ((event.clientY - bounds.top) / Math.max(1, bounds.height)) *
-        item.height,
-    };
-  };
-
   const beginCollagePan = (event, item, cellIndex) => {
     if (event.button !== 0 || item.locked) return;
     const cell = item.cells?.[cellIndex];
@@ -873,30 +836,6 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     setEditingId(null);
     if (!alreadySelected) setTextRange(null);
     if (item.locked) return;
-    if (alreadySelected && item.type === "text") {
-      const local = localPoint(event, item, event.currentTarget);
-      const hit = getTextGlyphs(item).some(
-        (glyph) =>
-          local.x >= glyph.x &&
-          local.x <= glyph.x + glyph.width &&
-          local.y >= glyph.y &&
-          local.y <= glyph.y + glyph.height,
-      );
-      if (hit) {
-        dragRef.current = {
-          type: "select-text",
-          id: item.id,
-          anchor: hitTestTextOffset(item, local.x, local.y),
-          bounds: local.bounds,
-          boxWidth: item.width,
-          boxHeight: item.height,
-          start: { px: event.clientX, py: event.clientY },
-          snapshot: canvasRef.current,
-        };
-        setTextRange(null);
-        return;
-      }
-    }
     dragRef.current = {
       type: "move",
       id: item.id,
@@ -1834,7 +1773,6 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                       top: selected.y * zoom,
                       width: selected.width * zoom,
                       height: selected.height * zoom,
-                      cursor: selected.type === "text" ? "text" : undefined,
                       ...elementRotateStyle(selected),
                     }}
                     onPointerDown={(event) => beginMove(event, selected)}
