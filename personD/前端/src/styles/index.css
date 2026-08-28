@@ -16,5 +16,6 @@
 @import "./editor-line.css";
 @import "./editor-shape.css";
 @import "./editor-collage.css";
+@import "./editor-magnifier.css";
 @import "./create-canvas.css";
 @import "./select-resource.css";

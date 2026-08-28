@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addCollageElement,
+  addMagnifierElement,
   addMediaElement,
   appendElements,
   addRectElement,
@@ -18,6 +19,8 @@ import {
   collageCellOffset,
   localDragDelta,
   panCollageCell,
+  panMagnifierFocus,
+  setMagnifierFocus,
   setCollageCellOffset,
   fitCollageToCanvas,
   fitTextBox,
@@ -25,6 +28,7 @@ import {
   flipShape,
   formatTextContent,
   getCollageProps,
+  getMagnifierProps,
   getLineProps,
   getShapeProps,
   getHighlightEllipses,
@@ -34,8 +38,12 @@ import {
   isBlankText,
   isCornerHandle,
   isLineKind,
+  isMagnifierElement,
   isShapeElement,
   lineStrokeProps,
+  MAGNIFIER_MAX_SCALE,
+  MAGNIFIER_MIN_SCALE,
+  MAGNIFIER_SIZE,
   MIN_ELEMENT_SIZE,
   moveElementLayer,
   parseCanvas,
@@ -52,6 +60,7 @@ import {
   setLineLength,
   setLineOrigin,
   setLineStrokeWidth,
+  setMagnifierScale,
   shapeKind,
   shapePathD,
   SNAP_GUIDE_DISTANCE,
@@ -1028,6 +1037,89 @@ describe("canvas helpers", () => {
     expect(result.width / result.height).toBeCloseTo(95 / 55, 5);
     expect(result.guides.vertical).toEqual([800]);
     expect(result.guides.horizontal).toEqual([]);
+  });
+
+  it("adds a 200px magnifier centered on the artboard", () => {
+    const next = addMagnifierElement(createEmptyCanvas(800, 600));
+    const magnifier = next.elements[0];
+    expect(isMagnifierElement(magnifier)).toBe(true);
+    expect(magnifier).toMatchObject({
+      type: "magnifier",
+      width: MAGNIFIER_SIZE,
+      height: MAGNIFIER_SIZE,
+      x: 300,
+      y: 200,
+      focusX: 400,
+      focusY: 300,
+      scale: 2,
+      shape: "square",
+      aspectLocked: true,
+    });
+  });
+
+  it("clamps the magnifier focus to the canvas when panned", () => {
+    const item = {
+      type: "magnifier",
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 200,
+      focusX: 100,
+      focusY: 100,
+      scale: 2,
+    };
+    expect(panMagnifierFocus(item, -500, -500, { width: 800, height: 600 })).toEqual({
+      focusX: 0,
+      focusY: 0,
+    });
+    expect(panMagnifierFocus(item, 5000, 5000, { width: 800, height: 600 })).toEqual({
+      focusX: 800,
+      focusY: 600,
+    });
+  });
+
+  it("places the magnifier focus directly at the pointer position", () => {
+    const item = {
+      type: "magnifier",
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 200,
+      focusX: 100,
+      focusY: 100,
+      scale: 2,
+    };
+    expect(
+      setMagnifierFocus(item, 123.5, 456.7, { width: 800, height: 600 }),
+    ).toEqual({
+      focusX: 123.5,
+      focusY: 456.7,
+    });
+    expect(setMagnifierFocus(item, 900, 900, { width: 800, height: 600 })).toEqual({
+      focusX: 800,
+      focusY: 600,
+    });
+  });
+
+  it("normalizes magnifier props and clamps the scale", () => {
+    const fallback = getMagnifierProps({ type: "magnifier" });
+    expect(fallback).toMatchObject({
+      width: MAGNIFIER_SIZE,
+      height: MAGNIFIER_SIZE,
+      scale: 2,
+      shape: "square",
+    });
+    expect(getMagnifierProps({ type: "magnifier", shape: "circle" }).shape).toBe(
+      "circle",
+    );
+    const clamped = setMagnifierScale(
+      { type: "magnifier" },
+      MAGNIFIER_MAX_SCALE + 10,
+    );
+    expect(clamped).toEqual({ scale: MAGNIFIER_MAX_SCALE });
+    expect(setMagnifierScale({ type: "magnifier" }, -1)).toEqual({
+      scale: MAGNIFIER_MIN_SCALE,
+    });
   });
 });
 

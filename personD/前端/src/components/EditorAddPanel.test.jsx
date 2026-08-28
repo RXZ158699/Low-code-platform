@@ -8,6 +8,16 @@ function renderPanel() {
 }
 
 describe("EditorAddPanel collage view", () => {
+  it("emits the magnifier component action", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(<EditorAddPanel open onClose={() => {}} onSelect={onSelect} />);
+
+    await user.click(screen.getByRole("button", { name: "放大镜" }));
+
+    expect(onSelect).toHaveBeenCalledWith("magnifier");
+  });
+
   it("replaces the add catalog with a scrollable collage layout picker", async () => {
     const user = userEvent.setup();
     renderPanel();

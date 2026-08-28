@@ -2,12 +2,14 @@ import { collageCellBoxes, COLLAGE_PLACEHOLDER } from "./collageLayouts.js";
 import {
   getCollageProps,
   getHighlightEllipses,
+  getMagnifierProps,
   getTextPaintRuns,
   getLineProps,
   getShapeProps,
   getTextProps,
   isCollageElement,
   isLineKind,
+  isMagnifierElement,
   isShapeElement,
   lineStrokeProps,
   parseCanvas,
@@ -259,23 +261,87 @@ function paintCollage(ctx, item) {
   ctx.restore();
 }
 
+function paintMagnifier(ctx, item, canvas) {
+  const props = getMagnifierProps(item);
+  const x = Number(item.x) || 0;
+  const y = Number(item.y) || 0;
+  const width = Number(item.width) || 0;
+  const height = Number(item.height) || 0;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(props.focusX, props.focusY);
+  ctx.lineTo(x + width / 2, y + height / 2);
+  ctx.stroke();
+  const traceMagnifier = () => {
+    ctx.beginPath();
+    if (props.shape === "circle") {
+      ctx.ellipse(
+        x + width / 2,
+        y + height / 2,
+        width / 2,
+        height / 2,
+        0,
+        0,
+        Math.PI * 2,
+      );
+    } else if (
+      props.shape === "rounded" &&
+      typeof ctx.roundRect === "function"
+    ) {
+      ctx.roundRect(x, y, width, height, 28);
+    } else {
+      ctx.rect(x, y, width, height);
+    }
+  };
+  ctx.save();
+  traceMagnifier();
+  ctx.clip();
+  ctx.save();
+  ctx.translate(x + width / 2, y + height / 2);
+  ctx.scale(props.scale, props.scale);
+  ctx.translate(-props.focusX, -props.focusY);
+  paintCanvasContent(
+    ctx,
+    canvas,
+    (canvas.elements || []).filter(
+      (entry) => entry.id !== item.id && !isMagnifierElement(entry),
+    ),
+  );
+  ctx.restore();
+  ctx.restore();
+  ctx.strokeStyle = "#64748b";
+  ctx.lineWidth = 1.5;
+  traceMagnifier();
+  ctx.stroke();
+  ctx.fillStyle = "#ef4444";
+  ctx.beginPath();
+  ctx.arc(props.focusX, props.focusY, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function paintCanvasContent(ctx, canvas, items) {
+  ctx.save();
+  ctx.fillStyle = colorWithOpacity(canvas.background, canvas.backgroundOpacity);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (const item of items || []) {
+    if (item?.type === "text") paintText(ctx, item);
+    else if (isCollageElement(item)) paintCollage(ctx, item);
+    else if (isMagnifierElement(item)) paintMagnifier(ctx, item, canvas);
+    else if (isShapeElement(item)) paintShape(ctx, item);
+  }
+  ctx.restore();
+}
+
 export function paintCanvasPreview(ctx, canvas, scale = 1) {
   const data =
     typeof canvas === "string"
       ? parseCanvas(canvas)
       : canvas || parseCanvas(null);
-  const width = Number(data.width) || 1;
-  const height = Number(data.height) || 1;
   ctx.save();
   ctx.scale(scale, scale);
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = colorWithOpacity(data.background, data.backgroundOpacity);
-  ctx.fillRect(0, 0, width, height);
-  for (const item of data.elements || []) {
-    if (item?.type === "text") paintText(ctx, item);
-    else if (isCollageElement(item)) paintCollage(ctx, item);
-    else if (isShapeElement(item)) paintShape(ctx, item);
-  }
+  paintCanvasContent(ctx, data, data.elements);
   ctx.restore();
 }
 

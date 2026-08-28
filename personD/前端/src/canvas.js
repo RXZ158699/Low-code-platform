@@ -632,6 +632,112 @@ export function isMediaElement(item) {
   return item?.type === "image" || item?.type === "video";
 }
 
+export const MAGNIFIER_SIZE = 200;
+export const MAGNIFIER_MIN_SCALE = 1;
+export const MAGNIFIER_MAX_SCALE = 8;
+export const MAGNIFIER_DEFAULT_SCALE = 2;
+export const MAGNIFIER_SHAPES = ["square", "circle", "rounded"];
+export const MAGNIFIER_DEFAULT_SHAPE = "square";
+
+export function isMagnifierElement(item) {
+  return item?.type === "magnifier";
+}
+
+export function getMagnifierProps(item) {
+  const x = Number(item?.x) || 0;
+  const y = Number(item?.y) || 0;
+  const width = Number(item?.width) || MAGNIFIER_SIZE;
+  const height = Number(item?.height) || MAGNIFIER_SIZE;
+  const focusX = Number(item?.focusX);
+  const focusY = Number(item?.focusY);
+  const scale = Number(item?.scale);
+  return {
+    x,
+    y,
+    width,
+    height,
+    focusX: Number.isFinite(focusX) ? focusX : x + width / 2,
+    focusY: Number.isFinite(focusY) ? focusY : y + height / 2,
+    scale: Number.isFinite(scale)
+      ? Math.min(MAGNIFIER_MAX_SCALE, Math.max(MAGNIFIER_MIN_SCALE, scale))
+      : MAGNIFIER_DEFAULT_SCALE,
+    shape: MAGNIFIER_SHAPES.includes(item?.shape)
+      ? item.shape
+      : MAGNIFIER_DEFAULT_SHAPE,
+    locked: Boolean(item?.locked),
+    aspectLocked: item?.aspectLocked !== false,
+  };
+}
+
+export function addMagnifierElement(canvas) {
+  const size = MAGNIFIER_SIZE;
+  const offset = canvas.elements.filter(isMagnifierElement).length * 24;
+  const x = Math.max(0, Math.round((canvas.width - size) / 2) + offset);
+  const y = Math.max(0, Math.round((canvas.height - size) / 2) + offset);
+  return {
+    ...canvas,
+    elements: [
+      ...canvas.elements,
+      {
+        id: nextElementId("magnifier"),
+        type: "magnifier",
+        x,
+        y,
+        width: size,
+        height: size,
+        focusX: x + size / 2,
+        focusY: y + size / 2,
+        scale: MAGNIFIER_DEFAULT_SCALE,
+        shape: MAGNIFIER_DEFAULT_SHAPE,
+        aspectLocked: true,
+      },
+    ],
+  };
+}
+
+export function panMagnifierFocus(item, dx, dy, canvas) {
+  if (!isMagnifierElement(item)) return {};
+  const props = getMagnifierProps(item);
+  const local = localDragDelta(
+    dx,
+    dy,
+    item.rotate,
+    props.flippedX,
+    props.flippedY,
+  );
+  const width = Number(canvas?.width) || 0;
+  const height = Number(canvas?.height) || 0;
+  return {
+    focusX: Math.min(width, Math.max(0, props.focusX + local.dx)),
+    focusY: Math.min(height, Math.max(0, props.focusY + local.dy)),
+  };
+}
+
+export function setMagnifierFocus(item, focusX, focusY, canvas) {
+  if (!isMagnifierElement(item)) return {};
+  const width = Number(canvas?.width) || 0;
+  const height = Number(canvas?.height) || 0;
+  const nextX = Number(focusX);
+  const nextY = Number(focusY);
+  if (!Number.isFinite(nextX) || !Number.isFinite(nextY)) return {};
+  return {
+    focusX: Math.min(width, Math.max(0, nextX)),
+    focusY: Math.min(height, Math.max(0, nextY)),
+  };
+}
+
+export function setMagnifierScale(item, scale) {
+  if (!isMagnifierElement(item)) return {};
+  const next = Number(scale);
+  if (!Number.isFinite(next)) return {};
+  return {
+    scale: Math.min(
+      MAGNIFIER_MAX_SCALE,
+      Math.max(MAGNIFIER_MIN_SCALE, next),
+    ),
+  };
+}
+
 function fitMediaBox(canvas, naturalWidth, naturalHeight) {
   const sourceW = Number(naturalWidth) > 0 ? Number(naturalWidth) : 640;
   const sourceH = Number(naturalHeight) > 0 ? Number(naturalHeight) : 360;

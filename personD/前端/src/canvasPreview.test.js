@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { paintCanvasPreview } from "./canvasPreview.js";
 import {
   createEmptyCanvas,
+  addMagnifierElement,
   addTextElement,
   addRectElement,
   addCollageElement,
@@ -17,7 +18,15 @@ function mockCtx() {
     fillRect: vi.fn(),
     fillText: vi.fn(),
     beginPath: vi.fn(),
+    fill: vi.fn(),
     ellipse: vi.fn(),
+    clip: vi.fn(),
+    rect: vi.fn(),
+    arc: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    strokeRect: vi.fn(),
+    roundRect: vi.fn(),
     stroke: vi.fn(),
     fillStyle: "",
     strokeStyle: "",
@@ -86,5 +95,23 @@ describe("canvasPreview", () => {
       (call) => call[2] < collage.width,
     );
     expect(greyFills.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("clips a magnifier viewport and paints its focus dot", () => {
+    const ctx = mockCtx();
+    const canvas = addMagnifierElement(createEmptyCanvas(800, 600));
+    paintCanvasPreview(ctx, canvas, 1);
+    expect(ctx.clip).toHaveBeenCalled();
+    expect(ctx.stroke).toHaveBeenCalled();
+    expect(ctx.arc).toHaveBeenCalled();
+    expect(ctx.moveTo).toHaveBeenCalled();
+  });
+
+  it("clips a circular magnifier viewport", () => {
+    const ctx = mockCtx();
+    const canvas = addMagnifierElement(createEmptyCanvas(800, 600));
+    canvas.elements[0].shape = "circle";
+    paintCanvasPreview(ctx, canvas, 1);
+    expect(ctx.ellipse).toHaveBeenCalled();
   });
 });

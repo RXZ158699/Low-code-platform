@@ -384,6 +384,82 @@ describe("WorkEditorPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("adds a magnifier and drags its focus dot to move the magnified area", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: "放大镜" }));
+
+    const magnifier = await waitFor(() => {
+      const node = document.querySelector(".editor-el.is-magnifier");
+      expect(node).toBeTruthy();
+      return node;
+    });
+    expect(magnifier).toHaveClass("is-selected");
+    expect(screen.getByRole("slider", { name: "放大倍率" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "放大镜形状" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "放大镜形状" }));
+    await user.click(screen.getByText("圆形"));
+    await waitFor(() => {
+      expect(
+        magnifier.querySelector(".editor-magnifier-frame").style.borderRadius,
+      ).toBe("50%");
+    });
+
+    const dot = screen.getByRole("button", { name: "拖动放大位置" });
+    const startLeft = Number.parseFloat(dot.style.left);
+    const startTop = Number.parseFloat(dot.style.top);
+    const zoom =
+      Number.parseFloat(
+        document
+          .querySelector(".editor-artboard")
+          .style.transform.replace("scale(", "")
+          .replace(")", ""),
+      ) || 1;
+    const link = document.querySelector(".editor-magnifier-link line");
+    expect(link).toBeTruthy();
+    expect(link.getAttribute("stroke")).toBe("#ffffff");
+    expect(link.getAttribute("stroke-width")).toBe("5");
+    const frame = document.querySelector(".editor-stage-frame");
+    frame.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800 * zoom,
+      bottom: 600 * zoom,
+      width: 800 * zoom,
+      height: 600 * zoom,
+      toJSON() {},
+    });
+
+    fireEvent.pointerDown(dot, {
+      button: 0,
+      clientX: 400 * zoom,
+      clientY: 300 * zoom,
+      pointerId: 30,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 500 * zoom,
+      clientY: 400 * zoom,
+      pointerId: 30,
+    });
+    fireEvent.pointerUp(window, {
+      clientX: 500 * zoom,
+      clientY: 400 * zoom,
+      pointerId: 30,
+    });
+
+    await waitFor(() => {
+      expect(Number.parseFloat(dot.style.left)).toBeCloseTo(startLeft + 100, 5);
+      expect(Number.parseFloat(dot.style.top)).toBeCloseTo(startTop + 100, 5);
+    });
+  });
+
   it("rotates a collage around its center from the bottom handle", async () => {
     const user = userEvent.setup();
     renderEditor();

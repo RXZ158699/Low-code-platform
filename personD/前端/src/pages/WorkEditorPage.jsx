@@ -37,6 +37,7 @@ import {
   setCollageCellSrc,
   collageCellOffset,
   panCollageCell,
+  addMagnifierElement,
   addMediaElement,
   addShapeElement,
   addTextElement,
@@ -49,10 +50,12 @@ import {
   DEFAULT_SHAPE_FILL,
   duplicateElement,
   getSelectionRects,
+  getMagnifierProps,
   isBlankText,
   isCollageElement,
   isCornerHandle,
   isLineKind,
+  isMagnifierElement,
   isMediaElement,
   isShapeElement,
   isShapeKind,
@@ -69,6 +72,8 @@ import {
   SPAN_STYLE_KEYS,
   moveElementLayer,
   parseCanvas,
+  panMagnifierFocus,
+  setMagnifierFocus,
   patchTextElement,
   pointerAngle,
   removeElement,
@@ -88,6 +93,7 @@ import {
   zoomByWheelDelta,
 } from "../canvas.js";
 import CanvasCollage from "../components/CanvasCollage.jsx";
+import CanvasMagnifier from "../components/CanvasMagnifier.jsx";
 import CanvasMedia from "../components/CanvasMedia.jsx";
 import CanvasShape from "../components/CanvasShape.jsx";
 import EditorAddPanel from "../components/EditorAddPanel.jsx";
@@ -98,6 +104,7 @@ import EditorMaterialPanel from "../components/EditorMaterialPanel.jsx";
 import EditorCollagePanel from "../components/EditorCollagePanel.jsx";
 import EditorColorPicker from "../components/EditorColorPicker.jsx";
 import EditorLinePanel from "../components/EditorLinePanel.jsx";
+import EditorMagnifierPanel from "../components/EditorMagnifierPanel.jsx";
 import EditorShapePanel from "../components/EditorShapePanel.jsx";
 import EditorTextPanel from "../components/EditorTextPanel.jsx";
 import EditorTextPickerPanel from "../components/EditorTextPickerPanel.jsx";
@@ -429,6 +436,34 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         setCanvas(resizeCanvas(drag.snapshot, drag.handle, dx, dy));
         return;
       }
+      if (drag.type === "magnifier-focus") {
+        const next =
+          drag.frameBounds && drag.canvasWidth > 0 && drag.canvasHeight > 0
+            ? {
+                x:
+                  ((event.clientX - drag.frameBounds.left) /
+                    Math.max(1, drag.frameBounds.width)) *
+                  drag.canvasWidth,
+                y:
+                  ((event.clientY - drag.frameBounds.top) /
+                    Math.max(1, drag.frameBounds.height)) *
+                  drag.canvasHeight,
+              }
+            : null;
+        setCanvas((current) => {
+          const live = current.elements.find((entry) => entry.id === drag.id);
+          if (!isMagnifierElement(live)) return current;
+          const patch = next
+            ? setMagnifierFocus(live, next.x, next.y, current)
+            : panMagnifierFocus(live, dx, dy, current);
+          return updateElement(
+            current,
+            drag.id,
+            patch,
+          );
+        });
+        return;
+      }
       if (drag.type === "move") {
         const currentCanvas = canvasRef.current;
         const isLineMove = Number.isFinite(drag.start.x1);
@@ -687,7 +722,9 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         current.y1 === origin.y1 &&
         current.x2 === origin.x2 &&
         current.y2 === origin.y2 &&
-        current.rotate === origin.rotate
+        current.rotate === origin.rotate &&
+        current.focusX === origin.focusX &&
+        current.focusY === origin.focusY
       ) {
         return;
       }
@@ -823,6 +860,37 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         boxHeight: box.height || item.height,
       },
       snapshot: canvasRef.current,
+    };
+  };
+
+  const beginMagnifierFocus = (event, item) => {
+    if (event.button !== 0 || item.locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const props = getMagnifierProps(item);
+    setSelectedId(item.id);
+    setBoardSelected(false);
+    setEditingId(null);
+    setTextRange(null);
+    const frame = event.currentTarget.closest(".editor-stage-frame");
+    const frameBounds = frame?.getBoundingClientRect();
+    const currentCanvas = canvasRef.current;
+    dragRef.current = {
+      type: "magnifier-focus",
+      id: item.id,
+      start: {
+        px: event.clientX,
+        py: event.clientY,
+        focusX: props.focusX,
+        focusY: props.focusY,
+      },
+      frameBounds:
+        frameBounds && frameBounds.width > 0 && frameBounds.height > 0
+          ? frameBounds
+          : null,
+      canvasWidth: currentCanvas.width,
+      canvasHeight: currentCanvas.height,
+      snapshot: currentCanvas,
     };
   };
 
@@ -1214,6 +1282,10 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
       );
       return;
     }
+    if (action === "magnifier") {
+      placeElement(addMagnifierElement(canvas));
+      return;
+    }
     if (typeof action === "string" && action.startsWith("collage:")) {
       const next = addCollageElement(canvas, action.slice("collage:".length));
       if (next.elements.length === canvas.elements.length) return;
@@ -1552,13 +1624,15 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                   {canvas.elements.map((item) => (
                     <div
                       key={item.id}
-                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isLineKind(shapeKind(item)) ? "is-line" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
+                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isLineKind(shapeKind(item)) ? "is-line" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""} ${isMagnifierElement(item) ? "is-magnifier" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
                       aria-label={
                         isShapeElement(item)
                           ? SHAPE_LABELS[shapeKind(item)]
                           : isCollageElement(item)
                             ? "拼图"
-                            : undefined
+                            : isMagnifierElement(item)
+                              ? "放大镜"
+                              : undefined
                       }
                       style={{
                         left: item.x,
@@ -1569,7 +1643,8 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                           ? textElementStyle(item)
                           : isShapeElement(item) ||
                               isMediaElement(item) ||
-                              isCollageElement(item)
+                              isCollageElement(item) ||
+                              isMagnifierElement(item)
                             ? elementRotateStyle(item)
                             : { background: item.fill, color: item.color }),
                       }}
@@ -1639,9 +1714,70 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                         />
                       ) : isMediaElement(item) ? (
                         <CanvasMedia item={item} />
+                      ) : isMagnifierElement(item) ? (
+                        <CanvasMagnifier item={item} canvas={canvas} />
                       ) : null}
                     </div>
                   ))}
+                  {canvas.elements
+                    .filter(isMagnifierElement)
+                    .map((item) => {
+                      const props = getMagnifierProps(item);
+                      return (
+                        <svg
+                          key={`${item.id}-link`}
+                          className="editor-magnifier-link"
+                          width={canvas.width}
+                          height={canvas.height}
+                          viewBox={`0 0 ${canvas.width} ${canvas.height}`}
+                          aria-hidden="true"
+                        >
+                          <line
+                            x1={props.focusX}
+                            y1={props.focusY}
+                            x2={props.x + props.width / 2}
+                            y2={props.y + props.height / 2}
+                            stroke="#ffffff"
+                            strokeWidth={5}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      );
+                    })}
+                  {canvas.elements
+                    .filter(isMagnifierElement)
+                    .map((item) => {
+                      const props = getMagnifierProps(item);
+                      if (shareMode || item.locked) {
+                        return (
+                          <span
+                            key={`${item.id}-focus`}
+                            className="editor-magnifier-dot is-static"
+                            aria-hidden="true"
+                            style={{
+                              left: props.focusX,
+                              top: props.focusY,
+                            }}
+                          />
+                        );
+                      }
+                      return (
+                        <button
+                          key={`${item.id}-focus`}
+                          type="button"
+                          className={`editor-magnifier-dot${selectedId === item.id ? " is-active" : ""}`}
+                          aria-label="拖动放大位置"
+                          style={{
+                            left: props.focusX,
+                            top: props.focusY,
+                          }}
+                          onPointerDown={(event) =>
+                            beginMagnifierFocus(event, item)
+                          }
+                          onClick={(event) => event.stopPropagation()}
+                        />
+                      );
+                    })}
                   {drawDraft ? (
                     <div
                       className="editor-el is-shape is-drawing"
@@ -1765,7 +1901,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                     </div>
                   ) : (
                   <div
-                    className={`editor-transform ${selected.type === "text" && selectedId ? "is-text" : ""} ${isCollageElement(selected) ? "is-collage" : ""}`}
+                    className={`editor-transform ${selected.type === "text" && selectedId ? "is-text" : ""} ${isCollageElement(selected) ? "is-collage" : ""} ${isMagnifierElement(selected) ? "is-magnifier" : ""}`}
                     role="group"
                     aria-label="拖拽图层"
                     style={{
@@ -1961,6 +2097,16 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                 mutateCanvas(moveElementLayer(canvas, selected.id, direction))
               }
               onAddImages={handleCollageImages}
+            />
+          ) : isMagnifierElement(selected) ? (
+            <EditorMagnifierPanel
+              item={selected}
+              onChange={patchSelected}
+              onDelete={deleteSelected}
+              onDuplicate={duplicateSelected}
+              onLayer={(direction) =>
+                mutateCanvas(moveElementLayer(canvas, selected.id, direction))
+              }
             />
           ) : isLineKind(shapeKind(selected)) ? (
             <EditorLinePanel
