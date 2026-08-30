@@ -783,6 +783,57 @@
   cursor: pointer;
 }
 
+.editor-add-panel.is-doodle .editor-add-panel-body {
+  padding: 4px 16px 28px;
+}
+
+.editor-doodle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.editor-doodle-pen {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 52px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.editor-doodle-pen:hover {
+  background: #eceef1;
+}
+
+.editor-doodle-pen:focus {
+  outline: none;
+}
+
+.editor-doodle-pen:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.editor-doodle-pen i {
+  display: block;
+  width: 42px;
+  min-width: 42px;
+  border-radius: 999px;
+}
+
+.editor-doodle-pen span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .editor-collage-view {
   display: flex;
   flex: 1;
@@ -1242,6 +1293,21 @@
   background: transparent;
   overflow: hidden;
   transform-origin: center center;
+}
+
+.editor-el.is-doodle {
+  padding: 0;
+  background: transparent;
+  overflow: visible;
+  transform-origin: center center;
+}
+
+.editor-el-doodle {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
 }
 
 .editor-el-collage {

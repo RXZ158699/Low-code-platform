@@ -876,6 +876,85 @@ export function applyTableLayout(item, layoutRef) {
   };
 }
 
+export function isDoodleElement(item) {
+  return item?.type === "doodle";
+}
+
+export function doodleBoxFromPoints(points, strokeWidth = 5) {
+  const pts = (points || []).filter(
+    (point) =>
+      Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y)),
+  );
+  if (pts.length === 0) {
+    return { x: 0, y: 0, width: MIN_ELEMENT_SIZE, height: MIN_ELEMENT_SIZE };
+  }
+  const xs = pts.map((point) => Number(point.x));
+  const ys = pts.map((point) => Number(point.y));
+  const pad = Math.max(8, Number(strokeWidth) + 4);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  return {
+    x: minX - pad,
+    y: minY - pad,
+    width: Math.max(MIN_ELEMENT_SIZE, maxX - minX + pad * 2),
+    height: Math.max(MIN_ELEMENT_SIZE, maxY - minY + pad * 2),
+  };
+}
+
+export function addDoodleElement(canvas, points, pen = {}) {
+  const pts = (points || []).filter(
+    (point) =>
+      Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y)),
+  );
+  if (pts.length === 0) return canvas;
+  const box = doodleBoxFromPoints(pts, pen.strokeWidth);
+  return {
+    ...canvas,
+    elements: [
+      ...canvas.elements,
+      {
+        id: nextElementId("doodle"),
+        type: "doodle",
+        points: pts.map((point) => ({ x: point.x, y: point.y })),
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
+        stroke:
+          typeof pen.stroke === "string" && pen.stroke
+            ? pen.stroke
+            : "#111827",
+        strokeWidth:
+          Number(pen.strokeWidth) > 0 ? Number(pen.strokeWidth) : 5,
+        opacity: Number.isFinite(Number(pen.opacity))
+          ? Math.min(100, Math.max(10, Number(pen.opacity)))
+          : 100,
+        glow: Number.isFinite(Number(pen.glow))
+          ? Math.max(0, Number(pen.glow))
+          : 0,
+        dash: typeof pen.dash === "string" && pen.dash ? pen.dash : null,
+        mode: typeof pen.mode === "string" && pen.mode ? pen.mode : "marker",
+        penId: pen.id || "marker",
+      },
+    ],
+  };
+}
+
+export function doodlePathD(item) {
+  const pts = (item?.points || []).map((point) => ({
+    x: Number(point.x) - Number(item.x),
+    y: Number(point.y) - Number(item.y),
+  }));
+  return pts
+    .map(
+      (point, index) =>
+        `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`,
+    )
+    .join(" ");
+}
+
 function fitMediaBox(canvas, naturalWidth, naturalHeight) {
   const sourceW = Number(naturalWidth) > 0 ? Number(naturalWidth) : 640;
   const sourceH = Number(naturalHeight) > 0 ? Number(naturalHeight) : 360;

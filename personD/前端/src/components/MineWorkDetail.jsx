@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import {
   isCollageElement,
+  isDoodleElement,
   isMediaElement,
   isShapeElement,
   isTextAutoWidth,
@@ -22,6 +23,7 @@ import {
   textElementStyle,
 } from "../canvas.js";
 import CanvasCollage from "./CanvasCollage.jsx";
+import CanvasDoodle from "./CanvasDoodle.jsx";
 import CanvasMedia from "./CanvasMedia.jsx";
 import CanvasShape from "./CanvasShape.jsx";
 import CanvasTextCopy from "./CanvasTextCopy.jsx";
@@ -113,7 +115,7 @@ function CanvasPreview({ canvas, thumbnailUrl, title, zoom, flipped }) {
         {data.elements.map((item) => (
           <div
             key={item.id}
-            className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${
+            className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isDoodleElement(item) ? "is-doodle" : ""} ${
               isMediaElement(item) ? "is-media" : ""
             } ${isCollageElement(item) ? "is-collage" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""}`}
             aria-label={
@@ -124,6 +126,8 @@ function CanvasPreview({ canvas, thumbnailUrl, title, zoom, flipped }) {
                   : isMediaElement(item)
                     ? item.name ||
                       (item.type === "video" ? "画布视频" : "画布图片")
+                    : isDoodleElement(item)
+                      ? "涂鸦"
                     : undefined
             }
             style={{
@@ -143,6 +147,8 @@ function CanvasPreview({ canvas, thumbnailUrl, title, zoom, flipped }) {
               </>
             ) : isShapeElement(item) ? (
               <CanvasShape item={item} />
+            ) : isDoodleElement(item) ? (
+              <CanvasDoodle item={item} />
             ) : isCollageElement(item) ? (
               <CanvasCollage item={item} />
             ) : isMediaElement(item) ? (

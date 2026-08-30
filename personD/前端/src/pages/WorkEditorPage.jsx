@@ -33,6 +33,7 @@ import { uploadAsset } from "../api/assets.js";
 import { getShare, updateShare } from "../api/shares.js";
 import {
   addCollageElement,
+  addDoodleElement,
   fillCollageCells,
   setCollageCellSrc,
   collageCellOffset,
@@ -46,6 +47,7 @@ import {
   applyTextHandleResize,
   applyTextStyle,
   boxFromDrag,
+  doodleBoxFromPoints,
   canvasBackgroundStyle,
   DEFAULT_LINE_FILL,
   DEFAULT_SHAPE_FILL,
@@ -55,6 +57,7 @@ import {
   isBlankText,
   isCollageElement,
   isCornerHandle,
+  isDoodleElement,
   isLineKind,
   isMagnifierElement,
   isMediaElement,
@@ -96,6 +99,7 @@ import {
   zoomByWheelDelta,
 } from "../canvas.js";
 import CanvasCollage from "../components/CanvasCollage.jsx";
+import CanvasDoodle from "../components/CanvasDoodle.jsx";
 import CanvasMagnifier from "../components/CanvasMagnifier.jsx";
 import CanvasMedia from "../components/CanvasMedia.jsx";
 import CanvasShape from "../components/CanvasShape.jsx";
@@ -120,6 +124,7 @@ import { canvasPreviewBlob } from "../canvasPreview.js";
 import { mediaKind, readMediaSize } from "../mediaFile.js";
 import { collageCellBoxes } from "../collageLayouts.js";
 import { findBubbleTextPreset, getBubbleProps } from "../bubbleText.js";
+import { findDoodlePen } from "../doodlePens.js";
 
 const LINE_SELECT_GAP = 8;
 const LIBRARY_TOOLS = new Set(["template", "image", "mine"]);
@@ -228,6 +233,8 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
   const [resizeHeight, setResizeHeight] = useState("");
   const [drawTool, setDrawTool] = useState(null);
   const [drawDraft, setDrawDraft] = useState(null);
+  const [doodlePen, setDoodlePen] = useState(null);
+  const [doodleDraft, setDoodleDraft] = useState(null);
   const [snapGuides, setSnapGuides] = useState({ vertical: [], horizontal: [] });
   const [resourceTarget, setResourceTarget] = useState(null);
   const dragRef = useRef(null);
@@ -379,6 +386,29 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     const handlePointerMove = (event) => {
       const drag = dragRef.current;
       if (!drag) return;
+      if (drag.type === "draw-doodle") {
+        const bounds = drag.bounds;
+        const x =
+          ((event.clientX - bounds.left) / Math.max(1, bounds.width)) *
+          drag.canvasWidth;
+        const y =
+          ((event.clientY - bounds.top) / Math.max(1, bounds.height)) *
+          drag.canvasHeight;
+        drag.points.push({ x, y });
+        if (drag.points.length > 800) drag.points.shift();
+        setDoodleDraft({
+          id: "doodle-draft",
+          type: "doodle",
+          points: [...drag.points],
+          stroke: drag.pen.stroke,
+          strokeWidth: drag.pen.strokeWidth,
+          opacity: drag.pen.opacity,
+          glow: drag.pen.glow,
+          dash: drag.pen.dash,
+          mode: drag.pen.mode,
+        });
+        return;
+      }
       if (drag.type === "draw-shape") {
         const bounds = drag.bounds;
         const x =
@@ -672,6 +702,23 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
           return;
         setPast((value) => [...value, origin].slice(-40));
         setFuture([]);
+        setDirty(true);
+        return;
+      }
+      if (drag.type === "draw-doodle") {
+        setDoodleDraft(null);
+        if (!drag.points || drag.points.length < 2) {
+          setDoodlePen(null);
+          return;
+        }
+        const next = addDoodleElement(canvasRef.current, drag.points, drag.pen);
+        const created = next.elements[next.elements.length - 1];
+        setPast((value) => [...value, drag.snapshot].slice(-40));
+        setFuture([]);
+        setCanvas(next);
+        setSelectedId(created.id);
+        setBoardSelected(false);
+        setDoodlePen(null);
         setDirty(true);
         return;
       }
@@ -1050,7 +1097,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
   };
 
   const beginDraw = (event) => {
-    if (!drawTool || event.button !== 0) return;
+    if (event.button !== 0 || (!drawTool && !doodlePen)) return;
     event.preventDefault();
     event.stopPropagation();
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -1061,6 +1108,30 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     const y =
       ((event.clientY - bounds.top) / Math.max(1, bounds.height)) *
       canvasHeight;
+    if (doodlePen) {
+      const point = { x, y };
+      dragRef.current = {
+        type: "draw-doodle",
+        pen: doodlePen,
+        bounds,
+        canvasWidth,
+        canvasHeight,
+        points: [point],
+        snapshot: canvasRef.current,
+      };
+      setDoodleDraft({
+        id: "doodle-draft",
+        type: "doodle",
+        points: [point],
+        stroke: doodlePen.stroke,
+        strokeWidth: doodlePen.strokeWidth,
+        opacity: doodlePen.opacity,
+        glow: doodlePen.glow,
+        dash: doodlePen.dash,
+        mode: doodlePen.mode,
+      });
+      return;
+    }
     const fill = isLineKind(drawTool) ? DEFAULT_LINE_FILL : DEFAULT_SHAPE_FILL;
     dragRef.current = {
       type: "draw-shape",
@@ -1111,11 +1182,16 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === "Escape" && (drawTool || drawDraft)) {
+      if (
+        event.key === "Escape" &&
+        (drawTool || drawDraft || doodlePen || doodleDraft)
+      ) {
         event.preventDefault();
         dragRef.current = null;
         setDrawTool(null);
         setDrawDraft(null);
+        setDoodlePen(null);
+        setDoodleDraft(null);
         return;
       }
       if (event.key !== "Delete" && event.key !== "Backspace") return;
@@ -1134,7 +1210,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canvas, selectedId, editingId, drawTool, drawDraft]);
+  }, [canvas, selectedId, editingId, drawTool, drawDraft, doodlePen, doodleDraft]);
 
   const undo = () => {
     if (!past.length) return;
@@ -1176,6 +1252,8 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     }
     setDrawTool(null);
     setDrawDraft(null);
+    setDoodlePen(null);
+    setDoodleDraft(null);
     setAddPanelOpen(false);
     if (toolId === "text") {
       setActiveTool((current) => (current === "text" ? "" : "text"));
@@ -1271,6 +1349,8 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
       const kind = action.slice("shape-".length);
       if (isShapeKind(kind)) {
         setDrawDraft(null);
+        setDoodleDraft(null);
+        setDoodlePen(null);
         setDrawTool((current) => (current === kind ? null : kind));
         setAddPanelOpen(false);
         setSelectedId(null);
@@ -1279,6 +1359,23 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
         setTextRange(null);
         return;
       }
+    }
+    if (typeof action === "string" && action.startsWith("doodle:")) {
+      const pen = findDoodlePen(action.slice("doodle:".length));
+      if (!pen) {
+        message.info("功能开发中");
+        return;
+      }
+      setDrawTool(null);
+      setDrawDraft(null);
+      setDoodleDraft(null);
+      setDoodlePen(pen);
+      setAddPanelOpen(false);
+      setSelectedId(null);
+      setBoardSelected(false);
+      setEditingId(null);
+      setTextRange(null);
+      return;
     }
     setDrawTool(null);
     setDrawDraft(null);
@@ -1674,7 +1771,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                   {canvas.elements.map((item) => (
                     <div
                       key={item.id}
-                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isLineKind(shapeKind(item)) ? "is-line" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""} ${isMagnifierElement(item) ? "is-magnifier" : ""} ${isTableElement(item) ? "is-table" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
+                      className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isLineKind(shapeKind(item)) ? "is-line" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""} ${isMagnifierElement(item) ? "is-magnifier" : ""} ${isTableElement(item) ? "is-table" : ""} ${isDoodleElement(item) ? "is-doodle" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}
                       aria-label={
                         isShapeElement(item)
                           ? SHAPE_LABELS[shapeKind(item)]
@@ -1684,7 +1781,9 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                               ? "放大镜"
                               : isTableElement(item)
                                 ? "表格"
-                                : undefined
+                                : isDoodleElement(item)
+                                  ? "涂鸦"
+                                  : undefined
                       }
                       style={{
                         left: item.x,
@@ -1697,7 +1796,8 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                               isMediaElement(item) ||
                               isCollageElement(item) ||
                               isMagnifierElement(item) ||
-                              isTableElement(item)
+                              isTableElement(item) ||
+                              isDoodleElement(item)
                             ? elementRotateStyle(item)
                             : { background: item.fill, color: item.color }),
                       }}
@@ -1787,6 +1887,8 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                           }
                           onCellTextBlur={commitTableCellText}
                         />
+                      ) : isDoodleElement(item) ? (
+                        <CanvasDoodle item={item} />
                       ) : null}
                     </div>
                   ))}
@@ -1862,11 +1964,38 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                       <CanvasShape item={drawDraft} />
                     </div>
                   ) : null}
-                  {drawTool ? (
+                  {doodleDraft ? (
+                    (() => {
+                      const box = doodleBoxFromPoints(
+                        doodleDraft.points,
+                        doodleDraft.strokeWidth,
+                      );
+                      return (
+                        <div
+                          className="editor-el is-doodle is-drawing"
+                          style={{
+                            left: box.x,
+                            top: box.y,
+                            width: box.width,
+                            height: box.height,
+                          }}
+                        >
+                          <CanvasDoodle
+                            item={{ ...doodleDraft, ...box }}
+                          />
+                        </div>
+                      );
+                    })()
+                  ) : null}
+                  {drawTool || doodlePen ? (
                     <div
                       className="editor-draw-layer"
                       role="presentation"
-                      aria-label={`在画布上绘制${SHAPE_LABELS[drawTool]}`}
+                      aria-label={
+                        doodlePen
+                          ? "在画布上绘制涂鸦"
+                          : `在画布上绘制${SHAPE_LABELS[drawTool]}`
+                      }
                       onPointerDown={beginDraw}
                       onClick={(event) => event.stopPropagation()}
                     />

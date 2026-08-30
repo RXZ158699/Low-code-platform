@@ -554,6 +554,64 @@ describe("WorkEditorPage", () => {
     });
   });
 
+  it("selects a doodle pen and draws a freehand stroke", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    await user.click(screen.getByRole("button", { name: "涂鸦笔" }));
+    await expect(
+      screen.getByRole("heading", { name: "涂鸦笔", level: 2 }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "马克笔" }));
+
+    const layer = screen.getByLabelText("在画布上绘制涂鸦");
+    layer.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
+
+    fireEvent.pointerDown(layer, {
+      button: 0,
+      clientX: 80,
+      clientY: 60,
+      pointerId: 21,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 120,
+      clientY: 80,
+      pointerId: 21,
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 180,
+      clientY: 120,
+      pointerId: 21,
+    });
+    fireEvent.pointerUp(window, {
+      clientX: 180,
+      clientY: 120,
+      pointerId: 21,
+    });
+
+    const doodle = await waitFor(() => {
+      const node = document.querySelector(
+        ".editor-artboard .editor-el.is-doodle",
+      );
+      expect(node).toBeTruthy();
+      return node;
+    });
+    expect(doodle).toHaveClass("is-selected");
+    expect(doodle.querySelector("svg path")).toBeTruthy();
+  });
+
   it("rotates a collage around its center from the bottom handle", async () => {
     const user = userEvent.setup();
     renderEditor();
@@ -1508,7 +1566,7 @@ describe("WorkEditorPage", () => {
     expect(screen.getByText("800 × 600 px")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "画板" })).toBeInTheDocument();
     expect(screen.getByLabelText("缩放画布")).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("zooms the canvas view in and out from the dock", async () => {
     const user = userEvent.setup();

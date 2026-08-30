@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addCollageElement,
+  addDoodleElement,
   addMagnifierElement,
   addMediaElement,
   addTableElement,
@@ -17,6 +18,8 @@ import {
   clampCanvasZoom,
   createEmptyCanvas,
   duplicateElement,
+  doodleBoxFromPoints,
+  doodlePathD,
   fillCollageCells,
   collageCellOffset,
   localDragDelta,
@@ -40,6 +43,7 @@ import {
   getWarpProps,
   isBlankText,
   isCornerHandle,
+  isDoodleElement,
   isLineKind,
   isMagnifierElement,
   isShapeElement,
@@ -1183,6 +1187,49 @@ describe("canvas helpers", () => {
       cells: [""],
       fontSize: 16,
     });
+  });
+
+  it("creates a doodle element with padded bounds and stroke props", () => {
+    const next = addDoodleElement(
+      createEmptyCanvas(800, 600),
+      [
+        { x: 40, y: 50 },
+        { x: 120, y: 80 },
+        { x: 100, y: 140 },
+      ],
+      { id: "marker", stroke: "#111827", strokeWidth: 5 },
+    );
+    const doodle = next.elements[0];
+    expect(isDoodleElement(doodle)).toBe(true);
+    expect(doodle.stroke).toBe("#111827");
+    expect(doodle.points).toHaveLength(3);
+    expect(doodle.width).toBeGreaterThan(80);
+    expect(doodle.height).toBeGreaterThan(80);
+  });
+
+  it("builds a relative doodle path and box", () => {
+    const item = {
+      type: "doodle",
+      x: 10,
+      y: 20,
+      width: 100,
+      height: 80,
+      points: [
+        { x: 10, y: 20 },
+        { x: 60, y: 70 },
+      ],
+    };
+    expect(doodlePathD(item)).toContain("M 0.00 0.00");
+    expect(doodlePathD(item)).toContain("L 50.00 50.00");
+    expect(
+      doodleBoxFromPoints(
+        [
+          { x: 10, y: 10 },
+          { x: 50, y: 40 },
+        ],
+        5,
+      ),
+    ).toMatchObject({ width: 58, height: 48 });
   });
 });
 

@@ -4,7 +4,18 @@ import prettier from "eslint-config-prettier";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", ".vite/**", ".npm-cache/**"],
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      ".vite/**",
+      ".npm-cache/**",
+      "playwright-report/**",
+      "test-results/**",
+      "blob-report/**",
+      "playwright/.cache/**",
+      "playwright/.auth/**",
+      "e2e/artifacts/**",
+    ],
   },
   js.configs.recommended,
   {

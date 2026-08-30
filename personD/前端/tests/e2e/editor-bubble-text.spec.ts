@@ -14,7 +14,8 @@
  * - 自动保存约 800ms 防抖，使用 route 拦截保存请求并解析 canvasJson 校验。
  * - 弹框内预览也包含 editor-el-copy，断言画布文本时必须限定在
  *   .editor-artboard 内。
- * - 画布气泡元素双击编辑前先等待 visible 并 hover，dblclick 内部会等待元素稳定。
+ * - 选中后 .editor-transform 选框会拦截鼠标命中，双击编辑改用
+ *   dispatchEvent('dblclick') 直接派发到文字元素。
  * - 编辑保存用例先等待添加时的防抖保存结束，再开启捕获，避免拿到旧文本。
  */
 import { test, expect, type Page } from "@playwright/test";
@@ -113,9 +114,8 @@ async function dblclickBubbleText(
   text: ReturnType<Page["locator"]>,
 ): Promise<void> {
   await text.waitFor({ state: "visible" });
-  await text.hover();
-  await page.waitForTimeout(200);
-  await text.dblclick({ delay: 80 });
+  // 选中后 .editor-transform 选框会拦截鼠标命中，直接向文字元素派发双击事件
+  await text.dispatchEvent("dblclick");
 }
 
 test("文字弹框展示 10 个气泡分类且每类 3 个素材", async ({ page }) => {

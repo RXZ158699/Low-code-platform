@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { paintCanvasPreview } from "./canvasPreview.js";
 import {
   createEmptyCanvas,
+  addDoodleElement,
   addMagnifierElement,
   addTableElement,
   addTextElement,
@@ -140,5 +141,21 @@ describe("canvasPreview", () => {
     expect(
       ctx.fillText.mock.calls.some((call) => call[0] === "标题"),
     ).toBe(true);
+  });
+
+  it("paints a doodle stroke from its points", () => {
+    const ctx = mockCtx();
+    const canvas = addDoodleElement(
+      createEmptyCanvas(400, 300),
+      [
+        { x: 20, y: 30 },
+        { x: 90, y: 60 },
+        { x: 120, y: 120 },
+      ],
+      { stroke: "#111827", strokeWidth: 5 },
+    );
+    paintCanvasPreview(ctx, canvas, 1);
+    expect(ctx.moveTo).toHaveBeenCalled();
+    expect(ctx.lineTo).toHaveBeenCalled();
   });
 });

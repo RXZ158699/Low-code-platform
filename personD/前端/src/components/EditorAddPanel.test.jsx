@@ -33,6 +33,23 @@ describe("EditorAddPanel collage view", () => {
     expect(onSelect).toHaveBeenCalledWith("table:table-2x2");
   });
 
+  it("opens the doodle picker and emits the selected pen", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(<EditorAddPanel open onClose={() => {}} onSelect={onSelect} />);
+
+    await user.click(screen.getByRole("button", { name: "涂鸦笔" }));
+
+    expect(
+      screen.getByRole("heading", { name: "涂鸦笔", level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "马克笔" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "马克笔" }));
+
+    expect(onSelect).toHaveBeenCalledWith("doodle:marker");
+  });
+
   it("replaces the add catalog with a scrollable collage layout picker", async () => {
     const user = userEvent.setup();
     renderPanel();

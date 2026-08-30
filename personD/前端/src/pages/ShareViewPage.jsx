@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { getShare, probeShareEdit } from "../api/shares.js";
 import {
   isCollageElement,
+  isDoodleElement,
   isMediaElement,
   isShapeElement,
   parseCanvas,
@@ -13,6 +14,7 @@ import {
   textElementStyle,
 } from "../canvas.js";
 import CanvasCollage from "../components/CanvasCollage.jsx";
+import CanvasDoodle from "../components/CanvasDoodle.jsx";
 import CanvasMedia from "../components/CanvasMedia.jsx";
 import CanvasShape from "../components/CanvasShape.jsx";
 import CanvasTextCopy from "../components/CanvasTextCopy.jsx";
@@ -133,7 +135,7 @@ export default function ShareViewPage() {
               {canvas.elements.map((item) => (
                 <div
                   key={item.id}
-                  className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""}`}
+                  className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isDoodleElement(item) ? "is-doodle" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""}`}
                   aria-label={
                     isShapeElement(item)
                       ? SHAPE_LABELS[shapeKind(item)]
@@ -142,6 +144,8 @@ export default function ShareViewPage() {
                         : isMediaElement(item)
                           ? item.name ||
                             (item.type === "video" ? "画布视频" : "画布图片")
+                          : isDoodleElement(item)
+                            ? "涂鸦"
                           : undefined
                   }
                   style={{
@@ -161,6 +165,8 @@ export default function ShareViewPage() {
                     </>
                   ) : isShapeElement(item) ? (
                     <CanvasShape item={item} />
+                  ) : isDoodleElement(item) ? (
+                    <CanvasDoodle item={item} />
                   ) : isCollageElement(item) ? (
                     <CanvasCollage item={item} />
                   ) : isMediaElement(item) ? (

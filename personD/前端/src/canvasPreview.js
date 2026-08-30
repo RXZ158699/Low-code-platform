@@ -1,5 +1,6 @@
 import { collageCellBoxes, COLLAGE_PLACEHOLDER } from "./collageLayouts.js";
 import { bubblePath, getBubbleProps } from "./bubbleText.js";
+import { getDoodleProps } from "./doodlePens.js";
 import {
   getCollageProps,
   getHighlightEllipses,
@@ -10,6 +11,7 @@ import {
   getTableProps,
   getTextProps,
   isCollageElement,
+  isDoodleElement,
   isLineKind,
   isMagnifierElement,
   isShapeElement,
@@ -387,6 +389,121 @@ function paintTable(ctx, item) {
   ctx.restore();
 }
 
+function paintDoodle(ctx, item) {
+  const props = getDoodleProps(item);
+  const points = Array.isArray(item.points) ? item.points : [];
+  if (points.length < 2) return;
+  ctx.save();
+  ctx.globalAlpha = props.opacity / 100;
+  ctx.strokeStyle = props.stroke;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const trace = (offsetX = 0, offsetY = 0) => {
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      const x = Number(point.x) + offsetX;
+      const y = Number(point.y) + offsetY;
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+  };
+  const strokePath = (lineWidth, alpha = 1, dash = null) => {
+    ctx.globalAlpha = (props.opacity / 100) * alpha;
+    ctx.lineWidth = lineWidth;
+    if (dash) applyDash(ctx, dash);
+    ctx.stroke();
+    if (dash) applyDash(ctx, null);
+  };
+
+  if (props.mode === "spray") {
+    ctx.lineWidth = Math.max(1, props.strokeWidth * 0.5);
+    trace();
+    applyDash(ctx, "1 7");
+    ctx.stroke();
+    applyDash(ctx, null);
+    points.forEach((point, index) => {
+      if (index % 2 !== 0) return;
+      const jx = ((index * 13) % 7) - 3;
+      const jy = ((index * 17) % 7) - 3;
+      ctx.globalAlpha = (props.opacity / 100) * 0.55;
+      ctx.fillStyle = props.stroke;
+      ctx.beginPath();
+      ctx.arc(
+        Number(point.x) + jx,
+        Number(point.y) + jy,
+        Math.max(1, props.strokeWidth * 0.28),
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    });
+  } else if (props.mode === "watercolor") {
+    ctx.shadowColor = props.stroke;
+    ctx.shadowBlur = 3;
+    trace();
+    strokePath(props.strokeWidth * 1.1, 0.45);
+    trace(2, 1);
+    strokePath(props.strokeWidth * 0.8, 0.35);
+    trace(-2, -1);
+    strokePath(props.strokeWidth * 0.5, 0.3);
+  } else if (props.mode === "pencil") {
+    trace();
+    strokePath(Math.max(1, props.strokeWidth * 0.7), 0.75, "1 3");
+    trace(1.5, 1);
+    strokePath(Math.max(1, props.strokeWidth * 0.45), 0.25, "2 4");
+  } else if (props.mode === "crayon") {
+    trace();
+    strokePath(props.strokeWidth, 0.8, "3 3");
+    trace(2, -1);
+    strokePath(props.strokeWidth * 0.6, 0.3, "2 5");
+  } else if (props.mode === "oil") {
+    trace();
+    strokePath(props.strokeWidth * 1.25, 0.85);
+    trace(2, 0);
+    strokePath(props.strokeWidth * 0.35, 0.6);
+    trace(-2, 0);
+    strokePath(props.strokeWidth * 0.35, 0.6);
+  } else if (props.mode === "calligraphy") {
+    points.forEach((point, index) => {
+      const next = points[index + 1];
+      if (!next) return;
+      ctx.globalAlpha = (props.opacity / 100) * 0.9;
+      ctx.lineWidth = Math.max(
+        1,
+        props.strokeWidth * (0.5 + 0.7 * Math.abs(Math.sin(index * 0.8))),
+      );
+      ctx.beginPath();
+      ctx.moveTo(Number(point.x), Number(point.y));
+      ctx.lineTo(Number(next.x), Number(next.y));
+      ctx.stroke();
+    });
+    trace();
+    strokePath(Math.max(1, props.strokeWidth * 0.3), 0.3, "2 6");
+  } else if (props.mode === "colored") {
+    trace();
+    strokePath(Math.max(1, props.strokeWidth * 0.65), 0.75, "1 3");
+    trace(1.5, -1);
+    strokePath(Math.max(1, props.strokeWidth * 0.35), 0.3, "2 5");
+  } else if (props.mode === "highlighter") {
+    ctx.shadowColor = props.stroke;
+    ctx.shadowBlur = props.glow || 8;
+    trace();
+    strokePath(Math.max(8, props.strokeWidth), 0.55);
+    trace();
+    strokePath(Math.max(4, props.strokeWidth * 0.5), 0.35);
+  } else if (props.mode === "fountain") {
+    trace();
+    strokePath(Math.max(1, props.strokeWidth * 0.8), 0.95);
+    trace(1, 0);
+    strokePath(Math.max(1, props.strokeWidth * 0.4), 0.35);
+  } else {
+    trace();
+    strokePath(props.strokeWidth, 1, props.dash);
+  }
+  applyDash(ctx, null);
+  ctx.restore();
+}
+
 function paintCanvasContent(ctx, canvas, items) {
   ctx.save();
   ctx.fillStyle = colorWithOpacity(canvas.background, canvas.backgroundOpacity);
@@ -396,6 +513,7 @@ function paintCanvasContent(ctx, canvas, items) {
     else if (isCollageElement(item)) paintCollage(ctx, item);
     else if (isMagnifierElement(item)) paintMagnifier(ctx, item, canvas);
     else if (isTableElement(item)) paintTable(ctx, item);
+    else if (isDoodleElement(item)) paintDoodle(ctx, item);
     else if (isShapeElement(item)) paintShape(ctx, item);
   }
   ctx.restore();

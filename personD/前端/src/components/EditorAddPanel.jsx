@@ -3,6 +3,7 @@ import { LeftOutlined } from "@ant-design/icons";
 import { MEDIA_ACCEPT } from "../mediaFile.js";
 import EditorCollagePicker from "./EditorCollagePicker.jsx";
 import EditorTablePicker from "./EditorTablePicker.jsx";
+import EditorDoodlePicker from "./EditorDoodlePicker.jsx";
 
 const MEDIA_ITEMS = [
   { id: "local-upload", label: "本地上传", icon: "upload-photo" },
@@ -269,7 +270,7 @@ export default function EditorAddPanel({
 
   return (
     <div
-      className={`editor-add-panel ${open ? "is-open" : ""} ${view === "collage" ? "is-collage" : ""} ${view === "table" ? "is-table" : ""}`}
+      className={`editor-add-panel ${open ? "is-open" : ""} ${view === "collage" ? "is-collage" : ""} ${view === "table" ? "is-table" : ""} ${view === "doodle" ? "is-doodle" : ""}`}
       role="dialog"
       aria-label="添加"
       aria-hidden={!open}
@@ -290,6 +291,11 @@ export default function EditorAddPanel({
         />
       ) : view === "table" ? (
         <EditorTablePicker
+          onCancel={() => setView("home")}
+          onSelect={onSelect}
+        />
+      ) : view === "doodle" ? (
+        <EditorDoodlePicker
           onCancel={() => setView("home")}
           onSelect={onSelect}
         />
@@ -370,7 +376,7 @@ export default function EditorAddPanel({
                 type="button"
                 className="editor-add-doodle"
                 aria-label="涂鸦笔"
-                onClick={() => onSelect("doodle")}
+                onClick={() => setView("doodle")}
               >
                 <em className="editor-add-new">New</em>
                 <svg
