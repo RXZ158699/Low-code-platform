@@ -9,6 +9,7 @@ import card1 from "../assets/templates/card-1.png";
 import card2 from "../assets/templates/card-2.png";
 import card3 from "../assets/templates/card-3.png";
 import card4 from "../assets/templates/card-4.png";
+import { startAddDrag } from "../addDrag.js";
 
 const FALLBACK_COVERS = [card1, card2, card3, card4];
 
@@ -119,6 +120,13 @@ export default function EditorLibraryPanel({ open, kind, onClose, onPick }) {
                   type="button"
                   className="editor-add-card editor-library-card"
                   key={`${kind}-${entry.id}`}
+                  draggable
+                  onDragStart={(event) =>
+                    startAddDrag(event, "library", {
+                      kind,
+                      item: entry.item,
+                    })
+                  }
                   onClick={() =>
                     onPick?.({
                       kind,
@@ -130,6 +138,7 @@ export default function EditorLibraryPanel({ open, kind, onClose, onPick }) {
                     <div
                       className="editor-library-cover"
                       style={{ aspectRatio: entry.ratio || "3 / 4" }}
+                      draggable={false}
                     >
                       <TemplateCover template={entry.item} />
                     </div>
@@ -137,6 +146,7 @@ export default function EditorLibraryPanel({ open, kind, onClose, onPick }) {
                     <img
                       src={entry.cover || FALLBACK_COVERS[index % FALLBACK_COVERS.length]}
                       alt=""
+                      draggable={false}
                     />
                   )}
                   <span>{entry.title}</span>

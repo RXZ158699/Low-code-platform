@@ -1,5 +1,6 @@
 import { LeftOutlined } from "@ant-design/icons";
 import { DOODLE_SECTIONS } from "../doodlePens.js";
+import { startAddDrag } from "../addDrag.js";
 
 export default function EditorDoodlePicker({ onCancel, onSelect }) {
   return (
@@ -27,6 +28,8 @@ export default function EditorDoodlePicker({ onCancel, onSelect }) {
                   key={pen.id}
                   className="editor-doodle-pen"
                   aria-label={pen.label}
+                  draggable
+                  onDragStart={(event) => startAddDrag(event, `doodle:${pen.id}`)}
                   onClick={() => onSelect?.(`doodle:${pen.id}`)}
                 >
                   <i

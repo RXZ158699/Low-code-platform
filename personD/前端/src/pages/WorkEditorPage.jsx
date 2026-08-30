@@ -125,6 +125,7 @@ import { mediaKind, readMediaSize } from "../mediaFile.js";
 import { collageCellBoxes } from "../collageLayouts.js";
 import { findBubbleTextPreset, getBubbleProps } from "../bubbleText.js";
 import { findDoodlePen } from "../doodlePens.js";
+import { ADD_DRAG_TYPE, readAddDrag } from "../addDrag.js";
 
 const LINE_SELECT_GAP = 8;
 const LIBRARY_TOOLS = new Set(["template", "image", "mine"]);
@@ -1180,6 +1181,21 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     setActiveTool("");
   };
 
+  const placeElementAt = (next, x, y) => {
+    const created = next.elements[next.elements.length - 1];
+    const positioned = updateElement(next, created.id, {
+      x: Math.max(0, Math.round(x - (Number(created.width) || 0) / 2)),
+      y: Math.max(0, Math.round(y - (Number(created.height) || 0) / 2)),
+    });
+    mutateCanvas(positioned);
+    setSelectedId(created.id);
+    setBoardSelected(false);
+    setAddPanelOpen(false);
+    setActiveTool("");
+    setEditingId(null);
+    setTextRange(null);
+  };
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (
@@ -1278,7 +1294,181 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     message.info("功能开发中");
   };
 
-  const handleLibraryPick = (payload) => {
+  const canvasDropPoint = (event) => {
+    const frame = stageRef.current?.querySelector(".editor-stage-frame");
+    const bounds = frame?.getBoundingClientRect();
+    const current = canvasRef.current;
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+      return { x: current.width / 2, y: current.height / 2 };
+    }
+    return {
+      x: Math.min(
+        current.width,
+        Math.max(
+          0,
+          ((event.clientX - bounds.left) / bounds.width) * current.width,
+        ),
+      ),
+      y: Math.min(
+        current.height,
+        Math.max(
+          0,
+          ((event.clientY - bounds.top) / bounds.height) * current.height,
+        ),
+      ),
+    };
+  };
+
+  const centerCanvasElementsAt = (next, x, y) => {
+    const elements = next.elements || [];
+    if (elements.length === 0) return next;
+    const xs = elements.map((item) => Number(item.x) || 0);
+    const ys = elements.map((item) => Number(item.y) || 0);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    const maxX = Math.max(
+      ...elements.map(
+        (item) => (Number(item.x) || 0) + (Number(item.width) || 0),
+      ),
+    );
+    const maxY = Math.max(
+      ...elements.map(
+        (item) => (Number(item.y) || 0) + (Number(item.height) || 0),
+      ),
+    );
+    const dx = Math.round(x - (minX + maxX) / 2);
+    const dy = Math.round(y - (minY + maxY) / 2);
+    return {
+      ...next,
+      elements: elements.map((item) => ({
+        ...item,
+        x: Math.max(0, (Number(item.x) || 0) + dx),
+        y: Math.max(0, (Number(item.y) || 0) + dy),
+      })),
+    };
+  };
+
+  const handleDropAdd = (action, payload, x, y) => {
+    const current = canvasRef.current;
+    if (action === "library") {
+      handleLibraryPick(payload, x, y);
+      return;
+    }
+    if (action === "material") {
+      handleMaterialPick(payload, x, y);
+      return;
+    }
+    if (typeof action === "string" && action.startsWith("shape-")) {
+      const kind = action.slice("shape-".length);
+      if (isShapeKind(kind)) {
+        setDrawTool(null);
+        setDoodlePen(null);
+        setDoodleDraft(null);
+        setDrawDraft(null);
+        const next = isLineKind(kind)
+          ? addShapeElement(current, kind, {
+              x1: x - 120,
+              y1: y,
+              x2: x + 120,
+              y2: y,
+            })
+          : addShapeElement(current, kind, { width: 220, height: 160 });
+        placeElementAt(next, x, y);
+        return;
+      }
+    }
+    if (typeof action === "string" && action.startsWith("doodle:")) {
+      handleAddSelect(action);
+      return;
+    }
+    if (typeof action === "string" && action.startsWith("bubble-")) {
+      const preset = findBubbleTextPreset(action.slice("bubble-".length));
+      if (preset) {
+        placeElementAt(
+          addTextElement(current, {
+            text: preset.text,
+            ...preset.textStyle,
+            bubble: preset.bubble,
+          }),
+          x,
+          y,
+        );
+        return;
+      }
+    }
+    if (action === "text-h1") {
+      placeElementAt(
+        addTextElement(current, { text: "标题", fontSize: 120, fontWeight: 700 }),
+        x,
+        y,
+      );
+      return;
+    }
+    if (action === "text-h2") {
+      placeElementAt(
+        addTextElement(current, { text: "副标题", fontSize: 70 }),
+        x,
+        y,
+      );
+      return;
+    }
+    if (action === "text-body") {
+      placeElementAt(
+        addTextElement(current, { text: "正文", fontSize: 50 }),
+        x,
+        y,
+      );
+      return;
+    }
+    if (action === "text-warp") {
+      placeElementAt(
+        addTextElement(current, {
+          text: "变形文字",
+          fontSize: 56,
+          warp: { type: "arc", strength: 44 },
+        }),
+        x,
+        y,
+      );
+      return;
+    }
+    if (action === "magnifier") {
+      placeElementAt(addMagnifierElement(current), x, y);
+      return;
+    }
+    if (typeof action === "string" && action.startsWith("collage:")) {
+      const next = addCollageElement(current, action.slice("collage:".length));
+      if (next.elements.length > current.elements.length) {
+        placeElementAt(next, x, y);
+      }
+      return;
+    }
+    if (typeof action === "string" && action.startsWith("table:")) {
+      const next = addTableElement(current, action.slice("table:".length));
+      if (next.elements.length > current.elements.length) {
+        placeElementAt(next, x, y);
+      }
+      return;
+    }
+    handleAddSelect(action);
+  };
+
+  const handleCanvasDragOver = (event) => {
+    const types = Array.from(event?.dataTransfer?.types || []);
+    if (!types.includes(ADD_DRAG_TYPE)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleCanvasDrop = (event) => {
+    const data = readAddDrag(event);
+    if (!data) return;
+    event.preventDefault();
+    const point = canvasDropPoint(event);
+    handleDropAdd(data.action, data.payload, point.x, point.y);
+  };
+
+  const handleLibraryPick = (payload, x, y) => {
     if (payload?.kind === "template") {
       const prepared = applyCatalogCanvas(payload.item || {});
       const template = prepared.template;
@@ -1290,6 +1480,9 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
           name: template.title || "模板",
         });
       }
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        next = centerCanvasElementsAt(next, x, y);
+      }
       mutateCanvas(next);
       setSelectedId(null);
       setBoardSelected(true);
@@ -1299,28 +1492,30 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     }
     const asset = payload?.item;
     if (!asset?.url) return;
-    placeElement(
-      addMediaElement(canvas, {
-        type: asset.fileType === "video" ? "video" : "image",
-        src: asset.url,
-        name: asset.fileName || asset.title || "素材",
-      }),
-    );
+    const next = addMediaElement(canvas, {
+      type: asset.fileType === "video" ? "video" : "image",
+      src: asset.url,
+      name: asset.fileName || asset.title || "素材",
+    });
+    if (Number.isFinite(x) && Number.isFinite(y)) placeElementAt(next, x, y);
+    else placeElement(next);
   };
 
-  const handleMaterialPick = (payload) => {
+  const handleMaterialPick = (payload, x, y) => {
     const pattern = payload?.item;
     if (!pattern?.src) return;
-    placeElement(
-      addMediaElement(canvas, {
-        type: "image",
-        src: pattern.src,
-        name: pattern.name || "图案素材",
-        width: pattern.width,
-        height: pattern.height,
-      }),
-    );
-    setActiveTool("");
+    const next = addMediaElement(canvas, {
+      type: "image",
+      src: pattern.src,
+      name: pattern.name || "图案素材",
+      width: pattern.width,
+      height: pattern.height,
+    });
+    if (Number.isFinite(x) && Number.isFinite(y)) placeElementAt(next, x, y);
+    else {
+      placeElement(next);
+      setActiveTool("");
+    }
   };
 
   const handleExport = async () => {
@@ -1734,6 +1929,8 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
             <div
               className="editor-canvas-area"
               ref={stageRef}
+              onDragOver={handleCanvasDragOver}
+              onDrop={handleCanvasDrop}
               onClick={() => {
                 setSelectedId(null);
                 setBoardSelected(false);

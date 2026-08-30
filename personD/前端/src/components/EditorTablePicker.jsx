@@ -1,5 +1,6 @@
 import { LeftOutlined } from "@ant-design/icons";
 import { TABLE_SECTIONS } from "../tableLayouts.js";
+import { startAddDrag } from "../addDrag.js";
 
 export function TableThumb({ layout }) {
   return (
@@ -43,6 +44,10 @@ export default function EditorTablePicker({ onCancel, onSelect }) {
                   key={layout.id}
                   className="editor-collage-item editor-table-item"
                   aria-label={layout.name}
+                  draggable
+                  onDragStart={(event) =>
+                    startAddDrag(event, `table:${layout.id}`)
+                  }
                   onClick={() => onSelect?.(`table:${layout.id}`)}
                 >
                   <TableThumb layout={layout} />

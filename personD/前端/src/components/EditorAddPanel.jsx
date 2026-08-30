@@ -4,6 +4,7 @@ import { MEDIA_ACCEPT } from "../mediaFile.js";
 import EditorCollagePicker from "./EditorCollagePicker.jsx";
 import EditorTablePicker from "./EditorTablePicker.jsx";
 import EditorDoodlePicker from "./EditorDoodlePicker.jsx";
+import { startAddDrag } from "../addDrag.js";
 
 const MEDIA_ITEMS = [
   { id: "local-upload", label: "本地上传", icon: "upload-photo" },
@@ -342,6 +343,8 @@ export default function EditorAddPanel({
                   key={item.id}
                   className={`editor-add-text-item is-${item.id}`}
                   aria-label={`${item.sample} ${item.caption}`}
+                  draggable
+                  onDragStart={(event) => startAddDrag(event, `text-${item.id}`)}
                   onClick={() => onSelect(`text-${item.id}`)}
                 >
                   <strong>{item.sample}</strong>
@@ -366,6 +369,12 @@ export default function EditorAddPanel({
                     className={`editor-add-shape ${activeShape === item.id ? "is-active" : ""}`}
                     aria-label={item.label}
                     aria-pressed={activeShape === item.id}
+                    draggable={item.id !== "more-shape"}
+                    onDragStart={
+                      item.id !== "more-shape"
+                        ? (event) => startAddDrag(event, `shape-${item.id}`)
+                        : undefined
+                    }
                     onClick={() => onSelect(`shape-${item.id}`)}
                   >
                     <ShapeIcon id={item.id} />
@@ -413,6 +422,12 @@ export default function EditorAddPanel({
                   key={item.id}
                   className="editor-add-card is-component"
                   aria-label={item.label}
+                  draggable={item.id === "magnifier"}
+                  onDragStart={
+                    item.id === "magnifier"
+                      ? (event) => startAddDrag(event, "magnifier")
+                      : undefined
+                  }
                   onClick={() => {
                     if (item.id === "collage") {
                       setView("collage");

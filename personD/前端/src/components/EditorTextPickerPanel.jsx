@@ -6,6 +6,7 @@ import { TEXT_PRESETS } from "./EditorAddPanel.jsx";
 import { BUBBLE_TEXT_SECTIONS } from "../bubbleText.js";
 import CanvasTextCopy from "./CanvasTextCopy.jsx";
 import TextBubble from "./TextBubble.jsx";
+import { startAddDrag } from "../addDrag.js";
 
 export default function EditorTextPickerPanel({ open, onClose, onPick }) {
   return (
@@ -33,6 +34,8 @@ export default function EditorTextPickerPanel({ open, onClose, onPick }) {
                 type="button"
                 key={item.id}
                 className={`editor-add-text-item is-${item.id}`}
+                draggable
+                onDragStart={(event) => startAddDrag(event, `text-${item.id}`)}
                 onClick={() => onPick?.(`text-${item.id}`)}
               >
                 <strong>{item.sample}</strong>
@@ -54,6 +57,10 @@ export default function EditorTextPickerPanel({ open, onClose, onPick }) {
                   key={preset.id}
                   className="editor-add-text-item is-bubble"
                   aria-label={preset.label}
+                  draggable
+                  onDragStart={(event) =>
+                    startAddDrag(event, `bubble-${preset.id}`)
+                  }
                   onClick={() => onPick?.(`bubble-${preset.id}`)}
                 >
                   <strong className="editor-add-bubble-sample">

@@ -514,6 +514,14 @@
   min-height: 92px;
 }
 
+.editor-add-card[draggable="true"],
+.editor-add-text-item[draggable="true"],
+.editor-add-shape[draggable="true"],
+.editor-collage-item[draggable="true"],
+.editor-doodle-pen[draggable="true"] {
+  cursor: grab;
+}
+
 .editor-add-new {
   position: absolute;
   top: 6px;

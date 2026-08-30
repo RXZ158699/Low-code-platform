@@ -1,5 +1,6 @@
 import { LeftOutlined } from "@ant-design/icons";
 import { COLLAGE_SECTIONS } from "../collageLayouts.js";
+import { startAddDrag } from "../addDrag.js";
 
 export function CollageThumb({ layout }) {
   const count = layout.cells.length;
@@ -55,6 +56,10 @@ export default function EditorCollagePicker({ onCancel, onSelect }) {
                   key={layout.id}
                   className="editor-collage-item"
                   aria-label={`${section.title}布局${index + 1}`}
+                  draggable
+                  onDragStart={(event) =>
+                    startAddDrag(event, `collage:${layout.id}`)
+                  }
                   onClick={() => onSelect?.(`collage:${layout.id}`)}
                 >
                   <CollageThumb layout={layout} />

@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { App as AntdApp } from "antd";
@@ -9,6 +16,7 @@ import { listAssets, uploadAsset } from "../api/assets.js";
 import { listTemplates } from "../api/templates.js";
 import { canvasPreviewBlob } from "../canvasPreview.js";
 import { MATERIAL_CATEGORIES } from "../data/materialCatalog.js";
+import { ADD_DRAG_TYPE } from "../addDrag.js";
 
 vi.mock("../api/works.js", () => ({
   getWork: vi.fn(),
@@ -49,6 +57,16 @@ function renderEditor() {
       </AntdApp>
     </MemoryRouter>,
   );
+}
+
+function dropOnCanvas(area, dataTransfer, clientX, clientY) {
+  const event = new Event("drop", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
+  Object.defineProperty(event, "clientX", { value: clientX });
+  Object.defineProperty(event, "clientY", { value: clientY });
+  act(() => {
+    area.dispatchEvent(event);
+  });
 }
 
 describe("WorkEditorPage", () => {
@@ -996,6 +1014,112 @@ describe("WorkEditorPage", () => {
     expect(
       screen.queryByRole("dialog", { name: "素材" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("drags a material card onto the canvas and places it at the drop point", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "素材" }));
+    const pattern = MATERIAL_CATEGORIES[0].items[0];
+    const card = screen.getByRole("button", { name: pattern.name });
+    expect(card).toHaveAttribute("draggable", "true");
+
+    const dataTransfer = {
+      setData: vi.fn(),
+      getData: (type) =>
+        type === ADD_DRAG_TYPE
+          ? JSON.stringify({
+              action: "material",
+              payload: { item: pattern },
+            })
+          : "",
+      effectAllowed: "",
+      dropEffect: "",
+    };
+    const frame = document.querySelector(".editor-stage-frame");
+    frame.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
+    const area = document.querySelector(".editor-canvas-area");
+
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.dragOver(area, { dataTransfer });
+    dropOnCanvas(area, dataTransfer, 500, 400);
+
+    const media = document.querySelector(".editor-el.is-media");
+    expect(media).not.toBeNull();
+    expect(media).toHaveClass("is-selected");
+    expect(
+      Number.parseFloat(media.style.left) +
+        Number.parseFloat(media.style.width) / 2,
+    ).toBeCloseTo(500, 0);
+    expect(
+      Number.parseFloat(media.style.top) +
+        Number.parseFloat(media.style.height) / 2,
+    ).toBeCloseTo(400, 0);
+    expect(
+      screen.queryByRole("dialog", { name: "素材" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("drags a text preset onto the canvas and places it at the drop point", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+
+    await user.click(screen.getByRole("button", { name: "添加" }));
+    const card = screen.getByRole("button", { name: /H1\s*标题/ });
+    const dataTransfer = {
+      setData: vi.fn(),
+      getData: (type) =>
+        type === ADD_DRAG_TYPE
+          ? JSON.stringify({ action: "text-h1" })
+          : "",
+      effectAllowed: "",
+      dropEffect: "",
+    };
+    const frame = document.querySelector(".editor-stage-frame");
+    frame.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON() {},
+    });
+    const area = document.querySelector(".editor-canvas-area");
+
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.dragOver(area, { dataTransfer });
+    dropOnCanvas(area, dataTransfer, 300, 200);
+
+    const text = document.querySelector(
+      ".editor-artboard .editor-el.is-text",
+    );
+    expect(text).not.toBeNull();
+    expect(text).toHaveClass("is-selected");
+    expect(text.textContent).toContain("标题");
+    expect(
+      Number.parseFloat(text.style.left) +
+        Number.parseFloat(text.style.width) / 2,
+    ).toBeCloseTo(300, 0);
+    expect(
+      Number.parseFloat(text.style.top) +
+        Number.parseFloat(text.style.height) / 2,
+    ).toBeCloseTo(200, 0);
   });
 
   it("closes the material panel from the collapse handle", async () => {

@@ -1,5 +1,6 @@
 import { LeftOutlined } from "@ant-design/icons";
 import { MATERIAL_CATEGORIES } from "../data/materialCatalog.js";
+import { startAddDrag } from "../addDrag.js";
 
 export default function EditorMaterialPanel({ open, onClose, onPick }) {
   return (
@@ -23,6 +24,8 @@ export default function EditorMaterialPanel({ open, onClose, onPick }) {
                   key={item.id}
                   className="editor-add-card"
                   aria-label={item.name}
+                  draggable
+                  onDragStart={(event) => startAddDrag(event, "material", { item })}
                   onClick={() => onPick?.({ item })}
                 >
                   <img src={item.src} alt="" draggable={false} />
