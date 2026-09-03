@@ -1,6 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button, Spin, Tag, App as AntdApp } from "antd";
-import { StarFilled, StarOutlined } from "@ant-design/icons";
+import {
+  LeftOutlined,
+  RightOutlined,
+  StarFilled,
+  StarOutlined,
+} from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import logoDot from "../assets/icons/logo-dot.svg";
 import { TEMPLATE_CATEGORIES } from "../config/templateCategories.js";
@@ -28,6 +39,8 @@ const PAGE_SIZE = 36;
 const HOT_LIMIT = 20;
 const KEYWORD_SIZE = 12;
 const COLUMN_COUNT = 4;
+const ROW_FILL_COUNT = 4;
+const ROW_GAP = 20;
 
 function asRecords(data) {
   if (Array.isArray(data)) return data;
@@ -85,6 +98,55 @@ function isLocalTemplate(template) {
   return String(template.id).startsWith("local-");
 }
 
+const ROW_FILLER_POOL = {
+  "主题海报": TEMPLATE_CATALOG.filter(
+    (template) =>
+      template.tags.includes("商务") || template.tags.includes("科技"),
+  ),
+  "活动营销": TEMPLATE_CATALOG.filter((template) =>
+    template.tags.includes("促销"),
+  ),
+  "小红书种草": TEMPLATE_CATALOG.filter(
+    (template) =>
+      template.tags.includes("美食") || template.tags.includes("旅行"),
+  ),
+  "公众号封面": TEMPLATE_CATALOG.filter(
+    (template) =>
+      template.tags.includes("科技") || template.tags.includes("旅行"),
+  ),
+  "邀请函": TEMPLATE_CATALOG.filter((template) =>
+    template.tags.includes("婚礼"),
+  ),
+  "电商海报": TEMPLATE_CATALOG.filter(
+    (template) =>
+      template.tags.includes("促销") || template.tags.includes("美食"),
+  ),
+  "节日祝福": TEMPLATE_CATALOG.filter((template) =>
+    template.tags.includes("节日"),
+  ),
+};
+
+function fillGroupItems(group) {
+  const items = [...group.items];
+  if (items.length >= ROW_FILL_COUNT) return items;
+  let pool = ROW_FILLER_POOL[group.name] || TEMPLATE_CATALOG;
+  if (pool.length === 0) pool = TEMPLATE_CATALOG;
+  const missing = ROW_FILL_COUNT - items.length;
+  for (let index = 0; index < missing; index += 1) {
+    const source = pool[index % pool.length];
+    const filled = {
+      ...source,
+      id: `local-fill-${group.name}-${index}-${source.id}`,
+      category: group.name,
+      title: `${group.name}灵感示例 ${String(index + 1).padStart(2, "0")}`,
+      authorNickname: "一稿",
+    };
+    filled.jsonData = canvasJsonForLocalTemplate(filled);
+    items.push(filled);
+  }
+  return items;
+}
+
 function enrichWithCatalog(template) {
   const match = TEMPLATE_CATALOG.find(
     (item) => item.title === template.title,
@@ -117,6 +179,37 @@ export function canvasJsonForLocalTemplate(template) {
   const accent = template.accent || "#ffffff";
   const kicker = template.kicker || "YIGAO";
   const tags = (template.tags || []).slice(0, 2).join(" · ");
+
+  if (template.coverImageUrl) {
+    canvas.background = "#111827";
+    canvas.elements = [
+      {
+        id: "template-image",
+        type: "image",
+        src: template.coverImageUrl,
+        name: template.title || "模板图片",
+        x: 0,
+        y: 0,
+        width,
+        height,
+      },
+      seedTextElement({
+        id: "template-title",
+        text: template.title,
+        x: Math.round(width * 0.08),
+        y: Math.round(height * 0.4),
+        width: Math.round(width * 0.84),
+        fontSize: Math.max(30, Math.round(width * 0.058)),
+        fontWeight: 900,
+        color: "#ffffff",
+        lineHeight: 1.18,
+        height: Math.round(Math.max(30, Math.round(width * 0.058)) * 2.4),
+        boxBackground: "#000000",
+        boxBackgroundOpacity: 38,
+      }),
+    ];
+    return stringifyCanvas(canvas);
+  }
 
   canvas.elements = [
     {
@@ -225,6 +318,12 @@ function seedTextElement({
 }
 
 export function applyCatalogCanvas(template) {
+  if (isLocalTemplate(template)) {
+    return {
+      template: { ...template, jsonData: canvasJsonForLocalTemplate(template) },
+      fromCatalog: true,
+    };
+  }
   const match = TEMPLATE_CATALOG.find(
     (item) => item.title === template?.title,
   );
@@ -324,6 +423,146 @@ export async function loadHomepageTemplates({ category, keyword } = {}) {
   }
 }
 
+function TemplateCard({
+  template,
+  onOpen,
+  favorited,
+  favoriteLoading,
+  onToggleFavorite,
+  using,
+  onUse,
+}) {
+  const showFavorite = !isLocalTemplate(template);
+  return (
+    <div className="template-card" onClick={onOpen}>
+      <TemplateCover template={template} />
+      <div className="template-overlay">
+        <div className="template-card-head">
+          <img src={logoDot} alt="" />
+          <span className="template-logo-text">
+            {template.authorNickname || "一稿"}
+          </span>
+        </div>
+        {template.coverImageUrl ? (
+          <div className="template-card-body">
+            <p className="template-title-main">
+              {template.category || "热门"}
+            </p>
+            <p className="template-title-en">
+              {(template.tags || []).slice(0, 2).join(" · ") || "模板"}
+            </p>
+          </div>
+        ) : null}
+        <div className="template-card-foot">
+          <span className="template-name">{template.title}</span>
+          {showFavorite ? (
+            <Button
+              size="small"
+              className={`favorite-btn ${favorited ? "is-favorited" : ""}`}
+              icon={favorited ? <StarFilled /> : <StarOutlined />}
+              loading={favoriteLoading}
+              aria-label={`${favorited ? "取消收藏" : "收藏"} ${template.title}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleFavorite();
+              }}
+            />
+          ) : null}
+          <Button
+            size="small"
+            className="use-btn"
+            loading={using}
+            onClick={(event) => {
+              event.stopPropagation();
+              onUse();
+            }}
+          >
+            使用
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategoryTemplateRow({ name, children }) {
+  const rowRef = useRef(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+  const hasOverflow = children?.length > ROW_FILL_COUNT;
+
+  const updateArrows = useCallback(() => {
+    const element = rowRef.current;
+    if (!element) return;
+    setCanLeft(element.scrollLeft > 2);
+    setCanRight(
+      element.scrollLeft + element.clientWidth < element.scrollWidth - 2,
+    );
+  }, []);
+
+  useEffect(() => {
+    const element = rowRef.current;
+    if (!element) return;
+    updateArrows();
+    element.addEventListener("scroll", updateArrows, { passive: true });
+    let observer;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(updateArrows);
+      observer.observe(element);
+    }
+    return () => {
+      element.removeEventListener("scroll", updateArrows);
+      if (observer) observer.disconnect();
+    };
+  }, [updateArrows]);
+
+  const scrollByPage = (direction) => {
+    const element = rowRef.current;
+    if (!element) return;
+    const step = Math.max(element.clientWidth - ROW_GAP, 260);
+    if (typeof element.scrollBy === "function") {
+      element.scrollBy({ left: direction * step, behavior: "smooth" });
+    } else {
+      element.scrollLeft += direction * step;
+    }
+  };
+
+  return (
+    <section className="template-group">
+      <h3 className="template-group-title">{name}</h3>
+      <div className="template-row-wrap">
+        {hasOverflow ? (
+          <button
+            type="button"
+            className={`template-row-arrow is-left ${
+              canLeft ? "" : "is-disabled"
+            }`}
+            onClick={() => scrollByPage(-1)}
+            aria-label={`${name}向左滑动`}
+          >
+            <LeftOutlined />
+          </button>
+        ) : null}
+        <div className="template-row" ref={rowRef}>
+          {children}
+        </div>
+        {hasOverflow ? (
+          <button
+            type="button"
+            className={`template-row-arrow is-right ${
+              canRight ? "" : "is-disabled"
+            }`}
+            onClick={() => scrollByPage(1)}
+            aria-label={`${name}向右滑动`}
+          >
+            <RightOutlined />
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export default function TemplateShowcase({
   keyword = "",
   category,
@@ -383,6 +622,20 @@ export default function TemplateShowcase({
     });
     return result;
   }, [templates]);
+
+  const groupedRows = useMemo(() => {
+    if (keyword) return [];
+    const groups = new Map();
+    templates.forEach((template) => {
+      const categoryName = template.category || "热门";
+      if (!groups.has(categoryName)) groups.set(categoryName, []);
+      groups.get(categoryName).push(template);
+    });
+    return Array.from(groups.entries()).map(([name, items]) => ({
+      name,
+      items,
+    }));
+  }, [templates, keyword]);
 
   const handleCategoryChange = (key) => {
     if (onCategoryChange) onCategoryChange(key);
@@ -506,77 +759,45 @@ export default function TemplateShowcase({
         ) : templates.length === 0 && !loading ? (
           <div className="template-status">暂无模板，换个分类或关键词试试</div>
         ) : (
-          <div className="template-waterfall">
-            {columns.map((column, columnIndex) => (
-              <div className="template-column" key={columnIndex}>
-                {column.map((template) => (
-                  <div
-                    className="template-card"
-                    key={template.id}
-                    style={{ aspectRatio: template.ratio || "3 / 4" }}
-                    onClick={() => openDetail(template)}
-                  >
-                    <TemplateCover template={template} />
-                    <div className="template-overlay">
-                      <div className="template-card-head">
-                        <img src={logoDot} alt="" />
-                        <span className="template-logo-text">
-                          {template.authorNickname || "一稿"}
-                        </span>
-                      </div>
-                      {template.coverImageUrl ? (
-                        <div className="template-card-body">
-                          <p className="template-title-main">
-                            {template.category || "热门"}
-                          </p>
-                          <p className="template-title-en">
-                            {(template.tags || []).slice(0, 2).join(" · ") || "模板"}
-                          </p>
-                        </div>
-                      ) : null}
-                      <div className="template-card-foot">
-                        <span className="template-name">{template.title}</span>
-                        {!isLocalTemplate(template) ? (
-                          <Button
-                            size="small"
-                            className={`favorite-btn ${
-                              isTemplateFavorited(template) ? "is-favorited" : ""
-                            }`}
-                            icon={
-                              isTemplateFavorited(template) ? (
-                                <StarFilled />
-                              ) : (
-                                <StarOutlined />
-                              )
-                            }
-                            loading={favoriteLoadingId === String(template.id)}
-                            aria-label={`${
-                              isTemplateFavorited(template) ? "取消收藏" : "收藏"
-                            } ${template.title}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleToggleFavorite(template);
-                            }}
-                          />
-                        ) : null}
-                        <Button
-                          size="small"
-                          className="use-btn"
-                          loading={usingId === template.id}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleUse(template);
-                          }}
-                        >
-                          使用
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
+          groupedRows.length > 0 ? (
+            <div className="template-grouped">
+              {groupedRows.map((group) => (
+                <CategoryTemplateRow name={group.name} key={group.name}>
+                  {fillGroupItems(group).map((template) => (
+                    <TemplateCard
+                      key={template.id}
+                      template={template}
+                      onOpen={() => openDetail(template)}
+                      favorited={isTemplateFavorited(template)}
+                      favoriteLoading={favoriteLoadingId === String(template.id)}
+                      onToggleFavorite={() => handleToggleFavorite(template)}
+                      using={usingId === template.id}
+                      onUse={() => handleUse(template)}
+                    />
+                  ))}
+                </CategoryTemplateRow>
+              ))}
+            </div>
+          ) : (
+            <div className="template-waterfall">
+              {columns.map((column, columnIndex) => (
+                <div className="template-column" key={columnIndex}>
+                  {column.map((template) => (
+                    <TemplateCard
+                      key={template.id}
+                      template={template}
+                      onOpen={() => openDetail(template)}
+                      favorited={isTemplateFavorited(template)}
+                      favoriteLoading={favoriteLoadingId === String(template.id)}
+                      onToggleFavorite={() => handleToggleFavorite(template)}
+                      using={usingId === template.id}
+                      onUse={() => handleUse(template)}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          )
         )}
       </Spin>
       <TemplateDetailModal

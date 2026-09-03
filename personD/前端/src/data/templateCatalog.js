@@ -1,42 +1,7 @@
+import { PEXELS_TEMPLATE_CATALOG } from "./pexelsTemplateCatalog.js";
+
 /*
- * 内置示例模板目录：后端数据不足或后端未启动时用于撑起首页瀑布流。
- * ratio 控制卡片宽高比，palette/accent 用于生成 CSS 模板封面。
+ * 首页模板目录：使用 Playwright 从 Pexels 抓取的公开图片素材生成。
+ * 每个模板都带真实封面图，点击使用时会生成可编辑的 canvasJson。
  */
-export const TEMPLATE_CATALOG = [
-  { id: "local-poster-1", title: "夏日冰爽饮品节", category: "主题海报", tags: ["海报", "夏天"], ratio: "3 / 4", palette: ["#0e7490", "#22d3ee"], accent: "#a5f3fc", kicker: "SUMMER POP", hot: true },
-  { id: "local-poster-2", title: "复古胶片音乐派对", category: "主题海报", tags: ["海报", "复古"], ratio: "1 / 1", palette: ["#7c2d12", "#fb923c"], accent: "#fef3c7", kicker: "VINYL NIGHT", hot: true },
-  { id: "local-poster-3", title: "城市漫游摄影展", category: "主题海报", tags: ["海报", "展览"], ratio: "9 / 16", palette: ["#1e293b", "#64748b"], accent: "#e2e8f0", kicker: "CITY WALK" },
-  { id: "local-poster-4", title: "绿色有机农场日", category: "主题海报", tags: ["海报", "自然"], ratio: "3 / 4", palette: ["#14532d", "#4ade80"], accent: "#dcfce7", kicker: "FARM DAY" },
-  { id: "local-poster-5", title: "极简几何艺术展", category: "主题海报", tags: ["海报", "极简"], ratio: "1 / 1", palette: ["#312e81", "#818cf8"], accent: "#e0e7ff", kicker: "FORM & SPACE", hot: true },
-  { id: "local-poster-6", title: "未来科技发布会", category: "主题海报", tags: ["海报", "科技"], ratio: "16 / 9", palette: ["#0c4a6e", "#38bdf8"], accent: "#e0f2fe", kicker: "TECH TOMORROW" },
-  { id: "local-poster-7", title: "校园社团招新", category: "主题海报", tags: ["海报", "校园"], ratio: "3 / 4", palette: ["#4a044e", "#e879f9"], accent: "#fae8ff", kicker: "CAMPUS CLUB" },
-  { id: "local-poster-8", title: "电影之夜露天放映", category: "主题海报", tags: ["海报", "电影"], ratio: "4 / 3", palette: ["#111827", "#9ca3af"], accent: "#fbbf24", kicker: "OPEN-AIR CINEMA" },
-  { id: "local-promo-1", title: "双11狂欢购物节", category: "活动营销", tags: ["大促", "购物"], ratio: "3 / 4", palette: ["#991b1b", "#f87171"], accent: "#fee2e2", kicker: "DOUBLE 11", hot: true },
-  { id: "local-promo-2", title: "618年中大促", category: "活动营销", tags: ["大促", "年中"], ratio: "3 / 4", palette: ["#be123c", "#fb7185"], accent: "#ffe4e6", kicker: "MID-YEAR SALE", hot: true },
-  { id: "local-promo-3", title: "新店开业庆典", category: "活动营销", tags: ["开业", "庆典"], ratio: "1 / 1", palette: ["#b45309", "#fbbf24"], accent: "#fef3c7", kicker: "GRAND OPENING", hot: true },
-  { id: "local-promo-4", title: "会员日限时秒杀", category: "活动营销", tags: ["秒杀", "会员"], ratio: "9 / 16", palette: ["#1e3a8a", "#60a5fa"], accent: "#dbeafe", kicker: "FLASH SALE", hot: true },
-  { id: "local-promo-5", title: "毕业季感恩回馈", category: "活动营销", tags: ["毕业", "回馈"], ratio: "3 / 4", palette: ["#065f46", "#34d399"], accent: "#d1fae5", kicker: "GRADUATION" },
-  { id: "local-promo-6", title: "周年庆抽奖活动", category: "活动营销", tags: ["周年庆", "抽奖"], ratio: "4 / 3", palette: ["#6d28d9", "#c084fc"], accent: "#ede9fe", kicker: "ANNIVERSARY" },
-  { id: "local-xhs-1", title: "旅行穿搭笔记封面", category: "小红书种草", tags: ["穿搭", "旅行"], ratio: "3 / 4", palette: ["#9d174d", "#f472b6"], accent: "#fdf2f8", kicker: "TRAVEL OOTD", hot: true },
-  { id: "local-xhs-2", title: "美食探店测评", category: "小红书种草", tags: ["美食", "探店"], ratio: "3 / 4", palette: ["#7c2d12", "#f59e0b"], accent: "#fffbeb", kicker: "FOOD HUNT" },
-  { id: "local-xhs-3", title: "护肤好物分享", category: "小红书种草", tags: ["护肤", "好物"], ratio: "1 / 1", palette: ["#831843", "#f0abfc"], accent: "#fae8ff", kicker: "SKINCARE" },
-  { id: "local-xhs-4", title: "自习室打卡日常", category: "小红书种草", tags: ["学习", "打卡"], ratio: "9 / 16", palette: ["#134e4a", "#2dd4bf"], accent: "#ccfbf1", kicker: "STUDY LOG", hot: true },
-  { id: "local-xhs-5", title: "猫咪生活图鉴", category: "小红书种草", tags: ["宠物", "日常"], ratio: "4 / 3", palette: ["#57534e", "#d6d3d1"], accent: "#ffedd5", kicker: "CAT DIARY", hot: true },
-  { id: "local-xhs-6", title: "周末露营攻略", category: "小红书种草", tags: ["露营", "攻略"], ratio: "3 / 4", palette: ["#365314", "#a3e635"], accent: "#f7fee7", kicker: "CAMPING 101" },
-  { id: "local-gzh-1", title: "每日新闻早报", category: "公众号封面", tags: ["新闻", "早报"], ratio: "16 / 9", palette: ["#0f172a", "#475569"], accent: "#f8fafc", kicker: "MORNING NEWS", hot: true },
-  { id: "local-gzh-2", title: "深度行业观察", category: "公众号封面", tags: ["行业", "深度"], ratio: "4 / 3", palette: ["#0c4a6e", "#0284c7"], accent: "#e0f2fe", kicker: "INSIGHT" },
-  { id: "local-gzh-3", title: "读书会周荐", category: "公众号封面", tags: ["读书", "推荐"], ratio: "16 / 9", palette: ["#78350f", "#f59e0b"], accent: "#fef3c7", kicker: "BOOK CLUB" },
-  { id: "local-gzh-4", title: "健康生活周刊", category: "公众号封面", tags: ["健康", "生活"], ratio: "4 / 3", palette: ["#14532d", "#22c55e"], accent: "#dcfce7", kicker: "WELLNESS", hot: true },
-  { id: "local-gzh-5", title: "职场干货分享", category: "公众号封面", tags: ["职场", "干货"], ratio: "16 / 9", palette: ["#1e3a8a", "#3b82f6"], accent: "#dbeafe", kicker: "CAREER TIPS" },
-  { id: "local-ecom-1", title: "手机新品主图", category: "电商海报", tags: ["数码", "主图"], ratio: "1 / 1", palette: ["#111827", "#4b5563"], accent: "#60a5fa", kicker: "NEW PHONE", hot: true },
-  { id: "local-ecom-2", title: "化妆品详情海报", category: "电商海报", tags: ["美妆", "详情"], ratio: "3 / 4", palette: ["#9d174d", "#ec4899"], accent: "#fdf2f8", kicker: "BEAUTY" },
-  { id: "local-ecom-3", title: "服饰清仓特卖", category: "电商海报", tags: ["服饰", "清仓"], ratio: "3 / 4", palette: ["#7f1d1d", "#ef4444"], accent: "#fee2e2", kicker: "CLEARANCE", hot: true },
-  { id: "local-ecom-4", title: "生鲜水果主图", category: "电商海报", tags: ["生鲜", "主图"], ratio: "1 / 1", palette: ["#166534", "#4ade80"], accent: "#fef9c3", kicker: "FRESH MARKET" },
-  { id: "local-invite-1", title: "婚礼邀请函", category: "邀请函", tags: ["婚礼", "邀请"], ratio: "3 / 4", palette: ["#7c2d12", "#fcd34d"], accent: "#fff7ed", kicker: "WEDDING", hot: true },
-  { id: "local-invite-2", title: "企业年会邀请", category: "邀请函", tags: ["年会", "企业"], ratio: "4 / 3", palette: ["#1e1b4b", "#818cf8"], accent: "#e0e7ff", kicker: "ANNUAL GALA" },
-  { id: "local-invite-3", title: "生日派对邀请", category: "邀请函", tags: ["生日", "派对"], ratio: "1 / 1", palette: ["#831843", "#fb7185"], accent: "#ffe4e6", kicker: "BIRTHDAY" },
-  { id: "local-festival-1", title: "中秋团圆贺卡", category: "节日祝福", tags: ["中秋", "团圆"], ratio: "3 / 4", palette: ["#7f1d1d", "#fbbf24"], accent: "#fef3c7", kicker: "MID-AUTUMN", hot: true },
-  { id: "local-festival-2", title: "新年开工祝福", category: "节日祝福", tags: ["新年", "开工"], ratio: "16 / 9", palette: ["#991b1b", "#f97316"], accent: "#fff7ed", kicker: "NEW YEAR", hot: true },
-  { id: "local-festival-3", title: "感恩节感谢卡", category: "节日祝福", tags: ["感恩", "祝福"], ratio: "4 / 3", palette: ["#78350f", "#f59e0b"], accent: "#fef3c7", kicker: "THANKS" },
-  { id: "local-festival-4", title: "春节红包封面", category: "节日祝福", tags: ["春节", "红包"], ratio: "1 / 1", palette: ["#881337", "#fb7185"], accent: "#ffe4e6", kicker: "RED PACKET", hot: true },
-];
+export const TEMPLATE_CATALOG = PEXELS_TEMPLATE_CATALOG;

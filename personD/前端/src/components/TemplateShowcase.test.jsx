@@ -20,6 +20,16 @@ import {
 } from "./TemplateShowcase.jsx";
 import { TEMPLATE_CATALOG } from "../data/templateCatalog.js";
 
+const FIRST_BUSINESS = TEMPLATE_CATALOG.find((template) =>
+  template.tags.includes("商务"),
+);
+const FIRST_FOOD = TEMPLATE_CATALOG.find((template) =>
+  template.tags.includes("美食"),
+);
+const FIRST_SALE = TEMPLATE_CATALOG.find((template) =>
+  template.tags.includes("促销"),
+);
+
 vi.mock("../api/templates.js", () => ({
   listTemplates: vi.fn(),
   listHotTemplates: vi.fn(),
@@ -123,10 +133,10 @@ describe("TemplateShowcase", () => {
   it("后端无搜索结果时用内置模板补足", async () => {
     listTemplates.mockResolvedValue({ total: 0, records: [] });
 
-    renderShowcase({ keyword: "露营" });
+    renderShowcase({ keyword: "商务" });
 
     expect(
-      (await screen.findAllByText("周末露营攻略")).length,
+      (await screen.findAllByText(FIRST_BUSINESS.title)).length,
     ).toBeGreaterThan(0);
     expect(screen.getByText(/后端暂无匹配模板/)).toBeInTheDocument();
   });
@@ -137,21 +147,21 @@ describe("TemplateShowcase", () => {
       records: [
         {
           id: 99,
-          title: "夏日冰爽饮品节",
+          title: FIRST_BUSINESS.title,
           category: "主题海报",
-          tags: ["海报", "夏天"],
+          tags: ["商务", "海报"],
         },
       ],
     });
 
-    renderShowcase({ keyword: "夏日" });
+    renderShowcase({ keyword: "商务" });
 
     await waitFor(() => {
       const names = [
         ...document.querySelectorAll(".template-name"),
       ].map((node) => node.textContent);
       expect(
-        names.filter((name) => name === "夏日冰爽饮品节"),
+        names.filter((name) => name === FIRST_BUSINESS.title),
       ).toHaveLength(1);
     });
   });
@@ -159,22 +169,22 @@ describe("TemplateShowcase", () => {
   it("搜索时保留当前分类过滤", async () => {
     listTemplates.mockResolvedValue({ total: 0, records: [] });
 
-    renderShowcase({ keyword: "海报", category: "poster" });
+    renderShowcase({ keyword: "促销", category: "promo" });
 
     await waitFor(() =>
       expect(listTemplates).toHaveBeenCalledWith(
         expect.objectContaining({
-          category: "主题海报",
-          keyword: "海报",
+          category: "活动营销",
+          keyword: "促销",
           page: 1,
           size: 12,
         }),
       ),
     );
     expect(
-      (await screen.findAllByText("夏日冰爽饮品节")).length,
+      (await screen.findAllByText(FIRST_SALE.title)).length,
     ).toBeGreaterThan(0);
-    expect(screen.queryByText("双11狂欢购物节")).not.toBeInTheDocument();
+    expect(screen.queryByText(FIRST_BUSINESS.title)).not.toBeInTheDocument();
   });
 
   it("后端失败时搜索仍展示内置模板", async () => {
@@ -183,15 +193,17 @@ describe("TemplateShowcase", () => {
     renderShowcase({ keyword: "美食" });
 
     expect(
-      (await screen.findAllByText("美食探店测评")).length,
+      (await screen.findAllByText(FIRST_FOOD.title)).length,
     ).toBeGreaterThan(0);
     expect(screen.getByText(/后端暂不可用/)).toBeInTheDocument();
   });
 
   it("searchLocalTemplates 按关键词筛选内置目录", () => {
-    const results = searchLocalTemplates("all", "露营");
+    const results = searchLocalTemplates("all", "商务");
 
-    expect(results.map((template) => template.title)).toContain("周末露营攻略");
+    expect(results.map((template) => template.title)).toContain(
+      FIRST_BUSINESS.title,
+    );
     expect(results.every((template) => template.jsonData)).toBe(true);
   });
 
@@ -201,19 +213,27 @@ describe("TemplateShowcase", () => {
     renderShowcase();
 
     expect(await screen.findByText(/后端暂不可用/)).toBeInTheDocument();
-    expect(await screen.findAllByText("夏日冰爽饮品节")).not.toHaveLength(0);
+    expect(
+      await screen.findAllByText(FIRST_BUSINESS.title),
+    ).not.toHaveLength(0);
   });
 
-  it("后端无数据时用内置示例模板兜底并渲染 4 列", async () => {
+  it("后端无数据时用内置示例模板兜底并按分类分组", async () => {
     listHotTemplates.mockResolvedValue([]);
 
     const view = renderShowcase();
 
-    expect(await screen.findAllByText("夏日冰爽饮品节")).not.toHaveLength(0);
+    expect(
+      await screen.findAllByText(FIRST_BUSINESS.title),
+    ).not.toHaveLength(0);
     expect(screen.getByText(/后端暂无模板/)).toBeInTheDocument();
     expect(
-      view.container.querySelectorAll(".template-column").length,
-    ).toBe(4);
+      view.container.querySelectorAll(".template-group").length,
+    ).toBeGreaterThan(0);
+    expect(view.container.querySelector(".template-row")).not.toBeNull();
+    expect(
+      view.container.querySelector(".template-group-title"),
+    ).toHaveTextContent("主题海报");
   });
 
   it("opens template detail from a card and loads the detail endpoint", async () => {
@@ -296,17 +316,11 @@ describe("TemplateShowcase", () => {
     const canvas = JSON.parse(canvasJsonForLocalTemplate(template));
 
     expect(canvas.elements.map((item) => item.id)).toEqual([
-      "template-deco-circle",
-      "template-deco-rect",
-      "template-kicker",
+      "template-image",
       "template-title",
-      "template-tags",
     ]);
     expect(canvas.elements.find((item) => item.id === "template-title").text).toBe(
       template.title,
-    );
-    expect(canvas.elements.find((item) => item.id === "template-kicker").text).toBe(
-      template.kicker,
     );
 
     const prepared = applyCatalogCanvas({
@@ -315,6 +329,68 @@ describe("TemplateShowcase", () => {
       jsonData: '{"width":1080,"height":1440,"elements":[]}',
     });
     expect(prepared.fromCatalog).toBe(true);
-    expect(JSON.parse(prepared.template.jsonData).elements.length).toBe(5);
+    expect(JSON.parse(prepared.template.jsonData).elements.length).toBe(2);
+  });
+
+  it("分类模板不足一行时补足到 4 张", async () => {
+    listHotTemplates.mockResolvedValue([
+      {
+        id: 1,
+        title: "夏日海报",
+        category: "主题海报",
+        tags: ["海报"],
+        authorNickname: "Alice",
+      },
+    ]);
+
+    const view = renderShowcase();
+
+    await screen.findAllByText("夏日海报");
+    const group = view.container.querySelector(".template-group");
+    expect(group.querySelectorAll(".template-card")).toHaveLength(4);
+  });
+
+  it("分类模板超出单行时显示左右箭头并可滑动", async () => {
+    const user = userEvent.setup();
+    listHotTemplates.mockResolvedValue(
+      Array.from({ length: 6 }, (_, index) => ({
+        id: index + 1,
+        title: `海报 ${index + 1}`,
+        category: "主题海报",
+        tags: ["海报"],
+        authorNickname: "Alice",
+      })),
+    );
+
+    const view = renderShowcase();
+
+    await screen.findAllByText("海报 1");
+    const group = view.container.querySelector(".template-group");
+    const row = group.querySelector(".template-row");
+    expect(group.querySelectorAll(".template-card")).toHaveLength(6);
+    expect(
+      screen.getByRole("button", { name: "主题海报向左滑动" }),
+    ).toBeInTheDocument();
+    const right = screen.getByRole("button", {
+      name: "主题海报向右滑动",
+    });
+
+    Object.defineProperty(row, "clientWidth", {
+      configurable: true,
+      value: 1000,
+    });
+    Object.defineProperty(row, "scrollWidth", {
+      configurable: true,
+      value: 1600,
+    });
+    Object.defineProperty(row, "scrollLeft", {
+      configurable: true,
+      writable: true,
+      value: 0,
+    });
+
+    await user.click(right);
+
+    expect(row.scrollLeft).toBeGreaterThan(0);
   });
 });
