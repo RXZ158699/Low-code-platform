@@ -53,6 +53,7 @@ import {
   MAGNIFIER_MIN_SCALE,
   MAGNIFIER_SIZE,
   MIN_ELEMENT_SIZE,
+  moveElementToIndex,
   moveElementLayer,
   parseCanvas,
   patchTextElement,
@@ -76,6 +77,8 @@ import {
   snapMoveRect,
   snapResizeRect,
   stringifyCanvas,
+  toggleElementLocked,
+  toggleElementVisible,
   TEXT_BOX_MAX_WIDTH,
   textElementStyle,
   textFillPaint,
@@ -694,6 +697,28 @@ describe("canvas helpers", () => {
     expect(moveElementLayer(moved, firstId, "bottom").elements[0].id).toBe(
       firstId,
     );
+  });
+
+  it("moves an element to an exact index", () => {
+    let canvas = addTextElement(createEmptyCanvas(800, 600), { text: "a" });
+    canvas = addTextElement(canvas, { text: "b" });
+    canvas = addTextElement(canvas, { text: "c" });
+    const firstId = canvas.elements[0].id;
+    const next = moveElementToIndex(canvas, firstId, 2);
+    expect(next.elements[2].id).toBe(firstId);
+    expect(moveElementToIndex(canvas, "missing", 2)).toBe(canvas);
+  });
+
+  it("toggles visibility and lock on an element", () => {
+    const canvas = addTextElement(createEmptyCanvas(800, 600));
+    const id = canvas.elements[0].id;
+    const hidden = toggleElementVisible(canvas, id);
+    expect(hidden.elements[0].visible).toBe(false);
+    expect(toggleElementVisible(hidden, id).elements[0].visible).toBe(true);
+
+    const locked = toggleElementLocked(canvas, id);
+    expect(locked.elements[0].locked).toBe(true);
+    expect(toggleElementLocked(locked, id).elements[0].locked).toBe(false);
   });
 
   it("sizes a new text box to its copy and wraps at 1000px", () => {

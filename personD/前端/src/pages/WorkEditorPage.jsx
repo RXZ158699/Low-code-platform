@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Dropdown, Slider, Spin, App as AntdApp } from "antd";
 import {
   AppstoreOutlined,
+  BarsOutlined,
   BlockOutlined,
   CloudOutlined,
   CopyOutlined,
@@ -107,6 +108,7 @@ import CanvasMedia from "../components/CanvasMedia.jsx";
 import CanvasShape from "../components/CanvasShape.jsx";
 import CanvasTable from "../components/CanvasTable.jsx";
 import EditorAddPanel from "../components/EditorAddPanel.jsx";
+import EditorLayersPanel from "../components/EditorLayersPanel.jsx";
 import EditorLibraryPanel from "../components/EditorLibraryPanel.jsx";
 import EditorBackgroundPanel from "../components/EditorBackgroundPanel.jsx";
 import { applyCatalogCanvas } from "../components/TemplateShowcase.jsx";
@@ -134,6 +136,7 @@ const LIBRARY_TOOLS = new Set(["template", "image", "mine"]);
 
 const LEFT_TOOLS = [
   { id: "add", label: "添加", icon: PlusCircleOutlined },
+  { id: "layers", label: "图层", icon: BarsOutlined },
   { id: "template", label: "模板", icon: AppstoreOutlined },
   { id: "material", label: "素材", icon: BlockOutlined },
   { id: "text", label: "文字", icon: FontSizeOutlined },
@@ -895,6 +898,35 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     setTextRange(null);
   };
 
+  const selectLayer = (id) => {
+    setSelectedId(id);
+    setBoardSelected(false);
+    setEditingId(null);
+    setTextRange(null);
+  };
+
+  const duplicateLayer = (id) => {
+    const next = duplicateElement(canvas, id);
+    const created = next.elements[next.elements.length - 1];
+    mutateCanvas(next);
+    if (created) {
+      setSelectedId(created.id);
+      setBoardSelected(false);
+      setEditingId(null);
+      setTextRange(null);
+    }
+  };
+
+  const deleteLayer = (id) => {
+    mutateCanvas(removeElement(canvas, id));
+    if (selectedId === id) {
+      setSelectedId(null);
+      setBoardSelected(true);
+      setEditingId(null);
+      setTextRange(null);
+    }
+  };
+
   const beginCollagePan = (event, item, cellIndex) => {
     if (event.button !== 0 || item.locked) return;
     const cell = item.cells?.[cellIndex];
@@ -1284,6 +1316,12 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
     }
     if (toolId === "material") {
       setActiveTool((current) => (current === "material" ? "" : "material"));
+      return;
+    }
+    if (toolId === "layers") {
+      setActiveTool((current) => (current === "layers" ? "" : "layers"));
+      setEditingId(null);
+      setTextRange(null);
       return;
     }
     if (toolId === "background") {
@@ -1912,6 +1950,17 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
           onLocalFiles={handleLocalFiles}
         />
 
+        <EditorLayersPanel
+          open={activeTool === "layers"}
+          canvas={canvas}
+          selectedId={selectedId}
+          onSelect={selectLayer}
+          onChange={mutateCanvas}
+          onDuplicate={duplicateLayer}
+          onDelete={deleteLayer}
+          onClose={() => setActiveTool("")}
+        />
+
         <EditorTextPickerPanel
           open={activeTool === "text"}
           onClose={() => setActiveTool("")}
@@ -1979,7 +2028,9 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
                       opacity: canvas.backgroundOpacity / 100,
                     }}
                   />
-                  {canvas.elements.map((item) => (
+                  {canvas.elements
+                    .filter((item) => item.visible !== false)
+                    .map((item) => (
                     <div
                       key={item.id}
                       className={`editor-el ${item.type === "text" ? "is-text" : ""} ${getBubbleProps(item) ? "has-bubble" : ""} ${isShapeElement(item) ? "is-shape" : ""} ${isLineKind(shapeKind(item)) ? "is-line" : ""} ${isMediaElement(item) ? "is-media" : ""} ${isCollageElement(item) ? "is-collage" : ""} ${isMagnifierElement(item) ? "is-magnifier" : ""} ${isTableElement(item) ? "is-table" : ""} ${isDoodleElement(item) ? "is-doodle" : ""} ${item.type === "text" && isTextAutoWidth(item) ? "is-auto-width" : ""} ${selectedId === item.id ? "is-selected" : ""} ${editingId === item.id ? "is-editing" : ""} ${item.locked ? "is-locked" : ""}`}

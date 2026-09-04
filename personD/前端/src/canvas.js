@@ -1337,6 +1337,36 @@ export function moveElementLayer(canvas, id, direction) {
   return { ...canvas, elements: next };
 }
 
+export function moveElementToIndex(canvas, id, targetIndex) {
+  const elements = [...canvas.elements];
+  const index = elements.findIndex((item) => item.id === id);
+  if (index < 0) return canvas;
+  const [item] = elements.splice(index, 1);
+  const normalized = Math.max(0, Math.min(targetIndex, elements.length));
+  elements.splice(normalized, 0, item);
+  return { ...canvas, elements };
+}
+
+export function toggleElementVisible(canvas, id) {
+  return {
+    ...canvas,
+    elements: canvas.elements.map((item) =>
+      item.id === id
+        ? { ...item, visible: item.visible === false ? true : false }
+        : item,
+    ),
+  };
+}
+
+export function toggleElementLocked(canvas, id) {
+  return {
+    ...canvas,
+    elements: canvas.elements.map((item) =>
+      item.id === id ? { ...item, locked: !item.locked } : item,
+    ),
+  };
+}
+
 export const TEXT_FONTS = [
   {
     id: "source-han",
