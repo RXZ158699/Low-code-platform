@@ -15,6 +15,7 @@ import { getWork, saveDraft, updateWork, uploadWorkThumbnail } from "../api/work
 import { listAssets, uploadAsset } from "../api/assets.js";
 import { listTemplates } from "../api/templates.js";
 import { canvasPreviewBlob } from "../canvasPreview.js";
+import { consumeExport } from "../api/exports.js";
 import { MATERIAL_CATEGORIES } from "../data/materialCatalog.js";
 import { ADD_DRAG_TYPE } from "../addDrag.js";
 
@@ -37,6 +38,10 @@ vi.mock("../api/templates.js", () => ({
 
 vi.mock("../canvasPreview.js", () => ({
   canvasPreviewBlob: vi.fn(),
+}));
+
+vi.mock("../api/exports.js", () => ({
+  consumeExport: vi.fn(),
 }));
 
 vi.mock("../mediaFile.js", async (importOriginal) => {
@@ -93,6 +98,7 @@ describe("WorkEditorPage", () => {
     canvasPreviewBlob.mockResolvedValue(
       new Blob(["png"], { type: "image/png" }),
     );
+    consumeExport.mockResolvedValue(null);
     listTemplates.mockResolvedValue({ records: [] });
     listAssets.mockResolvedValue({ records: [] });
   });
@@ -1756,6 +1762,17 @@ describe("WorkEditorPage", () => {
     globalThis.HTMLAnchorElement.prototype.click = originalClick;
     createObjectURL.mockRestore();
     revokeObjectURL.mockRestore();
+  });
+
+  it("blocks export and opens membership modal when quota is reached", async () => {
+    const user = userEvent.setup();
+    consumeExport.mockRejectedValue({ code: 42900, message: "今日导出次数已用完" });
+
+    renderEditor();
+    await screen.findByDisplayValue("未命名作品");
+    await user.click(screen.getByRole("button", { name: /导\s*出/ }));
+
+    await waitFor(() => expect(canvasPreviewBlob).not.toHaveBeenCalled());
   });
 
   it("shows a red snap guide and snaps a moved element to the canvas border", async () => {

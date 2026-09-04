@@ -24,9 +24,9 @@ export function isLoggedIn(user) {
 
 export const PAGE_ACCESS = {
   home: [null, ROLE_USER, ROLE_ADMIN],
-  discover: [ROLE_ADMIN],
+  discover: [ROLE_USER, ROLE_ADMIN],
   mine: [ROLE_USER, ROLE_ADMIN],
-  editor: [ROLE_ADMIN],
+  editor: [ROLE_USER, ROLE_ADMIN],
   share: [ROLE_USER, ROLE_ADMIN],
   login: [null],
 };

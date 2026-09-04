@@ -73,12 +73,12 @@ describe("FeaturesRow", () => {
     expect(screen.getByRole("dialog", { name: "创建设计" })).toBeInTheDocument();
   });
 
-  it("普通用户隐藏 更多/图片创作", () => {
+  it("普通用户显示 更多/图片创作", () => {
     localStorage.setItem("dp.token", "token");
     localStorage.setItem("dp.user", JSON.stringify({ id: 2, role: 2 }));
     renderWithProvider(<FeaturesRow />);
-    expect(screen.queryByText("更多")).not.toBeInTheDocument();
-    expect(screen.queryByText("图片创作")).not.toBeInTheDocument();
+    expect(screen.getByText("更多")).toBeInTheDocument();
+    expect(screen.getByText("图片创作")).toBeInTheDocument();
   });
 
   it("管理员显示 更多/图片创作", () => {

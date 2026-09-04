@@ -6,6 +6,7 @@ import {
   favoriteTemplate,
   getTemplate,
   listHotTemplates,
+  listMyTemplates,
   unfavoriteTemplate,
   updateTemplate,
   uploadTemplateCover,
@@ -25,6 +26,12 @@ import {
   updateTeam,
 } from "./teams.js";
 import { createShare, deleteShare, getShare, listWorkShares, probeShareEdit, updateShare } from "./shares.js";
+import {
+  createMembershipOrder,
+  getMembershipOrder,
+  getMembershipPlans,
+} from "./membership.js";
+import { consumeExport } from "./exports.js";
 
 function jsonResponse(payload) {
   return Promise.resolve({
@@ -142,6 +149,37 @@ describe("api modules", () => {
     vi.stubGlobal("fetch", fetchMock);
     await listHotTemplates(8);
     expect(fetchMock.mock.calls[0][0]).toBe("/api/templates/hot?limit=8");
+  });
+
+  it("requests membership plans, orders and export quota", async () => {
+    const fetchMock = vi.fn(() => jsonResponse({ code: 0, data: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getMembershipPlans();
+    await createMembershipOrder("BASIC");
+    await getMembershipOrder("M1");
+    await consumeExport();
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/membership/plans");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/membership/orders");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      planType: "BASIC",
+    });
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/membership/orders/M1");
+    expect(fetchMock.mock.calls[3][0]).toBe("/api/exports/consume");
+  });
+
+  it("requests my templates with mine scope", async () => {
+    const fetchMock = vi.fn(() =>
+      jsonResponse({ code: 0, data: { total: 0, records: [] } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await listMyTemplates({ page: 2, size: 10 });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "/api/templates?mine=true&page=2&size=10",
+    );
   });
 
   it("loads asset category aggregation", async () => {

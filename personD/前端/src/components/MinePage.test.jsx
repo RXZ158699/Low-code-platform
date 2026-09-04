@@ -13,6 +13,7 @@ import { fetchMe } from "../api/auth.js";
 import { openLoginTab } from "../auth/openLoginTab.js";
 import { inviteMember, listTeams, listMembers, removeMember, updateMemberRole, getTeam, listTeamWorks, listTeamAssets, updateTeam } from "../api/teams.js";
 import { createShare, listWorkShares, deleteShare } from "../api/shares.js";
+import { consumeExport } from "../api/exports.js";
 
 vi.mock("../api/works.js", () => ({
   listWorks: vi.fn(),
@@ -63,6 +64,10 @@ vi.mock("../api/shares.js", () => ({
   sharePageUrl: vi.fn((token) => `http://localhost/share/${token}`),
   listWorkShares: vi.fn(() => Promise.resolve([])),
   deleteShare: vi.fn(),
+}));
+
+vi.mock("../api/exports.js", () => ({
+  consumeExport: vi.fn(),
 }));
 
 vi.mock("../auth/openLoginTab.js", () => ({
@@ -165,13 +170,13 @@ describe("MinePage", () => {
     expect(screen.getByRole("button", { name: "模板管理" })).toBeInTheDocument();
   });
 
-  it("hides the template management tab for normal users", async () => {
+  it("shows the template management tab for normal users", async () => {
     seedLogin();
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
 
     renderMine();
 
-    expect(screen.queryByRole("button", { name: "模板管理" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "模板管理" })).toBeInTheDocument();
   });
 
   it("lists works from the API", async () => {
@@ -945,21 +950,14 @@ describe("MinePage", () => {
     expect(getWork).not.toHaveBeenCalled();
   });
 
-  it("普通用户看不到 添加/邀请成员/更多操作", async () => {
+  it("普通用户能看到 添加/邀请成员/模板管理", async () => {
     seedUser({ id: 2, role: 2 });
-    listWorks.mockResolvedValue({
-      total: 1,
-      page: 1,
-      size: 24,
-      records: [
-        { id: 9, title: "夏日海报作品", status: "DRAFT", updatedAt: "2026-08-19T10:00:00" },
-      ],
-    });
+    listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     renderMine();
-    await screen.findByText("已全部加载完成");
-    expect(screen.queryByRole("button", { name: "添加" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "邀请成员" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /更多操作/ })).not.toBeInTheDocument();
+    await screen.findByText("拖放文件到这里，开始云端作图");
+    expect(screen.getByRole("button", { name: /添加$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /邀请成员/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "模板管理" })).toBeInTheDocument();
   });
 
   it("管理员能看到 添加/邀请成员/上传/导入", async () => {
@@ -973,16 +971,16 @@ describe("MinePage", () => {
     expect(screen.getByRole("button", { name: "从「一稿设计」导入" })).toBeInTheDocument();
   });
 
-  it("普通用户只读：空态无上传/导入入口", async () => {
+  it("普通用户空态有上传/导入入口", async () => {
     seedUser({ id: 2, role: 2 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     renderMine();
     await screen.findByText("拖放文件到这里，开始云端作图");
-    expect(screen.queryByRole("button", { name: "上传文件" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "从「一稿设计」导入" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "上传文件" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "从「一稿设计」导入" })).toBeInTheDocument();
   });
 
-  it("普通用户只读：无上传图片磁贴", async () => {
+  it("普通用户可看到上传图片磁贴", async () => {
     seedUser({ id: 2, role: 2 });
     listWorks.mockResolvedValue({ total: 0, page: 1, size: 24, records: [] });
     listAssets.mockResolvedValue({
@@ -995,10 +993,10 @@ describe("MinePage", () => {
     renderMine();
     expect(await screen.findByText("海报.png")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "我上传的" }));
-    expect(screen.queryByRole("button", { name: "上传图片" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "上传图片" })).toBeInTheDocument();
   });
 
-  it("普通用户只读：详情无编辑/分享/删除", async () => {
+  it("普通用户详情可编辑/分享", async () => {
     seedUser({ id: 2, role: 2 });
     listWorks.mockResolvedValue({
       total: 1,
@@ -1012,9 +1010,34 @@ describe("MinePage", () => {
     expect(await screen.findByText("夏日海报作品")).toBeInTheDocument();
     fireEvent.click(document.querySelector(".mine-card-hover"));
     expect(await screen.findByRole("button", { name: "返回" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "编辑" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "分享" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "删除" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "更多操作" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "编辑" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "分享" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "更多操作" })).toBeInTheDocument();
+  });
+
+  it("下载遇到导出超限时不继续下载", async () => {
+    seedUser({ id: 2, role: 2 });
+    listWorks.mockResolvedValue({
+      total: 1,
+      page: 1,
+      size: 24,
+      records: [
+        {
+          id: 9,
+          title: "夏日海报作品",
+          status: "DRAFT",
+          thumbnailUrl: "http://cdn/summer.png",
+          updatedAt: "2026-08-19T10:00:00",
+        },
+      ],
+    });
+    consumeExport.mockRejectedValue({ code: 42900, message: "今日导出次数已用完" });
+    const user = userEvent.setup();
+    renderMine();
+
+    await screen.findByText("夏日海报作品");
+    await user.click(screen.getByRole("button", { name: "下载 夏日海报作品" }));
+
+    await waitFor(() => expect(consumeExport).toHaveBeenCalled());
   });
 });

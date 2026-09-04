@@ -60,9 +60,9 @@ describe("AppRoutes", () => {
     expect(await screen.findByText("editor-page")).toBeInTheDocument();
   });
 
-  it("普通用户访问编辑器跳首页", async () => {
+  it("普通用户可打开编辑器", async () => {
     renderAt("/works/9", { id: 2, role: 2 });
-    expect(await screen.findByText("home-page")).toBeInTheDocument();
+    expect(await screen.findByText("editor-page")).toBeInTheDocument();
   });
 
   it("访客访问编辑器跳首页", async () => {

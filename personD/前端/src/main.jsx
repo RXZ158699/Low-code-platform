@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import zhCN from "antd/locale/zh_CN";
 import AppRoutes from "./AppRoutes.jsx";
 import { AuthProvider } from "./auth/AuthContext.jsx";
+import { MembershipProvider } from "./components/MembershipProvider.jsx";
 import "./styles/index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -33,9 +34,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     >
       <AntdApp>
         <AuthProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
+          <MembershipProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </MembershipProvider>
         </AuthProvider>
       </AntdApp>
     </ConfigProvider>

@@ -12,12 +12,15 @@ import {
   createTemplate,
   createWorkFromTemplate,
   deleteTemplate,
+  listMyTemplates,
   listTemplates,
   updateTemplate,
   uploadTemplateCover,
 } from "../api/templates.js";
 import { TEMPLATE_CATEGORIES } from "../config/templateCategories.js";
 import { createEmptyCanvas, stringifyCanvas } from "../canvas.js";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { isAdmin } from "../auth/access.js";
 import TemplateCover from "./TemplateCover.jsx";
 import TemplateDetailModal from "./TemplateDetailModal.jsx";
 
@@ -63,6 +66,8 @@ function formFromTemplate(template) {
 export default function TemplateAdminPanel() {
   const { message, modal } = AntdApp.useApp();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const manageMine = !!user && !isAdmin(user);
   const rowCoverRef = useRef(null);
   const modalCoverRef = useRef(null);
   const [templates, setTemplates] = useState([]);
@@ -79,20 +84,33 @@ export default function TemplateAdminPanel() {
   const [detailTemplate, setDetailTemplate] = useState(null);
   const [usingId, setUsingId] = useState(null);
 
+  const loadTemplates = useCallback(async () => {
+    const rows = asRecords(
+      manageMine
+        ? await listMyTemplates({ page: 1, size: 50 })
+        : await listTemplates({ page: 1, size: 50 }),
+    );
+    if (!manageMine) return rows;
+    return rows.filter(
+      (template) =>
+        template.authorId != null &&
+        Number(template.authorId) === Number(user?.id),
+    );
+  }, [manageMine, user?.id]);
+
   const refreshTemplates = useCallback(async () => {
     try {
-      const data = await listTemplates({ page: 1, size: 50 });
-      setTemplates(asRecords(data));
+      setTemplates(await loadTemplates());
     } catch (err) {
       message.error(err.message || "加载模板失败");
     }
-  }, [message]);
+  }, [loadTemplates, message]);
 
   useEffect(() => {
     let cancelled = false;
-    listTemplates({ page: 1, size: 50 })
-      .then((data) => {
-        if (!cancelled) setTemplates(asRecords(data));
+    loadTemplates()
+      .then((rows) => {
+        if (!cancelled) setTemplates(rows);
       })
       .catch((err) => {
         if (!cancelled) message.error(err.message || "加载模板失败");
@@ -103,7 +121,7 @@ export default function TemplateAdminPanel() {
     return () => {
       cancelled = true;
     };
-  }, [message]);
+  }, [loadTemplates, message]);
 
   const handleModalCoverChange = (event) => {
     const file = event.target.files?.[0] || null;

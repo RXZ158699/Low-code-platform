@@ -29,8 +29,10 @@ import {
   saveDraft,
   updateWork,
 } from "../api/works.js";
+import { consumeExport } from "../api/exports.js";
 import { uploadAsset } from "../api/assets.js";
 import { getShare, updateShare } from "../api/shares.js";
+import { useMembership } from "../components/MembershipProvider.jsx";
 import {
   addCollageElement,
   addDoodleElement,
@@ -208,6 +210,7 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { message } = AntdApp.useApp();
+  const { setOpen: setMemberOpen, setReason } = useMembership();
   const stageRef = useRef(null);
   const shareMode = Boolean(shareToken);
   const sourceKey = shareToken || id;
@@ -1519,6 +1522,17 @@ export default function WorkEditorPage({ shareToken, shareCode } = {}) {
   };
 
   const handleExport = async () => {
+    try {
+      await consumeExport();
+    } catch (error) {
+      if (error?.code === 42900) {
+        setReason("今日导出次数已用完");
+        setMemberOpen(true);
+      } else {
+        message.error(error.message || "导出失败");
+      }
+      return;
+    }
     try {
       const blob = await canvasPreviewBlob(canvas);
       if (!blob) {

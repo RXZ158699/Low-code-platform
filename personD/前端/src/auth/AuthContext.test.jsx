@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "./AuthContext.jsx";
 import { AUTH_SYNC_TYPE } from "./authSync.js";
@@ -79,6 +79,15 @@ function RoleProbe() {
   return <div>{isAdmin ? "admin" : "not-admin"}|{isLoggedIn ? "in" : "out"}</div>;
 }
 
+function RefreshProbe() {
+  const { user, refreshMe } = useAuth();
+  return (
+    <button type="button" onClick={refreshMe}>
+      {user?.nickname || user?.username || "guest"}
+    </button>
+  );
+}
+
 function renderRole(role) {
   if (role !== undefined) {
     localStorage.setItem("dp.token", "token");
@@ -106,4 +115,29 @@ it("导出 isAdmin / isLoggedIn（role=2）", async () => {
 it("导出 isAdmin / isLoggedIn（未登录）", async () => {
   renderRole(undefined);
   expect(await screen.findByText("not-admin|out")).toBeInTheDocument();
+});
+
+it("refreshMe 从 /auth/me 刷新当前用户", async () => {
+  localStorage.setItem("dp.token", "token");
+  localStorage.setItem(
+    "dp.user",
+    JSON.stringify({ id: 1, username: "old", nickname: "旧昵称" }),
+  );
+  fetchMe.mockResolvedValue({
+    id: 1,
+    username: "old",
+    nickname: "会员用户",
+  });
+
+  render(
+    <AuthProvider>
+      <RefreshProbe />
+    </AuthProvider>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "旧昵称" }));
+
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "会员用户" })).toBeInTheDocument(),
+  );
 });

@@ -6,7 +6,6 @@ import graduationCapIcon from "../assets/icons/graduation-cap.svg";
 import layoutDashboardIcon from "../assets/icons/layout-dashboard.svg";
 import { useCreatePopover } from "./CreatePopover.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { isAdmin } from "../auth/access.js";
 
 const FEATURES = [
   { title: "AI 画布", icon: paintbrushIcon },
@@ -21,9 +20,9 @@ export default function FeaturesRow() {
   const { open, setOpen, setCanvasModalOpen, setCanvasModalTab } = useCreatePopover();
   const { user } = useAuth();
 
-  // 创建类入口（图片创作/更多）仅管理员可见，其余功能人人可见
+  // 创建类入口（图片创作/更多）登录用户可见，其余功能人人可见
   const visibleFeatures = FEATURES.filter((feature) => {
-    if (feature.opensCanvas || feature.hasPopover) return isAdmin(user);
+    if (feature.opensCanvas || feature.hasPopover) return !!user;
     return true;
   });
 

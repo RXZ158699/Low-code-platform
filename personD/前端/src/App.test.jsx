@@ -72,15 +72,14 @@ describe("App 翻页守卫", () => {
     expect(await screen.findByText("home")).toBeInTheDocument();
   });
 
-  it("普通用户无法切到发现页", async () => {
+  it("普通用户可切到发现页", async () => {
     const user = userEvent.setup();
     renderApp({ id: 2, role: 2 });
     await screen.findByText("home");
 
     await user.click(screen.getByRole("button", { name: "go-discover" }));
 
-    expect(screen.queryByText("discover-page")).not.toBeInTheDocument();
-    expect(screen.getByText("home")).toBeInTheDocument();
+    expect(await screen.findByText("discover-page")).toBeInTheDocument();
   });
 
   it("管理员可切到发现页", async () => {

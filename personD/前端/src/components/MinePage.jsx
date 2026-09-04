@@ -38,11 +38,12 @@ import {
   updateTeam,
 } from "../api/teams.js";
 import { createShare, deleteShare, listWorkShares, sharePageUrl } from "../api/shares.js";
+import { consumeExport } from "../api/exports.js";
 import { useAppPage } from "../AppPageContext.jsx";
 import { useCreatePopover } from "./CreatePopover.jsx";
+import { useMembership } from "./MembershipProvider.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { openLoginTab } from "../auth/openLoginTab.js";
-import { isAdmin } from "../auth/access.js";
 import { useNavigate } from "react-router-dom";
 import { canvasPreviewBlob } from "../canvasPreview.js";
 
@@ -183,8 +184,9 @@ export default function MinePage() {
   const { setPage, scale, sidebarVisualWidth, stickyBarWidth } = useAppPage();
   const pageScale = scale || 1;
   const { setOpen } = useCreatePopover();
+  const { setOpen: setMemberOpen, setReason } = useMembership();
   const { user, ready } = useAuth();
-  const readOnly = !isAdmin(user);
+  const readOnly = !user;
   const { message, modal } = AntdApp.useApp();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -736,7 +738,7 @@ export default function MinePage() {
     }
   };
 
-  const handleDownload = async (item) => {
+  const downloadItem = async (item) => {
     const url = item.imageUrl;
     if (!url) {
       message.info("暂无可下载的图片");
@@ -757,6 +759,21 @@ export default function MinePage() {
     } catch {
       window.open(url, "_blank", "noopener,noreferrer");
     }
+  };
+
+  const handleDownload = async (item) => {
+    try {
+      await consumeExport();
+    } catch (error) {
+      if (error?.code === 42900) {
+        setReason("今日导出次数已用完");
+        setMemberOpen(true);
+      } else {
+        message.error(error.message || "下载失败");
+      }
+      return;
+    }
+    await downloadItem(item);
   };
 
   const removeRecord = (item) => {
@@ -921,7 +938,18 @@ export default function MinePage() {
 
   const downloadSelected = async () => {
     if (selectedItems.length === 0) return;
-    await Promise.all(selectedItems.map((item) => handleDownload(item)));
+    try {
+      await consumeExport();
+    } catch (error) {
+      if (error?.code === 42900) {
+        setReason("今日导出次数已用完");
+        setMemberOpen(true);
+      } else {
+        message.error(error.message || "下载失败");
+      }
+      return;
+    }
+    await Promise.all(selectedItems.map((item) => downloadItem(item)));
   };
 
   const deleteSelected = () => {
@@ -996,7 +1024,7 @@ export default function MinePage() {
           <>
         <div className="mine-space-row">
           <nav className="mine-space-tabs" aria-label="我的空间分类">
-            {SPACE_TABS.filter((item) => item !== TEMPLATE_TAB || isAdmin(user)).map((item) => (
+            {SPACE_TABS.filter((item) => item !== TEMPLATE_TAB || !!user).map((item) => (
               <button
                 key={item}
                 type="button"

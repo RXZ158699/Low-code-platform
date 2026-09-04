@@ -65,13 +65,12 @@ describe("Sidebar", () => {
     expect(screen.getByRole("button", { name: "登录" })).toBeInTheDocument();
   });
 
-  it("普通用户显示 创作 和 我的，隐藏 发现 和 创建", () => {
+  it("普通用户显示 创作/发现/我的/创建", () => {
     seedUser({ id: 2, role: 2 });
     renderSidebar();
-    expect(screen.getByRole("button", { name: "创作" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "我的" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "发现" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "创建" })).not.toBeInTheDocument();
+    for (const name of ["创作", "发现", "我的", "创建"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
   });
 
   it("管理员显示全部导航", () => {
@@ -102,5 +101,28 @@ describe("Sidebar", () => {
     await user.click(screen.getByRole("button", { name: "我的" }));
 
     expect(onNavigate).toHaveBeenCalledWith("mine");
+  });
+
+  it("点击用户信息按钮打开个人信息弹框", async () => {
+    seedUser({
+      id: 2,
+      role: 2,
+      username: "demo",
+      nickname: "演示用户",
+      membershipType: "FREE",
+      createdAt: "2026-09-01T10:00:00",
+    });
+    const user = userEvent.setup();
+    renderSidebar();
+
+    await user.click(screen.getByRole("button", { name: "用户信息" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "个人信息" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("演示用户").length).toBeGreaterThan(0);
+    expect(screen.getByText(/普通用户 · 非会员/)).toBeInTheDocument();
+    expect(screen.getByText("会员中心")).toBeInTheDocument();
+    expect(screen.getByText("退出登录")).toBeInTheDocument();
   });
 });

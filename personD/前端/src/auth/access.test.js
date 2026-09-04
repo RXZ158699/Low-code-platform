@@ -29,7 +29,8 @@ describe("access", () => {
     expect(isAdmin(unknown)).toBe(false);
     expect(canAccess("home", unknown)).toBe(true);
     expect(canAccess("mine", unknown)).toBe(true);
-    expect(canAccess("discover", unknown)).toBe(false);
+    expect(canAccess("discover", unknown)).toBe(true);
+    expect(canAccess("editor", unknown)).toBe(true);
   });
 
   it("isAdmin / isLoggedIn", () => {
@@ -46,9 +47,9 @@ describe("access", () => {
     expect(canAccess("home", admin)).toBe(true);
   });
 
-  it("discover 仅管理员", () => {
+  it("discover 需登录", () => {
     expect(canAccess("discover", guest)).toBe(false);
-    expect(canAccess("discover", user)).toBe(false);
+    expect(canAccess("discover", user)).toBe(true);
     expect(canAccess("discover", admin)).toBe(true);
   });
 
@@ -58,9 +59,9 @@ describe("access", () => {
     expect(canAccess("mine", admin)).toBe(true);
   });
 
-  it("editor 仅管理员", () => {
+  it("editor 需登录", () => {
     expect(canAccess("editor", guest)).toBe(false);
-    expect(canAccess("editor", user)).toBe(false);
+    expect(canAccess("editor", user)).toBe(true);
     expect(canAccess("editor", admin)).toBe(true);
   });
 

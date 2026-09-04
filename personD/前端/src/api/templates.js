@@ -10,6 +10,17 @@ export function listTemplates({ category, keyword, tag, page = 1, size = 12 } = 
   return apiFetch(`/templates?${params.toString()}`, { auth: false });
 }
 
+export function listMyTemplates({ category, keyword, tag, page = 1, size = 50 } = {}) {
+  const params = new URLSearchParams();
+  params.set("mine", "true");
+  if (category) params.set("category", category);
+  if (keyword) params.set("keyword", keyword);
+  if (tag) params.set("tag", tag);
+  params.set("page", String(page));
+  params.set("size", String(size));
+  return apiFetch(`/templates?${params.toString()}`);
+}
+
 export function listHotTemplates(limit = 8) {
   return apiFetch(`/templates/hot?limit=${limit}`, { auth: false });
 }

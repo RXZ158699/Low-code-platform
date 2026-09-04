@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Avatar, Button, Dropdown, Input, Modal, Tooltip, App as AntdApp } from "antd";
+import { Avatar, Button, Tooltip } from "antd";
 import lightbulbIcon from "../assets/icons/lightbulb.svg";
 import bookmarkIcon from "../assets/icons/bookmark.svg";
 import userCogIcon from "../assets/icons/user-cog.svg";
 import plusCircleIcon from "../assets/icons/plus-circle.svg";
 import awardIcon from "../assets/icons/award.svg";
 import CreatePopover, { useCreatePopover } from "./CreatePopover.jsx";
+import { useMembership } from "./MembershipProvider.jsx";
+import UserInfoModal from "./UserInfoModal.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { canAccess, isAdmin } from "../auth/access.js";
+import { canAccess } from "../auth/access.js";
 import { openLoginTab } from "../auth/openLoginTab.js";
-import { updateMe, uploadAvatar } from "../api/users.js";
 
 const NAV_ITEMS = [
   { key: "create", label: "创作", icon: lightbulbIcon },
@@ -22,16 +23,14 @@ const NAV_PAGE = { create: "home", discover: "discover", mine: "mine" };
 
 export default function Sidebar({ active: activeProp, onNavigate }) {
   const [internalActive, setInternalActive] = useState("create");
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [nickname, setNickname] = useState("");
-  const [savingProfile, setSavingProfile] = useState(false);
+  const [userInfoOpen, setUserInfoOpen] = useState(false);
   const active = activeProp ?? internalActive;
   const { open } = useCreatePopover();
-  const { user, logout, updateUser } = useAuth();
-  const { message } = AntdApp.useApp();
+  const { setOpen: setMemberOpen } = useMembership();
+  const { user } = useAuth();
 
   const visibleItems = NAV_ITEMS.filter((item) => {
-    if (item.key === "new") return isAdmin(user);
+    if (item.key === "new") return !!user;
     return canAccess(NAV_PAGE[item.key], user);
   });
 
@@ -49,43 +48,6 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
     onNavigate?.(key);
     if (activeProp === undefined) {
       setInternalActive(key);
-    }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    message.success("已退出登录");
-  };
-
-  const openProfile = () => {
-    setNickname(user?.nickname || user?.username || "");
-    setProfileOpen(true);
-  };
-
-  const saveProfile = async () => {
-    setSavingProfile(true);
-    try {
-      const next = await updateMe({ nickname: nickname.trim() });
-      updateUser(next);
-      message.success("资料已更新");
-      setProfileOpen(false);
-    } catch (err) {
-      message.error(err.message || "保存失败");
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
-  const handleAvatar = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    try {
-      const next = await uploadAvatar(file);
-      updateUser(next);
-      message.success("头像已更新");
-    } catch (err) {
-      message.error(err.message || "头像上传失败");
     }
   };
 
@@ -120,32 +82,28 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
 
       <div className="sidebar-bottom">
         <Tooltip title="会员中心" placement="right">
-          <button type="button" className="premium-entry" aria-label="会员中心">
+          <button
+            type="button"
+            className="premium-entry"
+            aria-label="会员中心"
+            onClick={() => setMemberOpen(true)}
+          >
             <img src={awardIcon} alt="" />
           </button>
         </Tooltip>
 
         {user ? (
-          <Dropdown
-            menu={{
-              items: [
-                { key: "profile", label: "编辑资料" },
-                { key: "logout", label: "退出登录" },
-              ],
-              onClick: ({ key }) => {
-                if (key === "logout") handleLogout();
-                if (key === "profile") openProfile();
-              },
-            }}
-            placement="topRight"
+          <button
+            type="button"
+            className="sidebar-user"
+            aria-label="用户信息"
+            onClick={() => setUserInfoOpen(true)}
           >
-            <button type="button" className="sidebar-user" aria-label="用户菜单">
-              <Avatar size={36} src={user.avatar || undefined}>
-                {(user.nickname || user.username || "?").slice(0, 1)}
-              </Avatar>
-              <span className="sidebar-user-name">{user.nickname || user.username}</span>
-            </button>
-          </Dropdown>
+            <Avatar size={36} src={user.avatar || undefined}>
+              {(user.nickname || user.username || "?").slice(0, 1)}
+            </Avatar>
+            <span className="sidebar-user-name">{user.nickname || user.username}</span>
+          </button>
         ) : (
           <Button
             type="primary"
@@ -157,26 +115,11 @@ export default function Sidebar({ active: activeProp, onNavigate }) {
           </Button>
         )}
       </div>
-      <Modal
-        title="编辑资料"
-        open={profileOpen}
-        onCancel={() => setProfileOpen(false)}
-        onOk={saveProfile}
-        confirmLoading={savingProfile}
-        okText="保存"
-        cancelText="取消"
-      >
-        <div className="profile-form">
-          <label>
-            头像
-            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleAvatar} />
-          </label>
-          <label>
-            昵称
-            <Input value={nickname} onChange={(event) => setNickname(event.target.value)} maxLength={32} />
-          </label>
-        </div>
-      </Modal>
+      <UserInfoModal
+        key={String(userInfoOpen)}
+        open={userInfoOpen}
+        onClose={() => setUserInfoOpen(false)}
+      />
     </aside>
   );
 }

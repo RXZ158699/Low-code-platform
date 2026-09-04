@@ -105,6 +105,16 @@ export function AuthProvider({ children }) {
     notifyAuthSync(null);
   }, []);
 
+  const refreshMe = useCallback(async () => {
+    const me = await fetchMe();
+    if (me) {
+      setUser(me);
+      saveUser(me);
+      notifyAuthSync(me);
+    }
+    return me;
+  }, []);
+
   const updateUser = useCallback((me) => {
     setUser(me);
     saveUser(me);
@@ -112,8 +122,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, ready, login, logout, updateUser, isAdmin: isAdmin(user), isLoggedIn: isLoggedIn(user) }),
-    [user, ready, login, logout, updateUser],
+    () => ({
+      user,
+      ready,
+      login,
+      logout,
+      refreshMe,
+      updateUser,
+      isAdmin: isAdmin(user),
+      isLoggedIn: isLoggedIn(user),
+    }),
+    [user, ready, login, logout, refreshMe, updateUser],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

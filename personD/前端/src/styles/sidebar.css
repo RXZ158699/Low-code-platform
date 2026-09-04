@@ -308,3 +308,164 @@
   font-weight: 600;
   color: #0f172a;
 }
+
+.member-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.member-current span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.member-current strong {
+  color: #1d4ed8;
+  font-size: 14px;
+}
+
+.member-current em {
+  margin-left: auto;
+  color: #475569;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.member-reason {
+  margin: 0 0 14px;
+  color: #b45309;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.member-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.member-plan-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.member-plan-card > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.member-plan-card strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.member-plan-card em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.member-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.member-paid-tip {
+  margin: 12px 0 0;
+  color: #15803d;
+  font-size: 13px;
+}
+
+.user-info-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.user-info-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-info-head strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.user-info-head span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.user-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 18px 0 0;
+}
+
+.user-info-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.user-info-list dt {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.user-info-list dd {
+  margin: 0;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.user-info-list .user-membership-value {
+  cursor: help;
+  border-bottom: 1px dashed #94a3b8;
+}
+
+.user-info-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.user-info-edit input[type="file"] {
+  display: none;
+}
+
+.user-info-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.user-info-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
